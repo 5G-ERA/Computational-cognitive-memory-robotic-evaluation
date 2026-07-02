@@ -286,6 +286,33 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   "libre", la visión dice "enterrado", y la visión gana SOLO para una maniobra acotada (0.5 m
   atrás antes de planificar), nunca para pintar el mapa.
 
+### 8.11 Lote de carga (2026-07-02 tarde) + SIMULADOR de fixes
+
+- **PLAN GLOBAL sobre mapa ESTABLE (hallazgo de Adrian, crítico)**: el A* global planificaba
+  sobre el láser VIVO (`build_costmap(oset)`) y solo caía al mapa cargado como último recurso.
+  Efectos medidos con `sim_globalplan.py` (nube postmortem real de 150440 + nav_map.json real):
+  ① seis "frames" Livox desde la misma pose → caminos que difieren 0.27 m de media (el ddir
+  tembloroso que DOOR-AL peleaba); ② el plan vivo ATRAVIESA paredes mapeadas que el láser no ve
+  en ese instante ("va recto a la pared y gira tarde"). Fix: `G1_GLOBALMAP=hard` (defecto) =
+  mapa cargado + persistentes saturados + colisiones; DWA local sigue con el láser vivo;
+  agresivo replanifica con lo reciente. `=live` revierte, `=ref` solo mapa.
+- **HARD-GUARD ON por defecto**: replay de 29 runs → 0 activaciones en runs limpias (coste
+  cero) y 4 STOPs pre-colisión en 150440. Paredes no negociables (Renxi).
+- **G1_AGGR_R 0.13→0.20**: semiancho físico con brazos ~0.28-0.30 m; 0.13 autorizaba huecos
+  imposibles (roces con omap_near 42/48/81 en 152030/152330/152532).
+- **PRESS-guard: RECHAZADO por simulación** (resultado negativo honesto): la firma pre-impacto
+  real (3-4 s raspando a 0.05-0.15 m/s con cnear 21-28) es INDISTINGUIBLE del cruce cuidadoso
+  de puerta con solo odom+visión (6 falsos en 145010, 3 en 142725, ambas limpias). Se retomará
+  con el par de pierna (legtau, ya logueado) en `g1_replay.py` antes de tocar el robot.
+- **Herramientas nuevas**: `g1_replay.py` (replay contrafactual de reglas sobre todas las runs;
+  regla de aceptación: dispara antes de los fallos que ataca + 0 falsos en runs limpias) y
+  `sim_globalplan.py` (estabilidad del plan global, vivo vs estático). ESCAPE pasó 4/4 + 0/25.
+- **perc_age** en samples y en la línea [VIS]: edad de la última respuesta real del server de
+  percepción (separa "server colgado" de "escena vacía legítima" — P3 del tutor).
+- Runs 152030/152330/152532 (pre-lote): PRIMERA B→A completada (152532, 81.6 s) — el pocket
+  sigue costando 1 colisión al salir; A→B con 1 roce en boca de puerta cada una. La lista de
+  problemas del tutor vive en `PROBLEMS.md` (inglés).
+
 ### 8.4 Próximos pasos (en orden)
 
 1. **Prueba goto B** en el Ubuntu (percepción ON; el gate ya lo exige). Mirar en el log, en este orden:

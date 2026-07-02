@@ -38,7 +38,11 @@ NAV_REACH = 0.35                 # m: se considera ALCANZADO el waypoint
 NAV_OMAP_TTL = 60.0              # s: la nube es estatica; TTL medio purga obstaculos dinamicos (persona que pasa)
 GATE_M = 0.6                     # m: si arrancas a > esto del waypoint mas cercano = relocalizacion dudosa (como la app)
 AGGR_AFTER = 12.0                # s atascado sin ACERCARSE al destino -> activa modo AGRESIVO (cruza la puerta)
-AGGR_ROBOT_R = float(os.environ.get("G1_AGGR_R", "0.13"))   # m: holgura en modo agresivo (MINIMO de seguridad).
+AGGR_ROBOT_R = float(os.environ.get("G1_AGGR_R", "0.20"))   # m: holgura en modo agresivo (MINIMO de seguridad).
+# ^ 0.13->0.20 (Renxi 2026-07-02: "clearing is wrong, it does not cover the width of the hands"): el
+#   semiancho FISICO del G1 es ~0.22m de hombros y ~0.28-0.30m con el vaivén de brazos; 0.13 autorizaba
+#   huecos imposibles (roces con omap_near 42-81 en 152030/152330/152532). G1_AGGR_R=0.13 para revertir.
+GLOBAL_SRC = os.environ.get("G1_GLOBALMAP", "hard")          # plan GLOBAL: hard (mapa+persistentes) | ref | live
                                  # Run 122857: c0min=0.16 y roces laterales en pared/marco -> con el bamboleo
                                  # del bipedo, 0.13 es rozar por diseno. Probar G1_AGGR_R=0.16 si repite (A/B).
 PERC_PERIOD = 0.3                # s entre consultas al servidor de percepcion GPU (depth->scan virtual de la mesa)
@@ -73,7 +77,8 @@ RELOC_GUARD = (os.environ.get("G1_RELOCGUARD", "1") == "1")   # G1_RELOCGUARD=0 
 RELOC_STOP_N = int(os.environ.get("G1_RELOC_N", "4"))         # nº de saltos >0.5m...
 RELOC_STOP_WIN = float(os.environ.get("G1_RELOC_WIN", "10.0"))  # ...dentro de esta ventana (s) = divergencia
 # --- OBSTACULOS DE ALTA CONFIANZA (Renxi): pared del mapa / score saturado / colision. ---
-HARD_GUARD = (os.environ.get("G1_HARDGUARD", "0") == "1")   # guardia de control (OFF: primero A/B)
+HARD_GUARD = (os.environ.get("G1_HARDGUARD", "1") == "1")   # ON por defecto (replay 29 runs: 0 activaciones
+# en runs limpias -> coste cero; 4 STOPs pre-colision en 150440. Paredes NO negociables. =0 revierte).
 HARD_STOP = float(os.environ.get("G1_HARD_STOP", "0.22"))    # m: no avanzar con pared a menos de esto
 HARD_SLOW = float(os.environ.get("G1_HARD_SLOW", "0.45"))    # m: acercarse a pared -> velocidad reducida
 # --- ESCAPE al arranque (HANDOFF 8.8): el waypoint B quedo grabado con la nariz a ~40cm del sofa -> cada
@@ -1387,7 +1392,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     nvis_map = sum(1 for c in vis_conf if c in omap)
                     dstr = ",".join(f"{d.get('label')}@{(d.get('bearing_deg') or 0):+.0f}/{d.get('range_m')}m" for d in obst_dets) or "-"
                     cdoor = perc_raw.get("door") or {}
-                    lg.write(f"[VIS] perc_n={len(perc_cells)} free_c={vis_center if vis_center is not None else '-'} "
+                    lg.write(f"[VIS] perc_n={len(perc_cells)} age={round(now - perc_rx_t, 1) if perc_rx_t is not None else '-'} "
+                             f"free_c={vis_center if vis_center is not None else '-'} "
                              f"vismap={nvis_map}/{len(vis_conf)} color={perc_raw.get('color_pts', '-')} "
                              f"carpet={perc_raw.get('carpet_pct', '-')} cnear={perc_raw.get('color_near', '-')} "
                              f"crmin={perc_raw.get('color_rmin', '-')} door={cdoor.get('bearing_deg', '-')} "
@@ -1574,7 +1580,19 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         recent = {c for c, tt in omap.items() if now - tt < 4.0}
                         cm = {c: math.inf for c in (recent | (refmap or set()))}
                     else:
-                        cm = g.build_costmap(oset)         # aproximacion rapida con el laser vivo (con seguridad)
+                        # PLAN GLOBAL sobre mapa ESTABLE (Adrian 2026-07-02, viendo el viewer): antes se
+                        # planificaba sobre el LASER VIVO (oset) -> el ruido intermitente doblaba el plan
+                        # en cada replanificacion (linea verde en zigzag esquivando manchas, 'ddir' de la
+                        # puerta temblando -> thrash del DOOR-AL). Arquitectura correcta (la de Nav2):
+                        # GLOBAL = mapa cargado + persistentes DUROS (saturados/colisiones; no parpadean);
+                        # LOCAL (DWA) = laser vivo. Lo nuevo/no mapeado lo esquiva el DWA y, si de verdad
+                        # bloquea la ruta, el modo agresivo ya replanifica con lo reciente.
+                        if GLOBAL_SRC == "live":               # G1_GLOBALMAP=live: comportamiento antiguo
+                            cm = g.build_costmap(oset)
+                        elif GLOBAL_SRC == "ref":              # G1_GLOBALMAP=ref: SOLO el mapa cargado
+                            cm = g.build_costmap(refmap or set())
+                        else:                                  # "hard" (defecto): estable + muebles persistentes
+                            cm = g.build_costmap(hard_set | (refmap or set()))
                     cells_path = g.astar(scell, gcell, cm)
                     if not cells_path and refmap:          # ultimo recurso: solo el mapa limpio (siempre tiene la puerta)
                         cells_path = g.astar(scell, gcell, {c: math.inf for c in refmap})

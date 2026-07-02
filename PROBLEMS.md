@@ -30,7 +30,24 @@ overrides it. Offline replay over all 29 runs with data: fires on exactly the 4 
 This is the second wired instance of Renxi's "real vs fake stuck" arbitration: LiDAR says free,
 vision says buried, vision wins — but only for a bounded courtesy maneuver, never to paint the map.
 
-## P2 — Clearance model narrower than the arms/hands — **OPEN (next change)**
+## P8 — Global planner ran on the LIVE laser instead of the map — **CODED (critical, found by Adrian)**
+
+Watching the viewer, Adrian caught that the green GLOBAL plan zigzags around live laser
+blobs. Confirmed in code: normal-mode global A* planned over `build_costmap(oset)` — the
+live, flickering laser map — and used the loaded map only as a last-resort fallback. Two
+consequences, both reproduced offline (`sim_globalplan.py`, real postmortem cloud + the real
+`nav_map.json`): (1) plan instability — six Livox "frames" from the same pose give paths that
+differ by 0.27 m on average (the trembling door axis that DOOR-AL fought); (2) the live plan
+cuts straight through mapped walls the laser doesn't currently see — the "walks at the wall,
+then turns away late" behaviour.
+
+**Fix (default `G1_GLOBALMAP=hard`):** global A* now plans on the STABLE map — loaded walls +
+score-saturated persistent cells + collision marks (the P-hard tier). The local DWA keeps
+using the live laser for everything new/unmapped; aggressive mode still replans with recent
+cells. `G1_GLOBALMAP=live` restores the old behaviour, `=ref` uses the loaded map only.
+This is the Nav2 architecture: static global, sensor-driven local.
+
+## P2 — Clearance model narrower than the arms/hands — **PARTLY CODED**
 
 Renxi: "clearing is wrong — it does not cover the width of the hands yet." The data agrees:
 all three runs of the latest batch had exactly one IMU-detected graze **with the map fully
@@ -43,10 +60,20 @@ gap when c0 > 0.13 m. The G1's physical half-width is ~0.22 m at the shoulders, 
 including arm swing. So in aggressive mode we authorize gaps that are physically too tight by
 ~15 cm per side.
 
-**Proposed change #2 (env-only A/B, no code):** `G1_AGGR_R=0.20`. If door transit still
-succeeds (door is the binding constraint) but grazes persist, follow-up in code: raise the
-DOOR-GO entry floor 0.13→0.22 and center harder (DOOR-CTR) before committing. Longer-term idea
-worth discussing: tuck/lock arms during DOOR phase via the arm SDK (physically narrows the robot).
+**Done now:** `G1_AGGR_R` default raised 0.13→0.20 (revert: `G1_AGGR_R=0.13`), and HARD-GUARD
+is now default ON — replayed over all 29 logged runs it engages ZERO times in clean reached
+runs (zero cost) and would have issued 4 STOPs before 150440's first collision (`G1_HARDGUARD=0`
+reverts). Note P8's fix also attacks this problem at the source: a stable global plan stops
+dragging the robot along noise-bent paths that shave the doorframe.
+
+**Attempted and rejected by simulation (honest negative result):** a "press-guard" (commanded
+forward + body barely moves + vision says "on top" → back off before the IMU notices). The
+152030/152330 pre-impact signature (3–4 s scraping at 0.05–0.15 m/s with cnear 21–28) is real,
+but replay over all runs shows the same signature during legitimate careful door transits
+(6 false fires in 145010, 3 in 142725, both clean runs): with odometry+vision only it is not
+separable. It needs the leg-torque channel (already logged) — queued as future work, tuned in
+`g1_replay.py` before it ever touches the robot. Longer-term idea worth discussing: tuck/lock
+arms during DOOR phase via the arm SDK (physically narrows the robot).
 
 ## P3 — Perception intermittency — **OPEN (diagnostics added, measure next run)**
 
@@ -58,11 +85,11 @@ it is real-empty-scene, not server failure. What we cannot yet separate is stale
 empty-scene.
 
 **Diagnostic now in repo:** per-tick `perc_age` (seconds since the last *fresh* perception
-response) in every sample. Next run tells us whether the dead stretches are latency (perc_age
-grows) or honest empty scenes (perc_age ~0.5 s, cells 0). Fix decided after measuring — likely
-candidates: hold-last-result ≤1 s against flicker, or server-side pipeline speedup. Note the
-Renxi split already bounds the damage: vision is advisory (speed moderation + escape trigger),
-LiDAR owns the map.
+response) in every sample and in the `[VIS]` log line. Next run tells us whether the dead
+stretches are latency (perc_age grows) or honest empty scenes (perc_age ~0.5 s, cells 0). Fix
+decided after measuring — likely candidates: hold-last-result ≤1 s against flicker, or
+server-side pipeline speedup. Note the Renxi split already bounds the damage: vision is
+advisory (speed moderation + escape trigger), LiDAR owns the map.
 
 ## P4 — Door-mouth phantom veto (vision walls sealing a passable door) — **VALIDATED**
 
@@ -92,9 +119,20 @@ occurrence since instrumented.
 
 ---
 
+## Simulation harness (how fixes get accepted now)
+
+Two repo tools replay fixes against all logged runs before they touch the robot:
+`g1_replay.py` (trigger rules: escape / hard-guard / press-guard — reports fires vs real
+collisions and false-positive rate on clean runs) and `sim_globalplan.py` (global-plan
+stability on a real postmortem cloud, live vs static map). Acceptance rule: fires before the
+failures it targets, zero fires on clean reached runs. ESCAPE passed 4/4 + 0/25; HARD-GUARD
+passed 0-cost + 4 pre-impact stops; press-guard FAILED and was not shipped.
+
 ## Working order
 
-1. **Next run**: validate P1 (ESCAPE) + P5 (calib v3) — same run, B→A; watch `ESCAPE-START/END`
-   in the log and carpet_pct at start.
-2. **Then**: P2 A/B (`G1_AGGR_R=0.20`), A→B→A; success = door still crossed, zero grazes.
-3. **Then**: P3 decision from perc_age data; P6 A/B (`G1_HBAND_LO=-0.7`).
+1. **Next run** (all changes env-revertible, each with its own log marker): P1 ESCAPE +
+   P5 calib v3 + P8 stable global plan + P2a (AGGR_R 0.20, HARD-GUARD on). If the run is
+   WORSE than 152330/152532, isolate by flipping one env at a time, in this order:
+   `G1_GLOBALMAP=live` → `G1_HARDGUARD=0` → `G1_AGGR_R=0.13` → `G1_ESCAPE=0`.
+2. **Then**: P3 decision from perc_age data; P6 A/B (`G1_HBAND_LO=-0.7`).
+3. **Then**: press-guard revisited with leg-torque in `g1_replay.py`.
