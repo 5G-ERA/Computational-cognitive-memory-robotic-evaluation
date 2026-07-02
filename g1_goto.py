@@ -1716,6 +1716,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     vshare["mhist"] = sei.history()                                          # historia (t,clearance,progression)
                     vshare["shist"] = sens.history()                                         # historia (t,reliability,noise,loc_conf)
 
+            # --- MODERADOR por vision (principio RENXI: LiDAR decide, vision APOYA): si el canal de
+            # color clampea muchas columnas ('lo tengo encima'), NO vetamos el paso (eso hacia huir al
+            # robot de puertas pasables) pero SI limitamos la velocidad de avance: acercarse con cuidado.
+            if cmd[1] > 0.24 and isinstance(perc_raw.get("color_near"), (int, float)) and perc_raw["color_near"] >= 8:
+                cmd = (cmd[0], 0.24, cmd[2], 0)
             # --- HARD-GUARD (G1_HARDGUARD=1): las paredes/persistentes NO se rozan ni en agresivo.
             # Frena el avance segun la holgura contra lo DURO; lo blando/ruidoso sigue negociable.
             if HARD_GUARD and cmd[1] > 0.05:

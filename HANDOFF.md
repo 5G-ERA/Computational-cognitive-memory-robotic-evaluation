@@ -235,6 +235,35 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
 - Overlay live: rojo 60 % (sobre muebles oscuros el 28 % desaparecía), verde 22 %.
 - ORDEN DE VALIDACIÓN: ① B→A anti-jaula ② G1_HARDGUARD=1 ③ G1_HBAND_LO=-0.7. Una cosa por run.
 
+### 8.8 Runs 142725/143039 (instrumentación completa estrenada)
+
+- A→B **perfecta** (70 s, 0 col) CON canal de color vivo (carpet 0.43, color_pts 13).
+- B→A atascada 39/54 s: **NO es el canal ni la jaula** (plan_n siempre >0, 0 astar_fails, el color
+  decía la verdad: carpet 0.06 en el choque porque la cámara estaba EMPOTRADA en el sofá crema).
+  Causa: **el waypoint B aparca al robot de morros contra el sofá** en un bolsillo (sofá+cajas+cajonera);
+  la vuelta arranca sin sitio para girar. FIX operativo: re-grabar B ~0.5 m hacia espacio abierto
+  (menú `waypoint B`). Backlog de código: maniobra de ESCAPE al arranque (c0<0.45 en tick 0 →
+  retroceder 0.5 m antes de planificar).
+- Nota técnica: el filtro "central ±30°" del clamp es un no-op (FOV de la cámara = ±28°); el que
+  discrimina es el de obstrucción alta (≥35 % de columna). No tocar salvo que moleste.
+
+### 8.9 PRINCIPIO RENXI: el LiDAR decide, la visión apoya (runs 143511/143646)
+
+- **Bug cazado con datos**: en la boca de la puerta el marco/hoja llenan la cámara (carpet 3 %) →
+  45 columnas CLAMP a 0.7 m → muro fantasma de color cruzando un vano que el LÁSER veía pasable
+  (c0 0.7–0.85) → el robot, perfectamente alineado (goal_err −2°), giraba 180° y huía. Mismo
+  mecanismo estrangulaba la salida del bolsillo de B.
+- **Fix (principio de Renxi)**: los puntos CLAMP ("lo tengo encima", sintéticos) YA NO entran al
+  mapa — van aparte en la respuesta (`clamp`) y solo MODERAN la velocidad (≤0.24 si ≥8 columnas
+  clampeadas). Los puntos PROYECTADOS (base visible en el suelo, geometría real) siguen entrando.
+  La visión nunca veta un paso que el láser ve libre; sí obliga a acercarse despacio.
+- **Limitación descubierta**: el SOFÁ CREMA lee como moqueta (modo 1 con hue sin acotar: cualquier
+  superficie pálida poco saturada pasa). Falso-pisable ACOTADO: el sofá no es LiDAR-ciego y la
+  fusión por unión no borra obstáculos del láser. TEXTURA como discriminador: probado y DESCARTADO
+  (mediana |Laplaciano|: moqueta 4.7–5.2 vs sofá 3.7 — margen fino que el motion blur invierte).
+- Para la tesis (comentario de Renxi): "stuck real vs fake" = el caso de arbitraje de capacidades
+  del DCE; este fix es la versión cableada de la política que el meta-razonador debería decidir.
+
 ### 8.4 Próximos pasos (en orden)
 
 1. **Prueba goto B** en el Ubuntu (percepción ON; el gate ya lo exige). Mirar en el log, en este orden:

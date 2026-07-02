@@ -231,7 +231,7 @@ def color_to_scan(rgb, max_range, ncols=48):
     practicamente encima y la proyeccion ya no es fiable."""
     fc = get_floorcolor()
     if fc is None:
-        return [], None, None
+        return [], [], None, None
     import cv2
     bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
     mask = fc.mask(bgr)
@@ -245,7 +245,14 @@ def color_to_scan(rgb, max_range, ncols=48):
     # perc_n=4-5 rozando el escritorio; los 40 pts del choque caian dentro del anillo). 0.70 > 0.60:
     # el obstaculo "encima" entra al mapa un poco mas lejos de lo real = frena ANTES (conservador).
     NEAR_CLAMP = 0.70
-    scan = []
+    scan = []                                       # puntos PROYECTADOS (base visible en el suelo: geometria real)
+    clamp = []                                      # puntos CLAMP (sinteticos: 'lo tengo encima'). PRINCIPIO RENXI
+                                                    # 2026-07-02: el LiDAR DECIDE, la vision APOYA. Los clamps NO
+                                                    # entran al mapa (en la boca de la puerta el marco/hoja llenan
+                                                    # la camara -> 45 cols clamp -> muro fantasma cruzando un vano
+                                                    # que el laser veia pasable -> el robot giraba y huia, runs
+                                                    # 143511/143646). Van aparte: el cliente solo los usa para
+                                                    # MODERAR la velocidad (aviso), nunca para vetar el paso.
     GAP_ROWS = max(4, int(H * 0.12))                # banda no-moqueta mas FINA que esto, con moqueta
     for c in range(ncols):                          # reanudandose encima = marca PLANA del suelo
         x0, x1 = int(c * W / ncols), int((c + 1) * W / ncols)   # (umbral de madera de la puerta,
@@ -281,7 +288,7 @@ def color_to_scan(rgb, max_range, ncols=48):
                 vv -= 1; g += 1
             if g < 0.35 * H:
                 continue
-            scan.append([round(bearing, 1), NEAR_CLAMP])
+            clamp.append([round(bearing, 1), NEAR_CLAMP])
             continue
         denom = ((v - cy) / fy) * cth + sth         # rayo del pixel v contra el plano del suelo
         if denom <= 1e-3:
@@ -295,7 +302,7 @@ def color_to_scan(rgb, max_range, ncols=48):
         door = fc.find_door(bgr)
     except Exception:
         pass
-    return scan, door, mask
+    return scan, clamp, door, mask
 
 
 def free_center_from_scan(scan, near_m=1.2, center_deg=18.0):
@@ -405,10 +412,10 @@ def perceive(payload):
         else:
             floor = run_seg_floor_mask(rgb) if ARGS.seg != "off" else None
             scan, _, _ = depth_to_scan(depth, floor, hband, max_range)
-            door = None; ncolor = 0
-            if ARGS.floorcolor:                     # CANAL DE COLOR: union (solo anade), + puerta
-                cscan, door, cmask = color_to_scan(rgb, max_range)
-                ncolor = len(cscan)
+            door = None; ncolor = 0; cclamp = []
+            if ARGS.floorcolor:                     # CANAL DE COLOR: proyectados al scan; clamps APARTE (aviso)
+                cscan, cclamp, door, cmask = color_to_scan(rgb, max_range)
+                ncolor = len(cscan) + len(cclamp)
                 scan = scan + cscan
             free_center, near_run = free_center_from_scan(scan)
             dets = run_det(rgb, ARGS.fx, ARGS.cx) if ARGS.det != "off" else []
@@ -428,9 +435,9 @@ def perceive(payload):
                 out["color_pts"] = ncolor           # diagnostico: cuantos puntos aporto el color
                 if cmask is not None:
                     out["carpet_pct"] = round(float((cmask > 128).mean()), 3)   # fraccion del frame = moqueta
-                if ncolor:
-                    out["color_near"] = sum(1 for _, r in cscan if r <= 0.75)   # puntos clampeados (encima)
-                    out["color_rmin"] = min(r for _, r in cscan)                # obstaculo de color mas cercano
+                out["color_near"] = len(cclamp)                             # cols clampeadas (aviso, NO mapa)
+                if cscan or cclamp:
+                    out["color_rmin"] = min(r for _, r in (cscan + cclamp))     # obstaculo de color mas cercano
                 if door:
                     out["door"] = door              # {bearing_deg, left/right_edge_deg, ...} para DOOR-AL futuro
     if ARGS.debug:
