@@ -187,7 +187,100 @@ class RunRecorder:
             print(f"  [dataset] travesia guardada -> {self.fname}")
         except Exception as e:
             print("  [dataset] no se pudo guardar:", repr(e))
+        try:
+            self._append_stats()                       # fila estadistica AUTOMATICA (Adrian: estudios stats)
+        except Exception as e:
+            print("  [stats] no se pudo escribir runs_stats.csv:", repr(e))
         return self.fname
+
+    def _append_stats(self):
+        """Al terminar CUALQUIER run (llegada/Ctrl+C/aborto/guardia) anade UNA fila a
+        dataset/runs_stats.csv con todo lo relevante para estudios estadisticos. Autocontenido:
+        no hay que acordarse de correr summarize_runs; el CSV crece run a run."""
+        import csv as _csv
+        s = self.rec.get("samples", []); ev = self.rec.get("events", []); sm = self.rec.get("summary", {}) or {}
+
+        def _mean(k):
+            v = [x.get(k) for x in s if isinstance(x.get(k), (int, float))]
+            return round(sum(v) / len(v), 3) if v else ""
+
+        def _minv(k):
+            v = [x.get(k) for x in s if isinstance(x.get(k), (int, float))]
+            return round(min(v), 3) if v else ""
+
+        # episodios de ATASCO: >8 s sin acercarse >=0.10 m al objetivo (mismo criterio que AGGR_AFTER)
+        stuck_n = 0; stuck_s = 0.0; best_d = None; last_imp = None; in_stuck = False; prev_t = None
+        for x in s:
+            t, dd = x.get("t", 0.0), x.get("d")
+            if dd is None:
+                continue
+            if best_d is None or dd < best_d - 0.10:
+                best_d = dd; last_imp = t; in_stuck = False
+            elif last_imp is not None and (t - last_imp) > 8.0:
+                if not in_stuck:
+                    stuck_n += 1; in_stuck = True
+            if in_stuck and prev_t is not None:
+                stuck_s += max(0.0, t - prev_t)
+            prev_t = t
+        # tiempo por familia de fase (%)
+        fam = {"DWA": 0, "DOOR": 0, "BRK": 0, "SEEK": 0, "R": 0, "STOP": 0, "OTRO": 0}
+        for x in s:
+            p = (x.get("phase") or "").replace("AGR-", "")
+            k = ("DWA" if p.startswith("DWA") else "DOOR" if p.startswith("DOOR") else
+                 "BRK" if p.startswith("BRK") else "SEEK" if p.startswith("SEEK") else
+                 "R" if p.startswith("R-") or p.startswith("R") and "-" in p else
+                 "STOP" if p.startswith("STOP") else "OTRO")
+            fam[k] += 1
+        nt = max(1, len(s))
+        # detecciones YOLO por etiqueta (json compacto en una columna)
+        dets = {}
+        for x in s:
+            for dd in (x.get("dets") or []):
+                if dd and dd[0]:
+                    dets[dd[0]] = dets.get(dd[0], 0) + 1
+        # densidad de obstaculos por area recorrida (celdas medias / m2 del bbox de la trayectoria)
+        xs = [x["x"] for x in s]; ys = [x["y"] for x in s]
+        area = max(1.0, (max(xs) - min(xs) + 1.0) * (max(ys) - min(ys) + 1.0)) if s else 1.0
+        row = {
+            "run": os.path.basename(self.fname)[:-5],
+            "started": self.rec.get("started", ""), "mode": self.mode,
+            "goal": self.rec.get("label", ""), "result": self.rec.get("result", ""),
+            "time_s": sm.get("time_s", self.rec.get("duration_s", "")),
+            "path_m": sm.get("path_m", ""), "efficiency": sm.get("efficiency", ""),
+            "collisions": sum(1 for e in ev if e.get("kind") == "collision"),
+            "stuck_episodes": stuck_n, "stuck_time_s": round(stuck_s, 1),
+            "astar_fails": sum(1 for e in ev if e.get("kind") == "astar_fail"),
+            "aggressive_on": sum(1 for e in ev if e.get("kind") == "aggressive_on"),
+            "reloc_jumps": sm.get("reloc_jumps", ""),
+            "pct_dwa": round(100.0 * fam["DWA"] / nt, 1), "pct_door": round(100.0 * fam["DOOR"] / nt, 1),
+            "pct_brk": round(100.0 * fam["BRK"] / nt, 1), "pct_seek": round(100.0 * fam["SEEK"] / nt, 1),
+            "pct_recovery": round(100.0 * fam["R"] / nt, 1), "pct_stop": round(100.0 * fam["STOP"] / nt, 1),
+            "spd_mean": _mean("spd"), "c0_mean": _mean("c0"), "c0_min": sm.get("c0min", _minv("c0")),
+            "c0_hard_mean": _mean("c0_hard"), "c0_hard_min": _minv("c0_hard"),
+            "near_wall_ticks": sum(1 for x in s if isinstance(x.get("c0_hard"), (int, float)) and x["c0_hard"] < 0.35),
+            "obs_mean": _mean("nobs"), "obs_max": sm.get("obs_max", ""),
+            "obs_per_m2": round((_mean("nobs") or 0) / area, 2) if s else "",
+            "n_hard_mean": _mean("n_hard"), "colmap_cells": sm.get("colmap_cells", ""),
+            "perc_n_mean": _mean("perc_n"), "color_pts_mean": _mean("color_pts"),
+            "carpet_pct_mean": _mean("carpet_pct"), "color_near_mean": _mean("color_near"),
+            "dets_by_label": json.dumps(dets, ensure_ascii=False) if dets else "",
+            "laser_noise_mean": sm.get("laser_noise_mean", _mean("laser_noise")),
+            "filt_rej_mean": sm.get("filt_rej_mean", ""), "scan_hz": sm.get("scan_hz", ""),
+            "stale_pct": sm.get("stale_pct", ""), "gated_pct": sm.get("gated_pct", ""),
+            "safer_inserts": sm.get("safer_inserts", ""),
+            "map_adds": sm.get("map_adds", ""), "map_dels": sm.get("map_dels", ""),
+            "tick_ms_p95": sm.get("tick_ms_p95", ""),
+            "clearance_mean": _mean("clearance"), "progression_mean": _mean("progression"),
+            "reliability_mean": _mean("reliability"),
+        }
+        path = os.path.join(DATASET_DIR, "runs_stats.csv")
+        new_file = not os.path.exists(path)
+        with open(path, "a", newline="") as fo:
+            w = _csv.DictWriter(fo, fieldnames=list(row.keys()))
+            if new_file:
+                w.writeheader()
+            w.writerow(row)
+        print(f"  [stats] fila anadida -> {path}")
 
 # Hook independiente: captura la pose de RELOCALIZACION (mapa cargado) de rt/slam_info (currentPose sobre el
 # .pcd) y de slam_relocation/odom. NO depende del hook de mapeo (slam_mapping/odom).
