@@ -14,14 +14,14 @@
   },
   {
    "h": 105,
-   "dh": 6,
+   "dh": 7,
    "s": [
-    35,
-    140
+    25,
+    215
    ],
    "v": [
-    64,
-    120
+    55,
+    195
    ]
   }
  ],
@@ -30,5 +30,5 @@
   4.0,
   5.0
  ],
- "note": "modo1=oficina iluminada (med/mad, crash_01_151142); modo2=pasillo oscuro (limites data-driven, crash_03_162351)"
+ "note": "modo1=oficina lavada (med/mad); modo2=moqueta AZUL saturada: pasillo oscuro Y sala B iluminada (S hasta 215, V hasta 195; medido en 145306_t042/t096, 143039_t025)"
 }
