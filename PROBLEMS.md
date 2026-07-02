@@ -30,7 +30,7 @@ overrides it. Offline replay over all 29 runs with data: fires on exactly the 4 
 This is the second wired instance of Renxi's "real vs fake stuck" arbitration: LiDAR says free,
 vision says buried, vision wins — but only for a bounded courtesy maneuver, never to paint the map.
 
-## P8 — Global planner ran on the LIVE laser instead of the map — **CODED (critical, found by Adrian)**
+## P8 — Global planner ran on the LIVE laser instead of the map — **VALIDATED (P8b static mode, on robot 2026-07-02 evening)**
 
 Watching the viewer, Adrian caught that the green GLOBAL plan zigzags around live laser
 blobs. Confirmed in code: normal-mode global A* planned over `build_costmap(oset)` — the
@@ -95,7 +95,7 @@ doorway and detaches from wall/cabinet edges. Offline: path cells hugging obstac
 drop 19->7 (A->B) and 15->7 (B->A), mean plan clearance 0.32->0.40 m / 0.37->0.43 m, still
 crosses the real door both ways, B->A no longer passes beside the cabinet.
 
-**P2c (2026-07-02 evening, runs 172840/173252/173422 — CODED, validate next):** the shoulder
+**P2c (2026-07-02 evening, runs 172840/173252/173422 — VALIDATED ON ROBOT):** the shoulder
 kept catching the frame at the same point (-3.75, 1.22) after P2b: yaw at impact is 101-119 deg
 against a door axis of ~135 deg — the robot enters 20-30 deg under-rotated and the right
 shoulder leads. Root cause: DOOR-* only engages "already in the narrow zone" (c0<0.9), and c0
@@ -111,6 +111,12 @@ the centre; direction-agnostic (works B->A). Bounded: aborts to normal logic (8 
 blocked en route, if it cannot align in 12 s, or after ~5 s pressing without moving. Offline
 replay on today's 5 runs: would engage at ~1.7 m from the door, 12-20 s BEFORE every real
 collision, no false trigger elsewhere.
+
+**Field validation (Adrian, 2026-07-02 ~18:00): "ha funcionado muy bien"** — the engagement
+sequence ran on the robot and the door was crossed cleanly. The P8b static global plan +
+P2c engagement combo is the current working configuration (all defaults ON). Run JSON pending
+git pull from the Ubuntu; when it lands, add the run id + time/collisions here and to
+runs_summary.csv.
 
 **Attempted and rejected by simulation (honest negative result):** a "press-guard" (commanded
 forward + body barely moves + vision says "on top" → back off before the IMU notices). The

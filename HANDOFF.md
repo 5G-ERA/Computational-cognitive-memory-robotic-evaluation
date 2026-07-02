@@ -91,6 +91,10 @@ Paper del tutor sobre **DCA/DCE** (Decentralised Capability Abstraction/Ecosyste
 - **Funciona**: A→B llega en 72–84 s, 0 colisiones, sin modo agresivo (run 130231). Nube láser a
   ~2.2 Hz. Canal de moqueta VIVO en el server (`G1_FLOORCOLOR=1`, verificar `floorcolor=ON` en el
   PERC-TEST del arranque). Strafe con signo corregido (mapeo gamepad: lx>0=DERECHA; default -1).
+- **VALIDADO EN ROBOT (noche 07-02)**: plan global sobre mapa ESTÁTICO (`G1_GLOBALMAP=static`,
+  P8b/8.12) + **ENGAGEMENT de puerta** (`G1_DOOR_ENGAGE=1`, P2c/8.13: pre-entrada → parar →
+  alinear ±8° al eje 135° → cruzar recto). Adrian: "ha funcionado muy bien" — puerta cruzada
+  limpia. ES LA CONFIGURACIÓN ACTUAL (defaults ON). No tocar sin A/B.
 - **Bugs cerrados hoy (con mediciones)**: dedup de barrido · clamp 0.4→0.7 (NEAR_BLIND se comía los
   avisos) · signo del strafe · anti-jaula (clamp solo central+alto; visión por score, sin bypass).
 - **PENDIENTE de validar en robot (en orden, UNA por run)**: ① B→A con fix anti-jaula
@@ -347,6 +351,10 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   (bloqueo/timeout/presión) → lógica normal con 8 s de cooldown. Replay offline en las 5 runs
   de hoy: dispara a ~1.7 m del vano, 12-20 s ANTES de cada colisión real, 0 misfires.
   Fases nuevas en el log: ENG-T/F/WT/AL/AL./RE/C/GO + eventos door_engage/door_crossed.
+- **VALIDADO EN ROBOT (misma noche)**: la secuencia engagement corrió en el robot y la puerta se
+  cruzó limpia ("ha funcionado muy bien" — Adrian). P8b+P2b+P2c quedan como configuración de
+  referencia. Falta hacer git pull de la run buena para anotar id/tiempos/colisiones aquí y en
+  runs_summary.csv, y repetir B→A para validar el engagement en dirección de vuelta.
 
 ### 8.4 Próximos pasos (en orden)
 
