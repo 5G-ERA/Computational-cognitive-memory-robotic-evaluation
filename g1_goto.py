@@ -1831,8 +1831,19 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 print("  " + line); tprint = now
 
             # --- PLAN GLOBAL origen->destino (para verlo completo en la ventana) ---
+            # OJO (2026-07-02, cazado en la primera run de P8b): esta linea verde usaba SIEMPRE el laser
+            # vivo (oset) via global_plan() "solo para visualizar" -> zigzagueaba entre manchas aunque el
+            # plan de CONTROL ya fuera estatico, y parecia que el fix no funcionaba. Ahora en modo 'static'
+            # pinta el plan sobre el MISMO costmap que el control (paredes inf + muebles blandos).
             if vshare is not None and now - gplan_t > 3.0 and trail:
-                gplan = global_plan(trail[0][0], trail[0][1], wx, wy, oset or refmap)
+                if GLOBAL_SRC == "static":
+                    gcm = global_static_costmap(refmap or set(), staticmap | hard_set)
+                    gcells = g.astar((round(trail[0][0] / g.OCELL), round(trail[0][1] / g.OCELL)),
+                                     (round(wx / g.OCELL), round(wy / g.OCELL)), gcm, margin=25)
+                    gplan = ([(c[0] * g.OCELL, c[1] * g.OCELL) for c in gcells]
+                             if gcells and len(gcells) > 1 else [(trail[0][0], trail[0][1]), (wx, wy)])
+                else:
+                    gplan = global_plan(trail[0][0], trail[0][1], wx, wy, oset or refmap)
                 gplan_t = now
             # --- publica estado para la ventana en vivo ---
             if vshare is not None:
