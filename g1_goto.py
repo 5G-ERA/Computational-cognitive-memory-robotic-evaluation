@@ -1551,15 +1551,26 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         a = plan_pts[max(0, bi - 2)]; b = plan_pts[min(len(plan_pts) - 1, bi + 2)]
                         ddir = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))   # eje de la puerta
                         he = (ddir - yaw + 180) % 360 - 180
+                        # rumbo directo al PUNTO del vano: si ya APUNTA al hueco, no hace falta alinear con el
+                        # eje (el ddir del A* tiembla; run 145010: alineado a ge=-1.2 y DOOR-AL siguio girando
+                        # hasta +124 -> huida. "Deberia entrar recto, estaba bien orientado" — Adrian).
+                        bdp = math.degrees(math.atan2(dp[1] - y, dp[0] - x))
+                        hep = (bdp - yaw + 180) % 360 - 180
                         # VISION manda en la puerta (el laser es ruidoso ahi): suelo despejado por delante?
                         vis_ok = (vis_center is not None and vis_center > 0.45 and (vis_nearrun or 0) < 8)
                         bal = m_cl - m_cr                   # >0 = mas libre a la IZQ ; <0 = mas libre a la DCHA
-                        if abs(he) > 25:                    # 1) alinea el rumbo con el eje ANTES de entrar.
+                        if abs(he) > 25 and abs(hep) > 15:  # 1) alinea SOLO si tampoco apunta ya al hueco.
                             # Banda ANCHA (25, no 12): el eje de puerta 'ddir' tiembla porque el A* replanifica
                             # cada tick con el laser ruidoso; con banda estrecha + giro fijo 0.45 (no se puede
                             # bajar: hay deadzone ~0.3) el robot oscilaba sin parar (thrash). 25 lo tolera y deja
                             # de cazar el ruido; el centrado fino lo hace DOOR-CTR (strafe).
-                            cmd = (0, 0, -g.AV_TURN if he > 0 else g.AV_TURN, 0); ph = "DOOR-AL"
+                            # PULSO anti-sobregiro: el giro real es ~15-20 grados/tick (deadzone: rx fijo 0.45);
+                            # cerca de alineado (|he|<45) se gira en ticks ALTERNOS (mitad de ritmo efectivo)
+                            # para no pasarse de largo y entrar en oscilacion (145010/145306).
+                            if abs(he) < 45 and (int(now * 3.33) % 2 == 0):
+                                cmd = (0, 0, 0, 0); ph = "DOOR-AL."
+                            else:
+                                cmd = (0, 0, -g.AV_TURN if he > 0 else g.AV_TURN, 0); ph = "DOOR-AL"
                         elif DOOR_CENTER and abs(bal) > DOOR_BAL_TH and max(cl_left, cl_right) > 0.30:
                             # 2) DESCENTRADO -> strafe hacia el lado MAS LIBRE para entrar centrado (Renxi)
                             lx = DOOR_STRAFE_SIGN * (DOOR_STRAFE if bal > 0 else -DOOR_STRAFE)
