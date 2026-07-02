@@ -47,6 +47,21 @@ using the live laser for everything new/unmapped; aggressive mode still replans 
 cells. `G1_GLOBALMAP=live` restores the old behaviour, `=ref` uses the loaded map only.
 This is the Nav2 architecture: static global, sensor-driven local.
 
+**P8b (2026-07-02 evening, CODED — new default `G1_GLOBALMAP=static`):** replaying P8 v1
+offline against the exported full static map (`g1_get_static_map.py local`) caught two flaws:
+(1) with INFL_HARD=1 even the walls-only map seals the ~0.8 m (4-cell) door once inflated —
+the "hard" global A* failed on EVERY replan and silently fell through to the uninflated
+walls-only fallback, so hard_set never actually reached the global plan; (2) nav_map.json has
+accumulated door-frame/leaf cells right in the door mouth (x[-3.6,-3.2] y[0.8,1.6], measured)
+that seal the doorway if treated as hard walls — the phantom-wall gotcha again. New mode:
+walls = infinite cost UNINFLATED (the real door survives); known static furniture (nav_map) +
+score-saturated + collision cells = high SOFT cost with a 1-cell halo (`G1_GLOB_SOFT=9.0`,
+`G1_GLOB_HALO=4.0`) — the plan detours around known furniture but can never seal a passage.
+Validated offline with the real map + the exact repo A*: A<->B and C->B always cross the real
+door (34 cells; the walls-only plan B->A stepped on 4 furniture cells vs 1 now), and the plan
+is fully deterministic (same map -> same plan: kills the trembling door axis at the source).
+Revert: `G1_GLOBALMAP=hard` (P8 v1) or `=live`. Log marker at start: `GLOBALMAP src=...`.
+
 ## P2 — Clearance model narrower than the arms/hands — **PARTLY CODED**
 
 Renxi: "clearing is wrong — it does not cover the width of the hands yet." The data agrees:

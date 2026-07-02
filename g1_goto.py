@@ -42,7 +42,12 @@ AGGR_ROBOT_R = float(os.environ.get("G1_AGGR_R", "0.20"))   # m: holgura en modo
 # ^ 0.13->0.20 (Renxi 2026-07-02: "clearing is wrong, it does not cover the width of the hands"): el
 #   semiancho FISICO del G1 es ~0.22m de hombros y ~0.28-0.30m con el vaivén de brazos; 0.13 autorizaba
 #   huecos imposibles (roces con omap_near 42-81 en 152030/152330/152532). G1_AGGR_R=0.13 para revertir.
-GLOBAL_SRC = os.environ.get("G1_GLOBALMAP", "hard")          # plan GLOBAL: hard (mapa+persistentes) | ref | live
+GLOBAL_SRC = os.environ.get("G1_GLOBALMAP", "static")        # plan GLOBAL: static (DEFECTO 2026-07-02 P8b:
+                                 # paredes=inf sin inflar + muebles conocidos en coste BLANDO) | hard (P8 v1:
+                                 # todo pared dura -- MEDIDO offline: con INFL_HARD=1 sella la puerta de ~0.8m
+                                 # y el A* caia SIEMPRE al fallback sin mapa duro) | ref | live
+GLOB_SOFT = float(os.environ.get("G1_GLOB_SOFT", "9.0"))     # coste blando por celda de MUEBLE conocido (plan global)
+GLOB_HALO = float(os.environ.get("G1_GLOB_HALO", "4.0"))     # coste blando del halo de 1 celda alrededor del mueble
                                  # Run 122857: c0min=0.16 y roces laterales en pared/marco -> con el bamboleo
                                  # del bipedo, 0.13 es rozar por diseno. Probar G1_AGGR_R=0.16 si repite (A/B).
 PERC_PERIOD = 0.3                # s entre consultas al servidor de percepcion GPU (depth->scan virtual de la mesa)
@@ -954,6 +959,43 @@ def load_ref_map():
     return set((round(x / g.OCELL), round(y / g.OCELL)) for x, y in ref_points())
 
 
+def load_static_map():
+    """Celdas OCELL de MUEBLES ESTATICOS conocidos (nav_map.json, acumulado en waypoint/sweep).
+    Van al plan GLOBAL como coste BLANDO (G1_GLOBALMAP=static), NUNCA como pared dura: nav_map
+    acumula celdas de marco/hoja EN la boca de la puerta (medido 2026-07-02: sellan el vano en
+    x[-3.6,-3.2] y[0.8,1.6]) y como inf cerrarian el paso = gotcha de paredes fantasma."""
+    try:
+        d = json.load(open(MAP_FILE)); OC = d.get("OCELL", g.OCELL)
+        return set((c[0], c[1]) for c in d.get("cells", [])
+                   if -15 <= c[0] * OC <= 15 and -15 <= c[1] * OC <= 15)
+    except Exception:
+        return set()
+
+
+def global_static_costmap(walls, furn):
+    """Costmap del plan GLOBAL en modo 'static' (P8b, 2026-07-02):
+      - PAREDES (refmap) = inf SIN inflar. Medido offline: la puerta real mide ~4 celdas (0.8m)
+        y con INFL_HARD=1 se sella -> el modo 'hard' fallaba el A* en CADA replanificacion y caia
+        al fallback (solo paredes, sin hard_set): el mapa duro nunca llegaba de verdad al plan.
+      - MUEBLES conocidos + persistentes saturados + colisiones = coste BLANDO (GLOB_SOFT) con
+        halo de 1 celda (GLOB_HALO): el plan los RODEA si hay sitio pero JAMAS sellan un paso.
+    Validado offline con el mapa real (maps_out/map_static_local): A<->B y C->B cruzan SIEMPRE la
+    puerta real (34 celdas, sin ruta fantasma por el hueco sin mapear de arriba), plan determinista
+    (mismo mapa -> mismo plan: adios ddir tembloroso), 1 celda de mueble pisada vs 2-4 antes.
+    La seguridad fina sigue siendo del DWA local con el laser vivo (arquitectura Nav2)."""
+    cm = {c: math.inf for c in walls}
+    for (ox, oy) in furn:
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                c = (ox + dx, oy + dy)
+                if cm.get(c) == math.inf:
+                    continue
+                w = GLOB_SOFT if (dx == 0 and dy == 0) else GLOB_HALO
+                if cm.get(c, 0.0) < w:
+                    cm[c] = w
+    return cm
+
+
 def frame_check(lg, x0, y0):
     """Compara la pose INICIAL con el waypoint mas cercano. Si arrancas FISICAMENTE en un waypoint pero la
     pose dice que estas lejos de su coordenada guardada => la relocalizacion de esta sesion difiere de la
@@ -1134,6 +1176,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     minc0 = 9.9
     rd = RunRecorder("ours", label, (wx, wy))
     refmap = load_ref_map(); health_t = 0; hh = {}; cloud_ok = False; cloud_warned = False
+    staticmap = load_static_map()                            # muebles conocidos (nav_map) -> coste blando del plan global
     gplan = []; gplan_t = 0; cam_t = 0; cam_jpg = None
     aggressive = (os.environ.get("G1_AGGRESSIVE") == "1")    # modo agresivo (forzable; si no, se activa al atascarse)
     best_d = 1e9; best_d_t = t0; ROBOT_R0 = g.ROBOT_R        # progreso hacia B + holgura normal (para restaurar)
@@ -1191,7 +1234,10 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     sei = g1_metrics.SEIMetrics()                            # clearance + progression por tick (las 2 metricas del tutor)
     sens = g1_metrics.SensingMonitor()                       # auto-evaluacion de sensado (ruido/fiabilidad) = feedback de capacidad
     m_clear = 0.0; m_prog = 0.0; m_rel = 1.0; m_cl = 0.0; m_cr = 0.0
-    print(f"  mapa de referencia: {len(refmap)} celdas" + (" (sin mapa -> confianza N/A)" if not refmap else ""))
+    print(f"  mapa de referencia: {len(refmap)} celdas" + (" (sin mapa -> confianza N/A)" if not refmap else "")
+          + f" | muebles estaticos (nav_map): {len(staticmap)} celdas | plan global: {GLOBAL_SRC}")
+    lg.write(f"GLOBALMAP src={GLOBAL_SRC} walls={len(refmap)} static={len(staticmap)} "
+             f"soft={GLOB_SOFT}/{GLOB_HALO}\n"); lg.flush()
     try:
         while not (stop_event is not None and stop_event.is_set()):
             now = time.time()
@@ -1591,8 +1637,14 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                             cm = g.build_costmap(oset)
                         elif GLOBAL_SRC == "ref":              # G1_GLOBALMAP=ref: SOLO el mapa cargado
                             cm = g.build_costmap(refmap or set())
-                        else:                                  # "hard" (defecto): estable + muebles persistentes
+                        elif GLOBAL_SRC == "hard":             # P8 v1 (manana 2026-07-02). OJO medido offline:
+                            # con INFL_HARD=1 la puerta (~4 celdas) queda sellada -> este A* fallaba y TODAS
+                            # las replanificaciones caian al fallback de abajo (solo paredes, sin hard_set).
                             cm = g.build_costmap(hard_set | (refmap or set()))
+                        else:                                  # "static" (DEFECTO, P8b): paredes duras sin inflar
+                            # + muebles conocidos/persistentes/colisiones en coste BLANDO (ver docstring de
+                            # global_static_costmap). El plan rodea lo conocido pero nunca sella un paso.
+                            cm = global_static_costmap(refmap or set(), staticmap | hard_set)
                     cells_path = g.astar(scell, gcell, cm)
                     if not cells_path and refmap:          # ultimo recurso: solo el mapa limpio (siempre tiene la puerta)
                         cells_path = g.astar(scell, gcell, {c: math.inf for c in refmap})

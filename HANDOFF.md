@@ -313,6 +313,25 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   sigue costando 1 colisión al salir; A→B con 1 roce en boca de puerta cada una. La lista de
   problemas del tutor vive en `PROBLEMS.md` (inglés).
 
+### 8.12 P8b — plan GLOBAL sobre el mapa estático COMPLETO, con muebles BLANDOS (tarde 07-02, sesión Renxi)
+
+- **Herramienta nueva `g1_get_static_map.py`** (local | webview | pcd): exporta ENTERO el mapa
+  estático a maps_out/ (.json/.pcd/.png). `local` = refmap+nav_map (lo que ve el plan global);
+  `webview` = mapa cargado capturado de la app (hook MAPGRAB standalone); `pcd` = probe de
+  descarga del .pcd del robot vía api 1934 (protocolo de chunks sin confirmar; imprime crudo).
+- **Descubierto reproduciendo offline con ese mapa** (¡con el A* exacto del repo!):
+  ① el modo `hard` (P8 v1) NUNCA planificaba de verdad: con INFL_HARD=1 la puerta (~4 celdas,
+  0.8 m) queda sellada al inflar → el A* fallaba en CADA replan y caía al fallback sin inflar
+  (solo paredes, sin hard_set); ② nav_map tiene celdas acumuladas de marco/hoja EN la boca de
+  la puerta (x[-3.6,-3.2] y[0.8,1.6]) que la sellan si se tratan como pared dura (la única ruta
+  A→B que quedaba era FANTASMA, por un hueco sin mapear arriba en y≈+7).
+- **Fix `G1_GLOBALMAP=static` (nuevo DEFECTO)**: paredes = inf SIN inflar; muebles conocidos
+  (nav_map) + persistentes saturados + colisiones = coste BLANDO 9.0 + halo 4.0
+  (`G1_GLOB_SOFT`/`G1_GLOB_HALO`). El plan rodea lo conocido pero JAMÁS sella un paso; el DWA
+  local sigue mandando en seguridad. Validado offline: A↔B/C→B cruzan SIEMPRE la puerta real
+  (34 celdas), plan determinista, B→A pisa 1 celda de mueble vs 4. Revertir: `G1_GLOBALMAP=hard`.
+  Marcador de log al arrancar: `GLOBALMAP src=... walls=... static=...`.
+
 ### 8.4 Próximos pasos (en orden)
 
 1. **Prueba goto B** en el Ubuntu (percepción ON; el gate ya lo exige). Mirar en el log, en este orden:
