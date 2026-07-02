@@ -95,6 +95,23 @@ doorway and detaches from wall/cabinet edges. Offline: path cells hugging obstac
 drop 19->7 (A->B) and 15->7 (B->A), mean plan clearance 0.32->0.40 m / 0.37->0.43 m, still
 crosses the real door both ways, B->A no longer passes beside the cabinet.
 
+**P2c (2026-07-02 evening, runs 172840/173252/173422 — CODED, validate next):** the shoulder
+kept catching the frame at the same point (-3.75, 1.22) after P2b: yaw at impact is 101-119 deg
+against a door axis of ~135 deg — the robot enters 20-30 deg under-rotated and the right
+shoulder leads. Root cause: DOOR-* only engages "already in the narrow zone" (c0<0.9), and c0
+flickers to 2.50 at the mouth (LiDAR-blind frame), so bad approaches run in DWA-F at 0.40.
+Fix per Renxi/Adrian ("we need a proper pre-entering/engagement position; stopping to compute
+is fine"): **DOOR ENGAGEMENT anchored to the static map** (`G1_DOOR_ENGAGE=1` default, =0
+reverts). Door centre/axis from the static map (`G1_DOOR_X/Y/AXIS`, defaults -3.90/1.25/135).
+Within 1.8 m of the door with the goal on the far side: go to the pre-entry point 0.85 m out
+on the axis (ENG-T/F) -> STOP and rotate until |yaw-axis|<=8 deg two ticks (ENG-AL) -> cross
+STRAIGHT at 0.28 (ENG-GO), re-aligning whenever biped drift exceeds 14 deg (ENG-RE) and
+micro-strafing back to the axis if >0.14 m off it before the mouth (ENG-C). Exits 0.75 m past
+the centre; direction-agnostic (works B->A). Bounded: aborts to normal logic (8 s cooldown) if
+blocked en route, if it cannot align in 12 s, or after ~5 s pressing without moving. Offline
+replay on today's 5 runs: would engage at ~1.7 m from the door, 12-20 s BEFORE every real
+collision, no false trigger elsewhere.
+
 **Attempted and rejected by simulation (honest negative result):** a "press-guard" (commanded
 forward + body barely moves + vision says "on top" → back off before the IMU notices). The
 152030/152330 pre-impact signature (3–4 s scraping at 0.05–0.15 m/s with cnear 21–28) is real,

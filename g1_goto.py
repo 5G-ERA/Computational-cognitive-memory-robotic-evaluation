@@ -67,6 +67,22 @@ DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "-1"))  # DEFAULT -1 (20
                                  # HACIA el obstaculo. Verificar con STRAFE-CAL en el log; G1_STRAFE_SIGN=1 lo revierte.
 DOOR_MIN_GOAL = 1.3              # m: por debajo de esta distancia a B NO hay puerta (es el goal con un mueble):
                                  # desactiva la maniobra de puerta y deja que el DWA rodee el obstaculo (si no, empujaba recto)
+# --- ENGAGEMENT de puerta ANCLADO AL MAPA ESTATICO (Renxi/Adrian 2026-07-02 tarde) ---
+# Runs 171431/172840/173422: TODAS las colisiones en (-3.75,1.22) con yaw 101-119 cuando el eje del vano
+# es ~135 -> el robot entra 20-30 grados under-rotated y el HOMBRO DERECHO lidera contra el marco. La
+# maniobra DOOR-* solo saltaba "ya en zona estrecha" (c0<0.9), y c0 parpadea a 2.50 en la boca (marco
+# LiDAR-ciego) -> aproximaciones en DWA-F a 0.40 sin alinear. Fix: posicion de PRE-ENTRADA fija en el eje
+# del vano (conocido del mapa estatico) -> ir alli -> PARAR -> rotar hasta |err|<=8 -> cruzar RECTO
+# (re-alinea si el bipedo deriva >14). "No importa pararse un segundo y calcular bien" (Adrian).
+DOOR_ENGAGE = (os.environ.get("G1_DOOR_ENGAGE", "1") == "1")   # G1_DOOR_ENGAGE=0 revierte
+DOOR_CX = float(os.environ.get("G1_DOOR_X", "-3.90"))    # centro del vano (frame G1, del mapa estatico)
+DOOR_CY = float(os.environ.get("G1_DOOR_Y", "1.25"))
+DOOR_AXIS = float(os.environ.get("G1_DOOR_AXIS", "135.0"))     # deg: direccion de cruce lado A -> lado B
+DOOR_ENG_D = float(os.environ.get("G1_DOOR_ENG_D", "0.85"))    # m del centro al punto de engagement
+DOOR_ENG_TOL = 0.22              # m: engagement alcanzado
+DOOR_ALIGN_TOL = 8.0             # deg: alineado para cruzar (2 ticks seguidos)
+DOOR_REALIGN = 14.0              # deg: deriva durante el cruce -> parar y re-alinear
+DOOR_EXIT_D = 0.75               # m pasado el centro = cruzado (vuelve el control normal)
 # --- Filtro de PERSISTENCIA (K-de-N barridos frescos) ---
 # OJO (investigado 2026-07-02): el Mid-360 usa escaneo NO REPETITIVO (Livox) -> dos barridos consecutivos
 # muestrean DIRECCIONES DISTINTAS del FOV. El parpadeo celda-a-celda entre barridos es INHERENTE al sensor,
@@ -1193,6 +1209,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     staticmap = load_static_map()                            # muebles conocidos (nav_map) -> coste blando del plan global
     gplan = []; gplan_t = 0; cam_t = 0; cam_jpg = None
     aggressive = (os.environ.get("G1_AGGRESSIVE") == "1")    # modo agresivo (forzable; si no, se activa al atascarse)
+    eng = {"state": None, "ok": 0, "wt": 0, "cool": 0.0, "ts": 0.0}   # engagement de puerta (mapa estatico)
     best_d = 1e9; best_d_t = t0; ROBOT_R0 = g.ROBOT_R        # progreso hacia B + holgura normal (para restaurar)
     vis_center = None; vis_nearrun = None; vis_t = 0         # VISION (suelo despejado) para la puerta (laser ruidoso ahi)
     vis_log_t = 0                                            # throttle del log [VIS] (que ve YOLO y si la nav lo usa)
@@ -1669,10 +1686,81 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         rd.event("astar_fail", now - t0, x, y, {"obs": len(oset)})   # jaulas/sellados: visibles en el dataset
                 if plan_pts:
                     carrot = g.path_carrot(plan_pts, x, y)
+                    # --- ENGAGEMENT DE PUERTA (mapa estatico): pre-entrada -> parar -> alinear -> cruzar RECTO ---
+                    engcmd = None
+                    if DOOR_ENGAGE and d_goal > DOOR_MIN_GOAL and now >= eng["cool"]:
+                        ux = math.cos(math.radians(DOOR_AXIS)); uy = math.sin(math.radians(DOOR_AXIS))
+                        sgoal = (wx - DOOR_CX) * ux + (wy - DOOR_CY) * uy     # lado del GOAL respecto al vano
+                        srob = (x - DOOR_CX) * ux + (y - DOOR_CY) * uy        # lado del ROBOT
+                        ddc = math.hypot(x - DOOR_CX, y - DOOR_CY)
+                        if eng["state"] is None and ddc < 1.8 and sgoal * srob < 0:
+                            eng.update(state="GOTO", ok=0, wt=0, ts=now)      # goal al OTRO lado y puerta cerca
+                            lg.write(f"DOOR-ENG start t={now-t0:.0f}s pos=({x:+.2f},{y:+.2f}) sgn={'AB' if sgoal>0 else 'BA'}\n")
+                            rd.event("door_engage", now - t0, x, y, {"dir": "AB" if sgoal > 0 else "BA"})
+                        if eng["state"]:
+                            sgn = 1.0 if sgoal > 0 else -1.0
+                            exp = (DOOR_CX - sgn * DOOR_ENG_D * ux, DOOR_CY - sgn * DOOR_ENG_D * uy)   # pre-entrada
+                            head = DOOR_AXIS if sgn > 0 else ((DOOR_AXIS + 360) % 360 - 180)           # rumbo de cruce
+                            he = (head - yaw + 180) % 360 - 180
+                            if eng["state"] == "GOTO":
+                                de = math.hypot(exp[0] - x, exp[1] - y)
+                                if de <= DOOR_ENG_TOL:
+                                    eng.update(state="ALIGN", ok=0, ts=now)
+                                    lg.write(f"DOOR-ENG at-position t={now-t0:.0f}s err={de:.2f}m\n")
+                                else:
+                                    be = (math.degrees(math.atan2(exp[1] - y, exp[0] - x)) - yaw + 180) % 360 - 180
+                                    if abs(be) > 25:
+                                        engcmd = ((0, 0, -g.AV_TURN if be > 0 else g.AV_TURN, 0), "ENG-T"); eng["wt"] = 0
+                                    elif c0 > 0.35:
+                                        engcmd = ((0, 0.28, 0, 0), "ENG-F"); eng["wt"] = 0
+                                    else:
+                                        engcmd = ((0, 0, 0, 0), "ENG-WT"); eng["wt"] += 1
+                                        if eng["wt"] > 12:                    # ~4s bloqueado hacia la pre-entrada
+                                            eng.update(state=None, cool=now + 8.0)
+                                            lg.write("DOOR-ENG abort (GOTO bloqueado) -> logica normal 8s\n")
+                            if eng["state"] == "ALIGN":
+                                if abs(he) <= DOOR_ALIGN_TOL:
+                                    eng["ok"] += 1; engcmd = ((0, 0, 0, 0), "ENG-AL.")
+                                    if eng["ok"] >= 2:
+                                        eng.update(state="CROSS", ts=now)
+                                        lg.write(f"DOOR-ENG aligned t={now-t0:.0f}s yaw={yaw:+.0f} he={he:+.1f}\n")
+                                elif now - eng["ts"] > 12.0:                  # no consigue alinear: no bloquear la run
+                                    eng.update(state=None, cool=now + 8.0)
+                                    lg.write(f"DOOR-ENG abort (ALIGN timeout, he={he:+.0f})\n")
+                                else:
+                                    eng["ok"] = 0
+                                    # pulso anti-sobregiro (giro real ~15-20 deg/tick por la deadzone)
+                                    if abs(he) < 40 and (int(now * 3.33) % 2 == 0):
+                                        engcmd = ((0, 0, 0, 0), "ENG-AL.")
+                                    else:
+                                        engcmd = ((0, 0, -g.AV_TURN if he > 0 else g.AV_TURN, 0), "ENG-AL")
+                            if eng["state"] == "CROSS":
+                                if srob * sgn > DOOR_EXIT_D:                  # cruzado: control normal otra vez
+                                    eng.update(state=None)
+                                    lg.write(f"DOOR-ENG CROSSED t={now-t0:.0f}s pos=({x:+.2f},{y:+.2f})\n")
+                                    rd.event("door_crossed", now - t0, x, y, None)
+                                elif abs(he) > DOOR_REALIGN:                  # deriva del bipedo: NO avanzar torcido
+                                    eng.update(state="ALIGN", ok=0, ts=now); engcmd = ((0, 0, 0, 0), "ENG-RE")
+                                else:
+                                    latL = (-(x - DOOR_CX) * uy + (y - DOOR_CY) * ux) * sgn   # + = IZQ del eje
+                                    if abs(latL) > 0.14 and abs(srob) > 0.35:  # descentrado ANTES del vano -> strafe al eje
+                                        lx = DOOR_STRAFE_SIGN * (DOOR_STRAFE if latL < 0 else -DOOR_STRAFE)
+                                        engcmd = ((lx, 0, 0, 0), "ENG-C")
+                                    else:
+                                        engcmd = ((0, 0.28, 0, 0), "ENG-GO")
+                                        if "pt" not in eng or now - eng["pt"] > 1.2:   # avance real cada ~1.2s
+                                            if "pt" in eng and math.hypot(x - eng["px"], y - eng["py"]) < 0.06:
+                                                eng["wt"] += 1               # empujando sin moverse (marco)
+                                                if eng["wt"] >= 4:           # ~5s presionando -> no insistir
+                                                    eng.update(state=None, cool=now + 8.0)
+                                                    lg.write("DOOR-ENG abort (CROSS sin avance) -> logica normal 8s\n")
+                                            else:
+                                                eng["wt"] = 0
+                                            eng["px"] = x; eng["py"] = y; eng["pt"] = now
                     # --- MANIOBRA DE PUERTA: SOLO cuando el robot YA esta en zona estrecha (c0 bajo) y hay un
                     #     cuello MUY cerca por delante. Asi NO se activa al inicio (en abierto va con DWA rapido). ---
                     door = None
-                    if op and c0 < 0.9 and d_goal > DOOR_MIN_GOAL:   # cerca de B NO hay puerta: deja el DWA rodear
+                    if engcmd is None and op and c0 < 0.9 and d_goal > DOOR_MIN_GOAL:   # cerca de B NO hay puerta: deja el DWA rodear
                         bc = 9.9; bi = -1
                         for i, p in enumerate(plan_pts):
                             dd = math.hypot(p[0] - x, p[1] - y)
@@ -1683,7 +1771,10 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                 bc = clr; bi = i
                         if bi >= 0 and bc < 0.42:           # vano estrecho justo delante = puerta
                             door = (bi, plan_pts[bi], bc)
-                    if door is not None:
+                    if engcmd is not None:                    # el ENGAGEMENT manda sobre DOOR-*/DWA
+                        cmd, ph = engcmd
+                        nstop = 0
+                    elif door is not None:
                         bi, dp, bc = door
                         a = plan_pts[max(0, bi - 2)]; b = plan_pts[min(len(plan_pts) - 1, bi + 2)]
                         ddir = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))   # eje de la puerta

@@ -332,6 +332,22 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   (34 celdas), plan determinista, B→A pisa 1 celda de mueble vs 4. Revertir: `G1_GLOBALMAP=hard`.
   Marcador de log al arrancar: `GLOBALMAP src=... walls=... static=...`.
 
+### 8.13 P2b+P2c — holgura y ENGAGEMENT de puerta (noche 07-02, sesión Renxi)
+
+- Run 171431: **PRIMERA llegada a B con plan estático** (87.8 s / 13.2 m) pero 2 roces de hombro
+  dcho en el marco + mano dcha en la cajonera (-1,0.5) que el IMU ni vio. Firma medida en ambas
+  colisiones: 2-3.5 s EMPUJANDO (comando adelante, cuerpo <0.08 m/s) antes del IMU → material
+  para el press-guard con legtau. **P2b**: `G1_AGGR_R` 0.20→0.24 + halo blando de pared en el
+  plan global (`G1_GLOB_WHALO=6.0`): celdas del plan pegadas a obstáculo 19→7, sigue cruzando.
+- Runs 172840/173422: hombro OTRA VEZ en (-3.75,1.22), yaw de impacto 101-119° vs eje ~135° →
+  entra under-rotated. **P2c (pedido por Renxi/Adrian): ENGAGEMENT anclado al mapa estático**
+  (`G1_DOOR_ENGAGE=1`, centro/eje `G1_DOOR_X/Y/AXIS` = -3.90/1.25/135): pre-entrada a 0.85 m en
+  el eje → PARAR → alinear a ±8° → cruzar RECTO a 0.28 re-alineando si deriva >14°; strafe al
+  eje si se descentra >0.14 m. Sale a 0.75 m pasado el centro; vale A→B y B→A. Abortos acotados
+  (bloqueo/timeout/presión) → lógica normal con 8 s de cooldown. Replay offline en las 5 runs
+  de hoy: dispara a ~1.7 m del vano, 12-20 s ANTES de cada colisión real, 0 misfires.
+  Fases nuevas en el log: ENG-T/F/WT/AL/AL./RE/C/GO + eventos door_engage/door_crossed.
+
 ### 8.4 Próximos pasos (en orden)
 
 1. **Prueba goto B** en el Ubuntu (percepción ON; el gate ya lo exige). Mirar en el log, en este orden:
