@@ -208,6 +208,22 @@ class RunRecorder:
             v = [x.get(k) for x in s if isinstance(x.get(k), (int, float))]
             return round(min(v), 3) if v else ""
 
+        def _maxv(k):
+            v = [x.get(k) for x in s if isinstance(x.get(k), (int, float))]
+            return round(max(v), 3) if v else ""
+
+        def _first(k):
+            for x in s:
+                if isinstance(x.get(k), (int, float)):
+                    return x[k]
+            return ""
+
+        def _last(k):
+            for x in reversed(s):
+                if isinstance(x.get(k), (int, float)):
+                    return x[k]
+            return ""
+
         # episodios de ATASCO: >8 s sin acercarse >=0.10 m al objetivo (mismo criterio que AGGR_AFTER)
         stuck_n = 0; stuck_s = 0.0; best_d = None; last_imp = None; in_stuck = False; prev_t = None
         for x in s:
@@ -270,8 +286,24 @@ class RunRecorder:
             "safer_inserts": sm.get("safer_inserts", ""),
             "map_adds": sm.get("map_adds", ""), "map_dels": sm.get("map_dels", ""),
             "tick_ms_p95": sm.get("tick_ms_p95", ""),
-            "clearance_mean": _mean("clearance"), "progression_mean": _mean("progression"),
-            "reliability_mean": _mean("reliability"),
+            "clearance_mean": _mean("clearance"), "clearance_min": _minv("clearance"), "clearance_max": _maxv("clearance"),
+            "progression_mean": _mean("progression"), "progression_min": _minv("progression"),
+            "progression_max": _maxv("progression"),
+            # confianza de sensores (Renxi): fiabilidad global, confianza de localizacion, ruido laser
+            "reliability_mean": _mean("reliability"), "reliability_min": _minv("reliability"),
+            "reliability_max": _maxv("reliability"),
+            "loc_conf_mean": _mean("loc_conf"), "loc_conf_min": _minv("loc_conf"), "loc_conf_max": _maxv("loc_conf"),
+            "laser_noise_min": _minv("laser_noise"), "laser_noise_max": sm.get("laser_noise_max", _maxv("laser_noise")),
+            # min/max de las lecturas principales (Renxi: ademas de la media)
+            "spd_max": _maxv("spd"), "c0_max": _maxv("c0"), "c0_hard_max": _maxv("c0_hard"),
+            "perc_n_min": _minv("perc_n"), "perc_n_max": _maxv("perc_n"),
+            "color_pts_max": _maxv("color_pts"), "carpet_pct_min": _minv("carpet_pct"),
+            "carpet_pct_max": _maxv("carpet_pct"),
+            # bateria (Renxi): nivel inicial/final, consumo de la travesia, minimo
+            "bat_start": _first("bat"), "bat_end": _last("bat"),
+            "bat_used": (round(_first("bat") - _last("bat"), 1)
+                         if isinstance(_first("bat"), (int, float)) and isinstance(_last("bat"), (int, float)) else ""),
+            "bat_min": _minv("bat"),
         }
         path = os.path.join(DATASET_DIR, "runs_stats.csv")
         new_file = not os.path.exists(path)
