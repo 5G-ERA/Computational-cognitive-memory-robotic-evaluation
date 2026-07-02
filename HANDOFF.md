@@ -233,7 +233,7 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
 - **Objetos BAJOS**: ciegos para el láser por HBAND_LO=-0.5 (anti-suelo). Los cubren depth (0.10 m+)
   y el canal de moqueta (a ras de suelo). A/B pendiente: `G1_HBAND_LO=-0.7` con el stack anti-ruido.
 - Overlay live: rojo 60 % (sobre muebles oscuros el 28 % desaparecía), verde 22 %.
-- ORDEN DE VALIDACIÓN: ① B→A anti-jaula ② G1_HARDGUARD=1 ③ G1_HBAND_LO=-0.7. Una cosa por run.
+- ORDEN DE VALIDACIÓN: ① B→A con ESCAPE (8.10) + calib v3 ② G1_HARDGUARD=1 ③ G1_HBAND_LO=-0.7. Una cosa por run.
 
 ### 8.8 Runs 142725/143039 (instrumentación completa estrenada)
 
@@ -242,8 +242,7 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   decía la verdad: carpet 0.06 en el choque porque la cámara estaba EMPOTRADA en el sofá crema).
   Causa: **el waypoint B aparca al robot de morros contra el sofá** en un bolsillo (sofá+cajas+cajonera);
   la vuelta arranca sin sitio para girar. FIX operativo: re-grabar B ~0.5 m hacia espacio abierto
-  (menú `waypoint B`). Backlog de código: maniobra de ESCAPE al arranque (c0<0.45 en tick 0 →
-  retroceder 0.5 m antes de planificar).
+  (menú `waypoint B`). Adrian prefirió NO mover B → maniobra de ESCAPE implementada (ver 8.10).
 - Nota técnica: el filtro "central ±30°" del clamp es un no-op (FOV de la cámara = ±28°); el que
   discrimina es el de obstrucción alta (≥35 % de columna). No tocar salvo que moleste.
 
@@ -263,6 +262,29 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   (mediana |Laplaciano|: moqueta 4.7–5.2 vs sofá 3.7 — margen fino que el motion blur invierte).
 - Para la tesis (comentario de Renxi): "stuck real vs fake" = el caso de arbitraje de capacidades
   del DCE; este fix es la versión cableada de la política que el meta-razonador debería decidir.
+
+### 8.10 Maniobra de ESCAPE al arranque (implementada — Adrian prefirió no re-grabar B)
+
+- **El backlog de 8.8 tal cual estaba especificado NO habría funcionado**: el disparo por láser solo
+  (c0<0.45 en tick 0) no salva ninguna de las 3 vueltas fallidas. El sofá a 40 cm cae en la banda
+  ciega del Mid-360: en 150440 el mapa decía c0=1.92 "libre" y solo cayó a 0.22 EN el golpe (t=4.4 s);
+  en 143039 nunca bajó de 1.0. La cámara SÍ lo ve: enterrada en el sofá lee carpet_pct 0.00–0.43
+  (el sofá crema clasifica como moqueta e INFLA el valor → umbral 0.50, no 0.12); los arranques
+  buenos leen 0.86–0.95.
+- **Disparo** (G1_ESCAPE=1 por defecto; ESC_TRIG/ESC_CARPET/ESC_DIST por env): primeros 5 s
+  + sin haberse movido (<0.30 m del arranque — mata el falso positivo de 142725: carpet 0.46 en
+  t=4.7 s tras andar 1.5 m hacia la puerta, run perfecta) + d_goal>1.5
+  + (**c0<0.45 o carpet_pct<0.50**). Una sola vez por run.
+- **Maniobra**: retroceso recto ly=−0.35 (deadzone ~0.3) hasta 0.5 m / 6 s / rear<0.50 / despejado.
+  "Despejado" exige AMBOS sensores contentos (c0≥0.85 Y carpet≥0.55 si hay visión): con c0 solo,
+  el escape por visión acabaría en el primer tick con la nariz aún en el cojín. Fase `ESC-BK`,
+  eventos `escape_start`/`escape_end`. Va ANTES de RECUPERACION/DESATASCO (una colisión real sigue
+  mandando); HARD-GUARD y el moderador Renxi no interfieren (solo actúan sobre cmd[1]>0).
+- **Replay sobre las 26 runs con dataset**: dispara SOLO en las 3 vueltas del bolsillo
+  (143039 / 145306 / 150440, todas en t=0.6 s, ANTES del primer golpe) y en ninguna más.
+- Para la tesis: segundo caso cableado del arbitraje "stuck real vs fake" de Renxi — el LiDAR dice
+  "libre", la visión dice "enterrado", y la visión gana SOLO para una maniobra acotada (0.5 m
+  atrás antes de planificar), nunca para pintar el mapa.
 
 ### 8.4 Próximos pasos (en orden)
 

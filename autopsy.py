@@ -37,7 +37,7 @@ def _b64jpg(path):
 
 
 PHASE_COLORS = {"DWA": "#2b8cbe", "DOOR": "#e6550d", "BRK": "#756bb1", "SEEK": "#d62728",
-                "R-": "#8c564b", "STOP": "#7f7f7f"}
+                "R-": "#8c564b", "STOP": "#7f7f7f", "ESC": "#17becf"}
 
 
 def _phase_color(ph):

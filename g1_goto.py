@@ -76,6 +76,20 @@ RELOC_STOP_WIN = float(os.environ.get("G1_RELOC_WIN", "10.0"))  # ...dentro de e
 HARD_GUARD = (os.environ.get("G1_HARDGUARD", "0") == "1")   # guardia de control (OFF: primero A/B)
 HARD_STOP = float(os.environ.get("G1_HARD_STOP", "0.22"))    # m: no avanzar con pared a menos de esto
 HARD_SLOW = float(os.environ.get("G1_HARD_SLOW", "0.45"))    # m: acercarse a pared -> velocidad reducida
+# --- ESCAPE al arranque (HANDOFF 8.8): el waypoint B quedo grabado con la nariz a ~40cm del sofa -> cada
+# vuelta B->A NACE encajonada: sin sitio para girar, choca en el propio punto de inicio (150440: golpes en
+# t=4s y t=12.5s sin salir del punto de arranque; 143039: 39/54s atascado). Si al arrancar nace encajonado,
+# retrocede ~ESC_DIST en RECTO antes de planificar. Actua UNA sola vez, solo en los primeros 5s de la run.
+# DISPARO doble (medido en las 3 vueltas fallidas + 4 arranques buenos):
+#   laser:  c0 < ESC_TRIG  — PERO el sofa a 40cm cae en la banda ciega del Mid-360: en 150440 c0=1.92
+#           "libre" hasta el golpe (c0 0.22 recien EN t=4.4s) y en 143039 nunca bajo de 1.0. Solo, no basta.
+#   vision: carpet_pct < ESC_CARPET — la camara SI lo ve: enterrada en el sofa lee 0.00-0.43 (el sofa crema
+#           ademas CLASIFICA como moqueta e infla el valor, por eso 0.50 y no 0.12); arranques buenos leen
+#           0.86-0.95. Es el caso meta-reasoning de Renxi: LiDAR dice "libre", la vision desempata.
+ESCAPE_ON = (os.environ.get("G1_ESCAPE", "1") == "1")        # G1_ESCAPE=0 lo desactiva (A/B estricto)
+ESC_TRIG = float(os.environ.get("G1_ESC_TRIG", "0.45"))      # m: c0 al arranque por debajo = nace encajonado
+ESC_CARPET = float(os.environ.get("G1_ESC_CARPET", "0.50"))  # frac: menos suelo visible que esto al arrancar = encajonado
+ESC_DIST = float(os.environ.get("G1_ESC_DIST", "0.50"))      # m: cuanto retrocede antes de planificar
 # --- Mapa de obstaculos con SCORE/DECAY (anti acumulacion de ruido) ---
 # Antes: celda confirmada -> entra al instante y dura 60s (TTL). Con el robot parado en la puerta y el LiDAR
 # de cabeza vibrando, el mapa = UNION de todo lo visto en 60s -> cientos de celdas falsas (obs 142->521 en 18s).
@@ -1106,6 +1120,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     fhist = []; prev_fwd = False; recov = None; ncol = 0; last_col_t = -99; rside = 1
     low_t = 0; last_low = None; lt_base = []; ah_base = []
     dhist = []; brk = None; brk_cool = 0; nbrk = 0; nstop = 0
+    esc = None; esc_done = False                  # maniobra de ESCAPE inicial (una sola vez por run)
     pose_t = time.time(); last_pose = None; t0 = time.time(); tprint = 0
     trail = []
     # --- diagnostico: calibracion de giro (signo real vs comandado) + spin ---
@@ -1164,6 +1179,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             lg.write(f"PERC-GATE BLOCKED: {why} {time.strftime('%Y-%m-%d %H:%M:%S')}\n"); lg.flush()
             return False
     perc_t = 0; perc_cells = set(); perc_dets = []; nperc = 0; perc_raw = {}
+    perc_rx_t = None; perc_seen = -1              # edad de la ULTIMA respuesta real del server (diag P3)
     cambuf = deque(maxlen=20)                     # (t, jpg) ultimos ~6s de camara (autopsia pre-colision)
     film_t = 0.0                                  # ultimo frame de la pelicula guardado
     hg_log_t = 0.0; c0_hard = 9.9; hard_set = set()   # guardia de alta confianza
@@ -1282,6 +1298,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             if perc_worker is not None and perc_worker.latest is not None:
                 res = perc_worker.latest                       # ultimo resultado disponible (puede ir 1-2 ticks por detras)
                 nperc = perc_worker.n_ok
+                if nperc != perc_seen:                         # respuesta NUEVA (no la cacheada del tick anterior)
+                    perc_rx_t = now; perc_seen = nperc
                 perc_cells = res.cells
                 perc_dets = res.detections or []
                 perc_raw = res.raw if isinstance(res.raw, dict) else {}   # telemetria del canal de color/puerta
@@ -1450,6 +1468,41 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                             _best = (_tf, _fj)
                     if _best and abs((now - _best[0]) - _ago) < 0.7:
                         rd.save_cam(f"col{ncol}_pre{int(_ago)}s", _best[1])
+
+            # --- ESCAPE inicial (HANDOFF 8.8): si NACE encajonado (B con la nariz en el sofa), retrocede
+            #     ~ESC_DIST en recto ANTES de planificar: asi el primer giro se hace CON sitio, no rozando.
+            #     Va ANTES de RECUPERACION/DESATASCO a proposito: una colision real (recov) sigue mandando.
+            esc_cp = perc_raw.get("carpet_pct") if isinstance(perc_raw.get("carpet_pct"), (int, float)) else None
+            # 'nace encajonado' = pegado a algo SIN haberse movido aun (<0.3m del punto de arranque). El gate
+            # de desplazamiento evita el falso disparo al acercarse a la puerta (142725: carpet 0.46 en t=4.7s
+            # tras andar 1.5m — run perfecta, ahi NO toca retroceder).
+            if (ESCAPE_ON and esc is None and not esc_done and now - t0 < 5.0 and d_goal > 1.5
+                    and trail and math.hypot(x - trail[0][0], y - trail[0][1]) < 0.30
+                    and (c0 < ESC_TRIG or (esc_cp is not None and esc_cp < ESC_CARPET))):
+                esc_src = "laser" if c0 < ESC_TRIG else "vision"
+                esc = {"t0": now, "x0": x, "y0": y, "src": esc_src}
+                print(f"\n  ESCAPE [{esc_src}]: nazco encajonado (c0={c0:.2f}m carpet={esc_cp if esc_cp is not None else '-'})"
+                      f" -> retrocedo {ESC_DIST:.1f}m antes de planificar.")
+                lg.write(f"ESCAPE-START src={esc_src} c0={c0:.2f} carpet={esc_cp} pos=({x:+.2f},{y:+.2f})\n")
+                rd.event("escape_start", now - t0, x, y,
+                         {"src": esc_src, "c0": round(c0, 2), "carpet_pct": esc_cp})
+            if esc is not None:
+                esc_el = now - esc["t0"]; esc_mv = math.hypot(x - esc["x0"], y - esc["y0"])
+                esc_rear = clear_dir(x, y, yaw, 180, op)
+                # 'despejado' exige AMBOS sensores contentos (si hay vision): el sofa es LiDAR-ciego a 40cm,
+                # con c0 solo el escape acabaria en el primer tick con la nariz aun en el cojin.
+                esc_clear = (c0 >= 0.85) and (esc_cp is None or esc_cp >= ESC_CARPET + 0.05)
+                if esc_el < 6.0 and esc_mv < ESC_DIST and esc_rear > 0.50 and not esc_clear:
+                    cmd = (0, -0.35, 0, 0); ph = "ESC-BK"   # -0.35: la deadzone del stick es ~0.3
+                else:
+                    why = ("despejado" if esc_clear else "distancia hecha" if esc_mv >= ESC_DIST
+                           else "timeout" if esc_el >= 6.0 else "sin hueco detras")
+                    print(f"  ESCAPE fin [{why}]: retrocedi {esc_mv:.2f}m, c0={c0:.2f}m "
+                          f"carpet={esc_cp if esc_cp is not None else '-'} -> planifico.")
+                    lg.write(f"ESCAPE-END why={why} moved={esc_mv:.2f} c0={c0:.2f} carpet={esc_cp} rear={esc_rear:.2f}\n")
+                    rd.event("escape_end", now - t0, x, y,
+                             {"why": why, "moved": round(esc_mv, 2), "c0": round(c0, 2), "carpet_pct": esc_cp})
+                    esc = None; esc_done = True; plan_pts = []; dhist = []
 
             # --- RECUPERACION: mini paso atras (si hay hueco detras) + pivota ---
             if recov is not None:
@@ -1697,6 +1750,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "c0_hard": round(c0_hard, 2),                    # holgura frontal contra PAREDES/persistentes
                              "n_hard": len(hard_set),                         # celdas de alta confianza en el mapa
                              "perc_n": len(perc_cells),                       # nº de celdas-obstaculo que aporto la VISION este tick
+                             "perc_age": (round(now - perc_rx_t, 2) if perc_rx_t is not None else None),   # s desde la ultima respuesta REAL del server (P3: ¿flicker=latencia o escena vacia?)
                              "clear_left": round(m_cl, 3), "clear_right": round(m_cr, 3),   # clearance lateral (Renxi: balance)
                              "clearL_m": round(cl_left, 2), "clearR_m": round(cl_right, 2),
                              "balance": round(m_cl - m_cr, 3),                # +izq libre / -dcha libre (0 = centrado)
