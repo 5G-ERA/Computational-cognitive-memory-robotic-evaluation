@@ -81,6 +81,20 @@ runs (zero cost) and would have issued 4 STOPs before 150440's first collision (
 reverts). Note P8's fix also attacks this problem at the source: a stable global plan stops
 dragging the robot along noise-bent paths that shave the doorframe.
 
+**P2b (2026-07-02 evening, run 171431 — CODED):** first A->B arrival under the static global
+plan (87.8 s, 13.2 m) but 2 IMU collisions plus 1 human-observed hand graze the IMU missed
+(right hand vs cabinet at (-1, 0.5)). Both IMU events are right-shoulder door-frame grazes with
+the same measured signature: **2-3.5 s of commanded-forward (ly 0.28-0.40) with body speed
+< 0.08 m/s BEFORE the IMU fires** — the robot presses the frame, it does not bump it (log this
+against the future leg-torque press-guard). Col2 was AGR-DOOR-GO advancing into c0 0.62->0.38.
+Two small clearance bumps, per Renxi's "increase clearance safety just a little":
+(1) `G1_AGGR_R` 0.20 -> **0.24** (revert: `G1_AGGR_R=0.20`) — stops authorizing shoulder-width
+gaps in aggressive mode; (2) **wall halo in the static global costmap** (`G1_GLOB_WHALO=6.0`,
+0 reverts): soft cost on the cell ring next to every wall — the plan centres itself in the
+doorway and detaches from wall/cabinet edges. Offline: path cells hugging obstacles (<=0.2 m)
+drop 19->7 (A->B) and 15->7 (B->A), mean plan clearance 0.32->0.40 m / 0.37->0.43 m, still
+crosses the real door both ways, B->A no longer passes beside the cabinet.
+
 **Attempted and rejected by simulation (honest negative result):** a "press-guard" (commanded
 forward + body barely moves + vision says "on top" → back off before the IMU notices). The
 152030/152330 pre-impact signature (3–4 s scraping at 0.05–0.15 m/s with cnear 21–28) is real,

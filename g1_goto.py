@@ -38,16 +38,23 @@ NAV_REACH = 0.35                 # m: se considera ALCANZADO el waypoint
 NAV_OMAP_TTL = 60.0              # s: la nube es estatica; TTL medio purga obstaculos dinamicos (persona que pasa)
 GATE_M = 0.6                     # m: si arrancas a > esto del waypoint mas cercano = relocalizacion dudosa (como la app)
 AGGR_AFTER = 12.0                # s atascado sin ACERCARSE al destino -> activa modo AGRESIVO (cruza la puerta)
-AGGR_ROBOT_R = float(os.environ.get("G1_AGGR_R", "0.20"))   # m: holgura en modo agresivo (MINIMO de seguridad).
+AGGR_ROBOT_R = float(os.environ.get("G1_AGGR_R", "0.24"))   # m: holgura en modo agresivo (MINIMO de seguridad).
 # ^ 0.13->0.20 (Renxi 2026-07-02: "clearing is wrong, it does not cover the width of the hands"): el
 #   semiancho FISICO del G1 es ~0.22m de hombros y ~0.28-0.30m con el vaivén de brazos; 0.13 autorizaba
 #   huecos imposibles (roces con omap_near 42-81 en 152030/152330/152532). G1_AGGR_R=0.13 para revertir.
+# ^ 0.20->0.24 (Renxi 2026-07-02 tarde, run 171431: "increase clearance safety just a little"): col2 fue
+#   AGR-DOOR-GO empujando 3.5s con c0 0.62->0.38 hasta atrapar el HOMBRO derecho en el marco (-3.57,1.09);
+#   con 0.24 el DWA corta el avance antes de meter el hombro en huecos <~0.45m. G1_AGGR_R=0.20 revierte.
 GLOBAL_SRC = os.environ.get("G1_GLOBALMAP", "static")        # plan GLOBAL: static (DEFECTO 2026-07-02 P8b:
                                  # paredes=inf sin inflar + muebles conocidos en coste BLANDO) | hard (P8 v1:
                                  # todo pared dura -- MEDIDO offline: con INFL_HARD=1 sella la puerta de ~0.8m
                                  # y el A* caia SIEMPRE al fallback sin mapa duro) | ref | live
 GLOB_SOFT = float(os.environ.get("G1_GLOB_SOFT", "9.0"))     # coste blando por celda de MUEBLE conocido (plan global)
 GLOB_HALO = float(os.environ.get("G1_GLOB_HALO", "4.0"))     # coste blando del halo de 1 celda alrededor del mueble
+GLOB_WALL_HALO = float(os.environ.get("G1_GLOB_WHALO", "6.0"))  # coste blando 1 celda junto a PARED (run 171431:
+                                 # el plan pegaba el carrot a 0.2m de pared/cajonera -> mano dcha a la cajonera
+                                 # en (-1,0.5); con halo el plan prefiere el CENTRO del vano y se despega de los
+                                 # bordes sin sellar nada (es coste, no pared). G1_GLOB_WHALO=0 revierte.
                                  # Run 122857: c0min=0.16 y roces laterales en pared/marco -> con el bamboleo
                                  # del bipedo, 0.13 es rozar por diseno. Probar G1_AGGR_R=0.16 si repite (A/B).
 PERC_PERIOD = 0.3                # s entre consultas al servidor de percepcion GPU (depth->scan virtual de la mesa)
@@ -984,6 +991,13 @@ def global_static_costmap(walls, furn):
     (mismo mapa -> mismo plan: adios ddir tembloroso), 1 celda de mueble pisada vs 2-4 antes.
     La seguridad fina sigue siendo del DWA local con el laser vivo (arquitectura Nav2)."""
     cm = {c: math.inf for c in walls}
+    if GLOB_WALL_HALO > 0:                       # halo blando junto a pared: centra el plan en vanos
+        for (ox, oy) in walls:                   # y lo despega de bordes/cajoneras (run 171431, mano dcha)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    c = (ox + dx, oy + dy)
+                    if cm.get(c) != math.inf and cm.get(c, 0.0) < GLOB_WALL_HALO:
+                        cm[c] = GLOB_WALL_HALO
     for (ox, oy) in furn:
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):
