@@ -83,7 +83,7 @@ class Meta2Bridge:
         self.last = None          # última salida completa (dict)
         self.n_calls = 0
         self.n_switch = 0
-        self.hist = {"safety": [], "progression": []}
+        self.hist = {"safety": [], "progression": [], "rel": [], "nz": []}
         self.applied = self.reasoner.active         # analogía CONFIRMADA (la que gobierna el cap)
         self.pend = None; self.pend_n = 0            # candidato a switch pendiente
         self.act_run = ("", 0)                       # racha de la misma acción cruda
@@ -103,8 +103,10 @@ class Meta2Bridge:
         if now - self.last_t < self.period:
             return None
         self.last_t = now
-        rel = max(0.0, min(1.0, float(reliability if reliability is not None else 1.0)))
-        unc = 0.02 + 0.10 * max(0.0, min(1.0, float(laser_noise or 0.0)))
+        # reliability/noise tambien con MEDIANA de 5: la rel real tiene rafagas de 1-2 ticks a 0.0
+        # (nz se dispara al girar) y el valor instantaneo inflaba el margen DST a golpes.
+        rel = self._push("rel", max(0.0, min(1.0, float(reliability if reliability is not None else 1.0))))
+        unc = 0.02 + 0.10 * self._push("nz", max(0.0, min(1.0, float(laser_noise or 0.0))))
         readings = {
             "safety": {"value": self._push("safety", clearance), "reliability": rel, "uncertainty": unc},
             "progression": {"value": self._push("progression", progression), "reliability": rel, "uncertainty": unc},
