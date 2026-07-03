@@ -381,6 +381,27 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   contra la rama `baseline` congelada. Afinar QoE con el flujo de calibración del paquete
   (calibration_meta_reasoner_2_0.json como plantilla, casos etiquetados de nuestras runs).
 
+### 8.15 P9 escalada de experiencia + canal de RESISTENCIA (mañana 07-03, feedback del supervisor)
+
+- **Run 100927 (B→A): 584 s de bucle en la puerta, 3 col, aborto manual** — con META2 diciendo
+  FALLBACK 68% + HELP 14% durante minutos. Supervisor: "the experience should inform the robot
+  that all actions are not good and abort". Tenía razón: el reasoner concluía bien, nadie
+  escalaba. **Fix `G1_M2_ABORT=1`**: HELP firme ≥8 s O ventana de 75 s con ≥60% FALLBACK/HELP
+  y <0.4 m de progreso → en ACTIVO aborta la run (STOP + `aborted_meta2_help`); en SHADOW avisa
+  (`META2-ABORT-SHADOW`). Replay: dispara a t=94 s en la 100927 (ahorra 8+ min), 0/6 falsos.
+- **Canal `mobility` (P2d)**: velocidad real/comandada en 1.2 s — la "resistance" que faltaba
+  (colisiones con clearance=1.0: el marco no se ve, se SIENTE). Meta-parámetro con HARD VETO,
+  atención de tarea 0. QoE conservadora (dangerous 0.08-0.12), calibrar con datos de robot.
+- **Instrumentación de modo** (la pareja de runs 10:07 no se pudo verificar como activo: el
+  goto.log del repo no traía la sesión y el sample graba la fase PRE-moderación, así que `!M`
+  nunca aparece en dataset): ahora cada run emite el evento `meta2_mode` y el campo
+  `meta2_cap` por sample → el dataset se autodescribe. PENDIENTE: confirmar en el Ubuntu
+  (`grep "META2 mode" goto.log`) si las 100739/100927 corrieron con mode=1 o 2.
+- Runs limpias del día (shadow): A→B 54.9/57.1/71.6 s 0 col · B→A 71.7 s 1 col y 108.2 s 0 col
+  (primera B→A sin colisión). El engagement B→A funciona pero el marco derecho sigue costando
+  presión: el canal mobility es la respuesta de gobernanza; el micro-ajuste `G1_DOOR_AXIS≈-48`
+  para BA queda como A/B de campo.
+
 ### 8.4 Próximos pasos (en orden)
 
 1. **Prueba goto B** en el Ubuntu (percepción ON; el gate ya lo exige). Mirar en el log, en este orden:

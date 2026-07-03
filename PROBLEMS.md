@@ -169,6 +169,36 @@ on. Depth (0.10 m+) and the carpet channel cover part of it meanwhile.
 on). Offline validation on the 529 m fantasy-walk run: would have stopped it at 0.4 m. No
 occurrence since instrumented.
 
+## P9 — Experience must ABORT, not loop (supervisor, 2026-07-03) — **CODED (validate next run)**
+
+Run 100927 (B->A): 584 s, 59 m of circling the doorway, 3 collisions, manual abort — while
+META2 was reporting FALLBACK on 68% of ticks and HELP on 14% FOR MINUTES. Supervisor: "in
+theory the experience should inform the robot that all actions are not good and abort. Not
+happening — either calibration or logic flawed." Diagnosis: the reasoner's conclusion was
+CORRECT (sustained no-valid-analogy); the actuation layer never escalated it — HELP only
+capped speed for an instant, the robot backed off, readings improved, it retried: limit cycle.
+
+**Fix — experience escalation (`G1_M2_ABORT=1` default):** two triggers, evaluated on each
+governance decision: (a) firm HELP sustained >= 8 s (`G1_M2_HELP_S`); (b) sliding 75 s window
+(`G1_M2_ABORT_WIN`) with >= 60% firm FALLBACK/HELP decisions (`G1_M2_ABORT_BAD`) and net
+progress toward the goal < 0.4 m (`G1_M2_ABORT_PROG`). In ACTIVE mode (G1_META2=2) -> STOP +
+abort run (`aborted_meta2_help`, event `meta2_experience_abort`) = the paper's HELP semantics
+(stop / request intervention). In SHADOW -> `META2-ABORT-SHADOW` warning once/min. Offline
+replay (acceptance rule): fires at t=94 s in run 100927 (would have saved 8+ minutes) and
+re-armed keeps firing every ~70 s; ZERO fires across the 6 clean runs of the same day.
+
+**P2d — resistance channel (supervisor: "meta-attention to clearance but no meta-attention
+to resistance") — CODED:** new meta-parameter `mobility` = achieved/commanded speed ratio over
+a 1.2 s window (1 = moves as commanded; ~0 = PRESSING something the laser does not see — the
+measured pre-impact signature is 2-3.5 s at ratio < 0.3 with clearance = 1.0). Computed in
+g1_goto, median-smoothed in the bridge, drifts to 1.0 when no forward command (no evidence).
+QoE per analogy with **hard veto** (sustained physical pressing = analogy invalid, non-
+negotiable) and task attention 0 (does not drag fulfillment; acts via local tension + veto).
+This is the press-guard reborn as graded DST evidence instead of a binary trigger — the
+earlier rejection (indistinguishable from careful transit) no longer applies because it is
+arbitrated, not hard-triggered. Replay: 0 false HELP on the 6 clean runs; QoE boundaries
+(dangerous 0.08-0.12) deliberately conservative, to be calibrated with on-robot data.
+
 ---
 
 ## Simulation harness (how fixes get accepted now)

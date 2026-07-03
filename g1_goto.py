@@ -29,6 +29,16 @@ try:
 except Exception:
     Meta2Bridge = None
 META2_MODE = os.environ.get("G1_META2", "0") # 0=off | 1=SHADOW (decide+loguea, no toca control) | 2=ACTIVO (techo de velocidad por analogia)
+# --- ESCALADA DE EXPERIENCIA (supervisor, 2026-07-03, run 100927: 584s en bucle en la puerta con
+# FALLBACK 68% + HELP 14% y nadie abortaba): "the experience should inform the robot that all
+# actions are not good and abort". Si la gobernanza sostiene que NINGUNA analogia sirve Y no hay
+# progreso, la decision correcta es ABORTAR (HELP del paper = stop/request intervention), no
+# reintentar para siempre. En SHADOW solo avisa (META2-ABORT-SHADOW); en ACTIVO aborta de verdad.
+META2_ABORT = (os.environ.get("G1_M2_ABORT", "1") == "1")     # G1_M2_ABORT=0 desactiva la escalada
+M2_ABORT_WIN = float(os.environ.get("G1_M2_ABORT_WIN", "75"))   # s de ventana de experiencia
+M2_ABORT_BAD = float(os.environ.get("G1_M2_ABORT_BAD", "0.6"))  # fraccion de decisiones FALLBACK/HELP firmes
+M2_ABORT_PROG = float(os.environ.get("G1_M2_ABORT_PROG", "0.4"))  # m de acercamiento minimo al goal en la ventana
+M2_HELP_S = float(os.environ.get("G1_M2_HELP_S", "8"))          # s de HELP firme CONTINUO -> abort directo
 
 WP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "waypoints.json")
 MAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nav_map.json")
@@ -1228,6 +1238,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 lg.write(f"META2 mode={META2_MODE} cfg=config_meta2_g1door.json init={meta2.applied}\n"); lg.flush()
             except Exception as e:
                 print("  META2 no disponible:", repr(e))
+    m2win = deque(); m2_help_t0 = None; m2_warn_t = 0.0; m2_mode_logged = False   # escalada de experiencia
+    m2trk = deque()                                          # (t,x,y,cmd_ly) para el canal de RESISTENCIA (mobility)
     best_d = 1e9; best_d_t = t0; ROBOT_R0 = g.ROBOT_R        # progreso hacia B + holgura normal (para restaurar)
     vis_center = None; vis_nearrun = None; vis_t = 0         # VISION (suelo despejado) para la puerta (laser ruidoso ahi)
     vis_log_t = 0                                            # throttle del log [VIS] (que ve YOLO y si la nav lo usa)
@@ -1927,8 +1939,19 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     _php = ph.strip().replace("AGR-", "").rstrip("!HM")
                     _hold = _php.startswith(("ENG-T", "ENG-AL", "ENG-RE", "ENG-WT", "ENG-C",
                                              "DOOR-AL", "DOOR-WT", "DOOR-CTR", "DWA-T", "SEEK-T"))
+                    # canal de RESISTENCIA: velocidad real vs comandada en ~1.2s (None sin comando de avance)
+                    m2trk.append((now, x, y, (cmd[1] if cmd else 0.0)))
+                    while m2trk and now - m2trk[0][0] > 1.2:
+                        m2trk.popleft()
+                    _mob = None
+                    if len(m2trk) >= 3:
+                        _dtm = now - m2trk[0][0]
+                        _cmy = sum(c4 for _, _, _, c4 in m2trk) / len(m2trk)
+                        if _cmy >= 0.2 and _dtm > 0.5:
+                            _v = math.hypot(x - m2trk[0][1], y - m2trk[0][2]) / _dtm
+                            _mob = max(0.0, min(1.0, _v / max(0.05, 0.75 * _cmy)))
                     _o = meta2.tick(now, m_clear, m_prog, m_rel, ss2.get("laser_noise"), h.get("bat"),
-                                    hold_progression=_hold)
+                                    hold_progression=_hold, mobility=_mob)
                 except Exception as e:
                     _o = None
                     if now - vis_log_t > 10.0:
@@ -1941,6 +1964,45 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         rd.event("meta2_" + _o["action"].lower().rstrip("?"), now - t0, x, y,
                                  {"active": _o["active"], "tension": _o["tension"], "ful": _o["fulfillment"]})
                     m2o = _o
+                    if not m2_mode_logged:                       # el dataset se autodescribe (¿shadow o activo?)
+                        rd.event("meta2_mode", now - t0, x, y, {"mode": META2_MODE}); m2_mode_logged = True
+                    # --- ESCALADA: la experiencia sostenida de "nada sirve" debe terminar en ABORT ---
+                    if META2_ABORT:
+                        bad = str(_o["action"]) in ("FALLBACK", "HELP")      # solo decisiones FIRMES (sin '?')
+                        m2win.append((now, 1 if bad else 0, d_goal))
+                        while m2win and now - m2win[0][0] > M2_ABORT_WIN:
+                            m2win.popleft()
+                        if str(_o["action"]) == "HELP":
+                            m2_help_t0 = m2_help_t0 or now
+                        else:
+                            m2_help_t0 = None
+                        span = now - m2win[0][0] if m2win else 0.0
+                        badf = (sum(b for _, b, _ in m2win) / len(m2win)) if m2win else 0.0
+                        prog = (m2win[0][2] - d_goal) if m2win else 9.9
+                        help_sus = (m2_help_t0 is not None and now - m2_help_t0 >= M2_HELP_S)
+                        window_bad = (span >= M2_ABORT_WIN * 0.95 and badf >= M2_ABORT_BAD
+                                      and prog < M2_ABORT_PROG)
+                        if help_sus or window_bad:
+                            why = (f"HELP continuo {now - (m2_help_t0 or now):.0f}s" if help_sus else
+                                   f"experiencia mala {badf*100:.0f}% en {span:.0f}s con progreso {prog:+.2f}m")
+                            if META2_MODE == "2":
+                                cdp.eval(g.STOP_JS); time.sleep(0.2); cdp.eval(g.STOP_JS)
+                                print(f"\n  >>> META2 EXPERIENCE-ABORT: {why}. Ninguna analogia es valida aqui:"
+                                      f" STOP y aborto (pide ayuda/reposiciona). G1_M2_ABORT=0 desactiva.")
+                                lg.write(f"META2-EXPERIENCE-ABORT {why} pos=({x:+.2f},{y:+.2f}) "
+                                         f"{time.strftime('%Y-%m-%d %H:%M:%S')}\n"); lg.flush()
+                                rd.event("meta2_experience_abort", now - t0, x, y,
+                                         {"why": why, "badf": round(badf, 2), "prog": round(prog, 2)})
+                                rd.finish("aborted_meta2_help",
+                                          {"time_s": round(now - t0, 2), "path_m": round(_path_len(trail), 2),
+                                           "collisions": ncol, "c0min": round(minc0, 2), **diag_summary()})
+                                return False
+                            elif now - m2_warn_t > 60.0:         # SHADOW: avisar (una vez/min) sin actuar
+                                m2_warn_t = now
+                                lg.write(f"META2-ABORT-SHADOW (aqui habria abortado: {why})\n")
+                                rd.event("meta2_abort_shadow", now - t0, x, y,
+                                         {"why": why, "badf": round(badf, 2), "prog": round(prog, 2)})
+                                m2win.clear(); m2_help_t0 = None   # re-arma la ventana para el siguiente aviso
             rd.sample(now - t0, x, y, yaw, d_goal, math.hypot(x - prog_pos[0], y - prog_pos[1]) if prog_pos else 0.0,
                       c0, len(oset), cmd=cmd, phase=ph.strip(),
                       extra={"err": hh.get("err"), "bat": h.get("bat"), "cpuT": h.get("cpuT"),
@@ -1967,6 +2029,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "perc_n": len(perc_cells),                       # nº de celdas-obstaculo que aporto la VISION este tick
                              "perc_age": (round(now - perc_rx_t, 2) if perc_rx_t is not None else None),   # s desde la ultima respuesta REAL del server (P3: ¿flicker=latencia o escena vacia?)
                              "meta2_act": (m2o or {}).get("action"),           # gobernanza DCE (G1_META2)
+                             "meta2_cap": (m2o or {}).get("cap"),              # techo vigente (None=sin techo); en modo 2 se aplica
                              "meta2_active": (m2o or {}).get("active"),
                              "meta2_tens": (m2o or {}).get("tension"),
                              "meta2_ful": (m2o or {}).get("fulfillment"),

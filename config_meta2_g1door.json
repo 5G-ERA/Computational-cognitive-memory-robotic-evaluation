@@ -10,6 +10,7 @@
   "overall_meta_parameters": [
     "progression",
     "safety",
+    "mobility",
     "battery_consumption"
   ],
   "runtime_config": {
@@ -44,6 +45,11 @@
       "default_reliability": 0.99,
       "reliability_sensitivity": 0.05,
       "default_uncertainty": 0.01
+    },
+    "mobility": {
+      "default_reliability": 0.95,
+      "reliability_sensitivity": 0.1,
+      "default_uncertainty": 0.03
     }
   },
   "analogies": {
@@ -52,7 +58,8 @@
       "meta_attentions": {
         "progression": 0.6,
         "safety": 0.4,
-        "battery_consumption": 0.0
+        "battery_consumption": 0.0,
+        "mobility": 0.15
       },
       "qoe": {
         "progression": {
@@ -69,12 +76,18 @@
           "expected": 0.5,
           "adaptive": 0.25,
           "dangerous": 0.1
+        },
+        "mobility": {
+          "expected": 0.55,
+          "adaptive": 0.3,
+          "dangerous": 0.12
         }
       },
       "hard_veto": {
         "safety": true,
         "progression": false,
-        "battery_consumption": false
+        "battery_consumption": false,
+        "mobility": true
       },
       "sensor_reliability_override": {}
     },
@@ -83,7 +96,8 @@
       "meta_attentions": {
         "progression": 0.35,
         "safety": 0.65,
-        "battery_consumption": 0.0
+        "battery_consumption": 0.0,
+        "mobility": 0.25
       },
       "qoe": {
         "progression": {
@@ -100,12 +114,18 @@
           "expected": 0.5,
           "adaptive": 0.25,
           "dangerous": 0.1
+        },
+        "mobility": {
+          "expected": 0.45,
+          "adaptive": 0.22,
+          "dangerous": 0.08
         }
       },
       "hard_veto": {
         "safety": true,
         "progression": false,
-        "battery_consumption": false
+        "battery_consumption": false,
+        "mobility": true
       },
       "sensor_reliability_override": {}
     }
@@ -117,12 +137,14 @@
     "task_meta_attentions": {
       "progression": 0.45,
       "safety": 0.55,
-      "battery_consumption": 0.0
+      "battery_consumption": 0.0,
+      "mobility": 0.0
     },
     "task_meta_attentions_flexibility": {
       "progression": 0.15,
       "safety": 0.15,
-      "battery_consumption": 0.0
+      "battery_consumption": 0.0,
+      "mobility": 0.0
     },
     "task_tension_threshold": 0.7,
     "task_fulfillment_threshold": 0.35,

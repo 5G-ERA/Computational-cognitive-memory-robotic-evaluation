@@ -86,7 +86,7 @@ class Meta2Bridge:
         self.last = None          # última salida completa (dict)
         self.n_calls = 0
         self.n_switch = 0
-        self.hist = {"safety": [], "progression": [], "rel": [], "nz": []}
+        self.hist = {"safety": [], "progression": [], "rel": [], "nz": [], "mobility": []}
         self.applied = self.reasoner.active         # analogía CONFIRMADA (la que gobierna el cap)
         self.pend = None; self.pend_n = 0            # candidato a switch pendiente
         self.act_run = ("", 0)                       # racha de la misma acción cruda
@@ -102,7 +102,7 @@ class Meta2Bridge:
         return self._med(h)
 
     def tick(self, now, clearance, progression, reliability, laser_noise=None, bat=None,
-             hold_progression=False):
+             hold_progression=False, mobility=None):
         """Devuelve dict de decisión a ~1/period Hz, o None si toca esperar (throttle).
         hold_progression=True cuando el robot esta PARADO A PROPOSITO (alineando en el
         engagement, girando en el sitio): la progression=0 de ese momento es comandada, no
@@ -121,6 +121,17 @@ class Meta2Bridge:
             "safety": {"value": self._push("safety", clearance), "reliability": rel, "uncertainty": unc},
             "progression": {"value": self._push("progression", progression), "reliability": rel, "uncertainty": unc},
         }
+        # --- canal de RESISTENCIA (supervisor 2026-07-03: "meta-attention to clearance but not to
+        # resistance"). mobility = velocidad real / velocidad comandada (1=se mueve como se le pide,
+        # ~0=EMPUJANDO algo que el laser no ve: la firma pre-impacto medida es 2-3.5s a ratio <0.3
+        # con clearance 1.0). Va como meta-parametro con HARD VETO: presion sostenida = analogia
+        # invalida -> HELP -> (con la escalada) ABORT. Sin comando de avance no hay evidencia:
+        # deriva suavemente hacia 1.0 (sin resistencia conocida).
+        if mobility is None:
+            last = self.hist["mobility"][-1] if self.hist["mobility"] else 1.0
+            mobility = last + 0.15 * (1.0 - last)
+        readings["mobility"] = {"value": self._push("mobility", max(0.0, min(1.0, float(mobility)))),
+                                "reliability": 0.95, "uncertainty": 0.03}
         if bat is not None:
             try:
                 readings["battery_consumption"] = {"value": float(bat) / 100.0, "reliability": 0.99,
