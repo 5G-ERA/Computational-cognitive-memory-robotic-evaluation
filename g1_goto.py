@@ -1206,6 +1206,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 "safer_inserts": safer_ins, "map_adds": map_add, "map_dels": map_del,
                 "obs_max": obs_max, "reloc_jumps": njumps,
                 "colmap_cells": len(colmap),
+                "meta2_mode": META2_MODE,                     # 2) tambien en el summary de la run
+                "meta2_capped_ticks": m2_ncap,                # nº de ticks donde META2 CAPO de verdad (>0 <=> activo actuando)
                 "tick_ms_p95": round(1000.0 * p95, 1) if tick_dts else None}
     colmap = set()                                # colisiones PERMANENTES (no re-chocar en el mismo sitio)
     plan_pts = []; plan_t = 0; carrot = None
@@ -1240,6 +1242,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 print("  META2 no disponible:", repr(e))
     m2win = deque(); m2_help_t0 = None; m2_warn_t = 0.0; m2_mode_logged = False   # escalada de experiencia
     m2trk = deque()                                          # (t,x,y,cmd_ly) para el canal de RESISTENCIA (mobility)
+    m2_ncap = 0; m2_cap_on = False                           # nº de ticks realmente CAPADOS por META2 (prueba de modo activo)
+    # REGISTRO DEL MODO a prueba de dudas (runs 100739/100927: no se pudo verificar si fueron mode=2):
+    # 1) cabecera del dataset (autodescriptivo aunque el goto.log no viaje)
+    rd.rec["meta2_mode"] = META2_MODE
+    rd.rec["meta2_enabled"] = bool(meta2 is not None)
     best_d = 1e9; best_d_t = t0; ROBOT_R0 = g.ROBOT_R        # progreso hacia B + holgura normal (para restaurar)
     vis_center = None; vis_nearrun = None; vis_t = 0         # VISION (suelo despejado) para la puerta (laser ruidoso ahi)
     vis_log_t = 0                                            # throttle del log [VIS] (que ve YOLO y si la nav lo usa)
@@ -2094,6 +2101,14 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # recuperaciones y del ESCAPE no se tocan. HELP firme -> avance 0 (el DCE pide parar).
             if META2_MODE == "2" and m2o is not None and m2o.get("cap") is not None and cmd[1] > m2o["cap"]:
                 cmd = (cmd[0], m2o["cap"], cmd[2], 0); ph = ph.strip() + "!M"
+                m2_ncap += 1
+                if not m2_cap_on:                              # 3) flanco: evento + log = prueba de ACTUACION real
+                    m2_cap_on = True
+                    lg.write(f"META2-CAP ON cap={m2o['cap']} analogia={m2o['active']} "
+                             f"act={m2o['action']} t={now - t0:.0f}s\n")
+                    rd.event("meta2_cap_on", now - t0, x, y, {"cap": m2o["cap"], "active": m2o["active"]})
+            else:
+                m2_cap_on = False
             prev_fwd = (cmd[1] > 0.1)
             cdp.eval(g.set_cmd_js(*cmd))
             time.sleep(0.1)
