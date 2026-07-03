@@ -1,0 +1,27 @@
+===LS===
+total 96
+drwxr-xr-x 21 ubuntu ubuntu 4096 Jul  2 15:00 .
+drwxr-xr-x  1 root   root   4096 Jun 23 10:44 ..
+-rw-------  1 ubuntu ubuntu  668 Jul  2 15:00 .ICEauthority
+-rw-------  1 ubuntu ubuntu  106 Jul  2 15:00 .Xauthority
+-rw-------  1 ubuntu ubuntu  163 Jun 23 14:51 .bash_history
+-rw-r--r--  1 ubuntu ubuntu  100 Jun 23 10:44 .bashrc
+drwxr-xr-x 13 ubuntu ubuntu 4096 Jul  2 15:00 .cache
+drwx------ 15 ubuntu ubuntu 4096 Jul  2 15:00 .config
+drwx------  3 ubuntu ubuntu 4096 Jun 23 10:44 .dbus
+drwxr--r--  4 ubuntu ubuntu 4096 Jun 23 11:16 .gazebo
+drwxr--r--  2 ubuntu ubuntu 4096 Jun 23 10:53 .ignition
+drwx------  3 ubuntu ubuntu 4096 Jun 23 10:44 .local
+drwxr-xr-x  4 ubuntu ubuntu 4096 Jun 23 10:52 .ros
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 11:13 .rviz2
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 10:53 .sdformat
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jul  2 15:00 .vnc
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 10:44 Desktop
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 10:44 Documents
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 10:44 Downloads
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 10:44 Music
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 10:44 Pictures
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 10:44 Public
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 10:44 Templates
+drwxr-xr-x  2 ubuntu ubuntu 4096 Jun 23 10:44 Videos
+drwxr-xr-x  6 ubuntu ubuntu  192 Jun 23 11:00 g1_ws

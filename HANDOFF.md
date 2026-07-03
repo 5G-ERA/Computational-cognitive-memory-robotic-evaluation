@@ -423,10 +423,17 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   TODOS los tipos de run. Va en cabecera del dataset (`env`, `sim_id`), en la cabecera de run
   del goto.log (`env=sim/...`), aviso en consola ("no cuenta como run de robot") y columnas
   `env`/`sim_id` en el CSV (filtrar env=real para la tabla del paper). Runs viejas = real.
-- **Estado de la sim**: existe un contenedor con lo básico y un mapa básico (Adrian). PENDIENTE
-  de definir la integración: fuente de pose/nube en lugar del WebView/CDP, percepción (fake o
-  `G1_NOVIS=1`), mapa/waypoints/puerta del escenario sim (`G1_REFMAP`, `G1_DOOR_X/Y/AXIS`).
-  Preguntar: ¿motor (Gazebo/Isaac/propio)? ¿interfaz (ROS2/sockets/misma API WebRTC)?
+- **Estado de la sim (07-03, contenedor inspeccionado)**: imagen tipo Tiryoh docker-ros2-desktop-vnc
+  (`g1sim:humble`, id 48e7c50b26d6): ROS2 **Humble Desktop completo + escritorio MATE por noVNC**,
+  con **Gazebo, Nav2 completo, slam_toolbox, foxglove_bridge, pointcloud_to_laserscan** ya
+  instalados. Acceso web VERIFICADO: `http://localhost:6080/vnc_lite.html` (pass `ubuntu`);
+  el 5900 es VNC crudo (no HTTP), y el **8765 (foxglove_bridge) ya está mapeado** → no hace
+  falta relanzar el contenedor para el adaptador. Volcados en `sim/container_dump/` (00/01 ok;
+  02 salió vacío por profundidad del find). PENDIENTE: dump 03/04 (workspace + bash_history =
+  cómo se lanza la sim), topics/nodos CON la sim corriendo, y `docker cp` del workspace a
+  `sim/ws_src`. PLAN: `g1_sim_adapter.py` = FakeCDP con la misma interfaz que el puente USB
+  (pose / nube 'location' plana / cmd {lx,ly,rx,ry}→/cmd_vel) vía foxglove websocket :8765 →
+  g1_goto+META2+engagement corren SIN CAMBIOS contra la sim, etiquetados `G1_ENV=sim`.
 
 ### 8.17 P10 margen FEW-SHOT (Renxi, 07-03): confianza histórica en la plausibilidad
 
