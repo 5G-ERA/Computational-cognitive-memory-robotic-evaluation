@@ -1,0 +1,24 @@
+{
+  "cases": [
+    {
+      "case_id": "open",
+      "reading": {
+        "progression": 1.2,
+        "safety": 1.2,
+        "fragility": 1.0,
+        "battery_consumption": 1.0
+      },
+      "expected_output": "Efficient_Nav"
+    },
+    {
+      "case_id": "unsafe",
+      "reading": {
+        "progression": 0.9,
+        "safety": 0.45,
+        "fragility": 1.0,
+        "battery_consumption": 1.0
+      },
+      "expected_output": "HELP"
+    }
+  ]
+}

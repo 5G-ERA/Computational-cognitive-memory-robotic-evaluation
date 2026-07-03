@@ -356,6 +356,31 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   referencia. Falta hacer git pull de la run buena para anotar id/tiempos/colisiones aquí y en
   runs_summary.csv, y repetir B→A para validar el engagement en dirección de vuelta.
 
+### 8.14 META2 — Meta-Reasoner 2.0 (DCE runtime de Renxi) integrado tras flag (noche 07-02)
+
+- **Paquete de Renxi en el repo**: `meta-reasoner-2.0/` (reasoner configuration-first: DST por
+  analogía → región semántica con memoria/dirección → tensión → fulfillment → gates → KEEP/
+  SWITCH/FALLBACK/HELP/INSUFFICIENT; 11 tests OK). Guía completa en su .docx; contrato: SWITCH
+  ⇒ `switch_to` no nulo. Ablaciones por config (`evaluation_controls`: DST analogía/tarea on/off).
+- **Puente `g1_meta2_bridge.py`** + **`config_meta2_g1door.json`** (QoE calibrada con las
+  distribuciones reales del 07-02: crucero clear~1.0/prog~0.48; puerta clear p25 0.43/prog 0.10;
+  OJO pre-colisión clear mediana 1.0 → safety no puede ser solo láser). Mapeo: safety←clearance,
+  progression←progression SEI, reliability/uncertainty←SensingMonitor+laser_noise, bat←telem.
+  Bridge-side (el reasoner NO se toca): mediana de 5 muestras, persistencia de switch (3) y de
+  acción (2), switch_margin 0.08, retorno al preferido en empate, warmup 4. Analogías v1:
+  Efficient_Nav (sin techo) / Cautious_Nav (techo 0.28); FALLBACK→0.24, HELP→avance 0.
+- **En g1_goto tras `G1_META2`**: `=1` SHADOW (decide y loguea `[META2]` + eventos + campos
+  meta2_* en samples, no toca control) · `=2` ACTIVO (techo de avance por analogía, solo
+  cmd[1]>0, marca `!M` en la fase; recuperaciones/ESCAPE intactos) · `=0`/ausente OFF (defecto).
+- **Replay offline** (`python g1_meta2_bridge.py dataset/<run>.json`): en 171431 → 3 switches
+  coherentes (Cautious en arranque, Efficient en pasillo, Cautious al llegar al clutter) y
+  bandas FALLBACK en los atascos de puerta que PRECEDEN a las colisiones reales (13-18s y
+  33-37s vs impactos en 47.6/60.0). Sintético: pasillo KEEP / puerta SWITCH / unsafe HELP.
+- **Plan de validación**: ① una run con `G1_META2=1` (shadow) y comparar timeline META2 vs
+  eventos reales (autopsy) ② si cuadra, `G1_META2=2` ③ ablaciones DST para el paper (4 modos)
+  contra la rama `baseline` congelada. Afinar QoE con el flujo de calibración del paquete
+  (calibration_meta_reasoner_2_0.json como plantilla, casos etiquetados de nuestras runs).
+
 ### 8.4 Próximos pasos (en orden)
 
 1. **Prueba goto B** en el Ubuntu (percepción ON; el gate ya lo exige). Mirar en el log, en este orden:

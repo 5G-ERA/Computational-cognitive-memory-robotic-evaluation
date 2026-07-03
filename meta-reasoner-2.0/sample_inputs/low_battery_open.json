@@ -1,0 +1,9 @@
+{
+  "readings": {
+    "battery_consumption": 1.0,
+    "fragility": 1.0,
+    "progression": 1.2,
+    "safety": 1.2
+  },
+  "timestamp": 4
+}

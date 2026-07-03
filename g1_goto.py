@@ -24,6 +24,11 @@ try:
 except Exception:
     g1_perception = None
 import g1_metrics                            # metricas SEI: clearance (percepcion) + progression (rendimiento)
+try:
+    from g1_meta2_bridge import Meta2Bridge  # DCE runtime (Meta-Reasoner 2.0 de Renxi), opcional
+except Exception:
+    Meta2Bridge = None
+META2_MODE = os.environ.get("G1_META2", "0") # 0=off | 1=SHADOW (decide+loguea, no toca control) | 2=ACTIVO (techo de velocidad por analogia)
 
 WP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "waypoints.json")
 MAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nav_map.json")
@@ -1210,6 +1215,19 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     gplan = []; gplan_t = 0; cam_t = 0; cam_jpg = None
     aggressive = (os.environ.get("G1_AGGRESSIVE") == "1")    # modo agresivo (forzable; si no, se activa al atascarse)
     eng = {"state": None, "ok": 0, "wt": 0, "cool": 0.0, "ts": 0.0}   # engagement de puerta (mapa estatico)
+    # --- META2 (G1_META2=1 shadow / =2 activo): gobernanza DCE con Meta-Reasoner 2.0 ---
+    meta2 = None; m2o = None
+    if META2_MODE in ("1", "2"):
+        if Meta2Bridge is None:
+            print("  META2 pedido pero g1_meta2_bridge/meta-reasoner-2.0 no importable -> OFF")
+        else:
+            try:
+                meta2 = Meta2Bridge()
+                print(f"  META2 {'ACTIVO (techo por analogia)' if META2_MODE == '2' else 'SHADOW (solo log)'}: "
+                      f"Meta-Reasoner 2.0, analogia inicial {meta2.applied}")
+                lg.write(f"META2 mode={META2_MODE} cfg=config_meta2_g1door.json init={meta2.applied}\n"); lg.flush()
+            except Exception as e:
+                print("  META2 no disponible:", repr(e))
     best_d = 1e9; best_d_t = t0; ROBOT_R0 = g.ROBOT_R        # progreso hacia B + holgura normal (para restaurar)
     vis_center = None; vis_nearrun = None; vis_t = 0         # VISION (suelo despejado) para la puerta (laser ruidoso ahi)
     vis_log_t = 0                                            # throttle del log [VIS] (que ve YOLO y si la nav lo usa)
@@ -1901,6 +1919,22 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 nz = ss2["laser_noise"]; nz_sum += nz; nz_max = max(nz_max, nz); nz_n += 1
             m_rel = ss2["reliability"]
             h = hh.get("h") or {}
+            # --- META2: decision de gobernanza DCE a ~2Hz con las metricas del tick ---
+            if meta2 is not None:
+                try:
+                    _o = meta2.tick(now, m_clear, m_prog, m_rel, ss2.get("laser_noise"), h.get("bat"))
+                except Exception as e:
+                    _o = None
+                    if now - vis_log_t > 10.0:
+                        lg.write(f"[META2] error: {repr(e)}\n")
+                if _o is not None:
+                    if _o.get("changed") or _o["action"] in ("SWITCH", "HELP"):
+                        lg.write(f"[META2] {_o['action']} activo={_o['active']} tens={_o['tension']} "
+                                 f"ful={_o['fulfillment']} cap={_o['cap']} rej={_o['rejections']}\n")
+                    if _o.get("changed") and _o["action"] not in ("KEEP", "WARMUP", "PEND"):
+                        rd.event("meta2_" + _o["action"].lower().rstrip("?"), now - t0, x, y,
+                                 {"active": _o["active"], "tension": _o["tension"], "ful": _o["fulfillment"]})
+                    m2o = _o
             rd.sample(now - t0, x, y, yaw, d_goal, math.hypot(x - prog_pos[0], y - prog_pos[1]) if prog_pos else 0.0,
                       c0, len(oset), cmd=cmd, phase=ph.strip(),
                       extra={"err": hh.get("err"), "bat": h.get("bat"), "cpuT": h.get("cpuT"),
@@ -1926,6 +1960,10 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "n_hard": len(hard_set),                         # celdas de alta confianza en el mapa
                              "perc_n": len(perc_cells),                       # nº de celdas-obstaculo que aporto la VISION este tick
                              "perc_age": (round(now - perc_rx_t, 2) if perc_rx_t is not None else None),   # s desde la ultima respuesta REAL del server (P3: ¿flicker=latencia o escena vacia?)
+                             "meta2_act": (m2o or {}).get("action"),           # gobernanza DCE (G1_META2)
+                             "meta2_active": (m2o or {}).get("active"),
+                             "meta2_tens": (m2o or {}).get("tension"),
+                             "meta2_ful": (m2o or {}).get("fulfillment"),
                              "clear_left": round(m_cl, 3), "clear_right": round(m_cr, 3),   # clearance lateral (Renxi: balance)
                              "clearL_m": round(cl_left, 2), "clearR_m": round(cl_right, 2),
                              "balance": round(m_cl - m_cr, 3),                # +izq libre / -dcha libre (0 = centrado)
@@ -1982,6 +2020,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         hg_log_t = now
                 elif c0_hard < HARD_SLOW and cmd[1] > 0.22:
                     cmd = (cmd[0], 0.22, cmd[2], 0)            # acercarse a una pared: despacio
+            # --- META2 ACTIVO (G1_META2=2): el perfil de la analogia DCE es un TECHO de avance.
+            # Solo modera cmd[1]>0 (como HARD-GUARD y el moderador Renxi): retroceso/giros de las
+            # recuperaciones y del ESCAPE no se tocan. HELP firme -> avance 0 (el DCE pide parar).
+            if META2_MODE == "2" and m2o is not None and m2o.get("cap") is not None and cmd[1] > m2o["cap"]:
+                cmd = (cmd[0], m2o["cap"], cmd[2], 0); ph = ph.strip() + "!M"
             prev_fwd = (cmd[1] > 0.1)
             cdp.eval(g.set_cmd_js(*cmd))
             time.sleep(0.1)
