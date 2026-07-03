@@ -4,8 +4,10 @@
   <link name="base_link">
     <visual><origin xyz="0 0 0.35"/><geometry><box size="0.3 0.25 0.7"/></geometry></visual>
     <collision><origin xyz="0 0 0.35"/><geometry><box size="0.3 0.25 0.7"/></geometry></collision>
-    <inertial><origin xyz="0 0 0.35"/><mass value="20"/>
-      <inertia ixx="1.0" iyy="1.0" izz="0.5" ixy="0" ixz="0" iyz="0"/></inertial>
+    <!-- ANTI-VUELCO (2026-07-03: el cubo se balanceaba y caia con los cambios de velocidad del
+         planar_move): CG BAJO (z=0.10), masa alta e inercia ENORME (los pares no lo rotan). -->
+    <inertial><origin xyz="0 0 0.10"/><mass value="60"/>
+      <inertia ixx="50.0" iyy="50.0" izz="50.0" ixy="0" ixz="0" iyz="0"/></inertial>
   </link>
   <joint name="base_joint" type="fixed"><parent link="base_footprint"/><child link="base_link"/></joint>
 
@@ -15,6 +17,14 @@
   </link>
   <joint name="lidar_joint" type="fixed"><parent link="base_link"/><child link="lidar_link"/>
     <origin xyz="0 0 0.75"/></joint>
+
+  <!-- FRICCION CERO con el suelo: el planar_move fija la velocidad; sin mu no hay par de vuelco
+       (desliza como un puck). Los choques contra paredes siguen siendo solidos. -->
+  <gazebo reference="base_link">
+    <mu1>0.0</mu1><mu2>0.0</mu2>
+    <material>Gazebo/DarkGrey</material>
+  </gazebo>
+  <gazebo reference="lidar_link"><material>Gazebo/FlatBlack</material></gazebo>
 
   <gazebo>
     <plugin name="planar_move" filename="libgazebo_ros_planar_move.so">

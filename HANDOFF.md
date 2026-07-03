@@ -439,6 +439,15 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   lab; sim.launch.py con `gui:=false` para headless. Lanzamiento completo en sim/README.md.
   PENDIENTE: primera run `python g1_sim_adapter.py gotoviz B` (A→B esquivando el pilar) y
   luego añadir pared+vano de 0.8 m al room.world para replicar la puerta del lab.
+- **GEMELO DEL LAB (tarde 07-03)**: `lab.world` GENERADO DEL MAPA REAL (paredes summit 2.2 m,
+  522 cajas, recortado a la zona de juego, puerta carvada r=0.5 en (-3.90,1.25), spawn en A
+  con yaw real, `-timeout 120`). v1 SIN muebles (los marrones de nav_map se quitaron; volverán
+  como cajas limpias con `G1_SIM_FURN=1` para condiciones). Escenario `lab` es el DEFECTO del
+  adaptador: waypoints/refmap/puerta REALES + engagement ON; nav_map de sim vacío en
+  `sim/nav_map_lab.json`. GUI validada: un solo gzserver headless + `gzclient` lanzado DESDE
+  la terminal del VNC (nunca 2 gazebos: mundo vacío + topics rotos); robot visible via
+  View→Collisions; runs de datos siempre headless. Receta completa en sim/COMO_LANZAR.md.
+  PENDIENTE: primera run sim A→B cruzando la PUERTA REAL (DOOR-ENG ... CROSSED) hasta reached.
 
 ### 8.17 P10 margen FEW-SHOT (Renxi, 07-03): confianza histórica en la plausibilidad
 
