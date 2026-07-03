@@ -91,9 +91,30 @@ class Meta2Bridge:
         self.pend = None; self.pend_n = 0            # candidato a switch pendiente
         self.act_run = ("", 0)                       # racha de la misma acción cruda
 
+    # peso de la CONFIANZA HISTORICA en la incertidumbre DST (Renxi 2026-07-03: "the robot might
+    # feel the analogy is highly plausible but still not good enough in reality... add historical
+    # confidence into the task; currently one-shot decision"). La incertidumbre de cada lectura ya
+    # no es solo el ruido instantaneo: suma k * desviacion tipica de la PROPIA metrica en la ventana
+    # (~2.5s) -> una metrica que OSCILA sobre una frontera QoE ensancha su intervalo belief/
+    # plausibility, cae la belief_fulfillment (la base del gate) y crece el uncertainty_gap que
+    # penaliza el ranking: la plausibilidad exige CONSISTENCIA, no una lectura afortunada =
+    # decision few-shot. G1_M2_HIST_K=0 revierte al comportamiento one-shot.
+    HIST_K = float(os.environ.get("G1_M2_HIST_K", "0.4"))
+    # ^ 0.4 elegido por A/B offline sobre las 7 runs del 07-03: con 0.8 el FALLBACK en runs limpias
+    #   subia demasiado (093703: 15->34%); con 0.4 sube moderado (15->24%), la run mala queda
+    #   claramente separada (72%) y la escalada P9 mantiene 0 abortos falsos / aborta la mala a t=93s.
+    UNC_CAP = 0.35            # techo del margen (que una rafaga no anule toda la evidencia)
+
     @staticmethod
     def _med(v):
         s = sorted(v); return s[len(s) // 2]
+
+    @staticmethod
+    def _std(v):
+        if len(v) < 3:
+            return 0.0
+        m = sum(v) / len(v)
+        return (sum((x - m) ** 2 for x in v) / len(v)) ** 0.5
 
     def _push(self, k, v):
         h = self.hist[k]; h.append(float(v))
@@ -117,9 +138,16 @@ class Meta2Bridge:
         # (nz se dispara al girar) y el valor instantaneo inflaba el margen DST a golpes.
         rel = self._push("rel", max(0.0, min(1.0, float(reliability if reliability is not None else 1.0))))
         unc = 0.02 + 0.10 * self._push("nz", max(0.0, min(1.0, float(laser_noise or 0.0))))
+
+        def reading(key, value):
+            """Lectura con margen FEW-SHOT: incertidumbre = ruido instantaneo + k*std historica."""
+            med = self._push(key, value)
+            u = min(self.UNC_CAP, unc + self.HIST_K * self._std(self.hist[key]))
+            return {"value": med, "reliability": rel, "uncertainty": u}
+
         readings = {
-            "safety": {"value": self._push("safety", clearance), "reliability": rel, "uncertainty": unc},
-            "progression": {"value": self._push("progression", progression), "reliability": rel, "uncertainty": unc},
+            "safety": reading("safety", clearance),
+            "progression": reading("progression", progression),
         }
         # --- canal de RESISTENCIA (supervisor 2026-07-03: "meta-attention to clearance but not to
         # resistance"). mobility = velocidad real / velocidad comandada (1=se mueve como se le pide,
@@ -130,8 +158,10 @@ class Meta2Bridge:
         if mobility is None:
             last = self.hist["mobility"][-1] if self.hist["mobility"] else 1.0
             mobility = last + 0.15 * (1.0 - last)
-        readings["mobility"] = {"value": self._push("mobility", max(0.0, min(1.0, float(mobility)))),
-                                "reliability": 0.95, "uncertainty": 0.03}
+        _mmed = self._push("mobility", max(0.0, min(1.0, float(mobility))))
+        readings["mobility"] = {"value": _mmed, "reliability": 0.95,
+                                "uncertainty": min(self.UNC_CAP,
+                                                   0.03 + self.HIST_K * self._std(self.hist["mobility"]))}
         if bat is not None:
             try:
                 readings["battery_consumption"] = {"value": float(bat) / 100.0, "reliability": 0.99,

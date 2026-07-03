@@ -199,6 +199,28 @@ earlier rejection (indistinguishable from careful transit) no longer applies bec
 arbitrated, not hard-triggered. Replay: 0 false HELP on the 6 clean runs; QoE boundaries
 (dangerous 0.08-0.12) deliberately conservative, to be calibrated with on-robot data.
 
+## P10 — One-shot plausibility: calibration margin too thin (supervisor, 2026-07-03) — **CODED**
+
+Supervisor: "due to calibration margin (it was indeed very close), the robot might feel the
+analogy is highly plausible but still not good enough in reality... add historical confidence
+into the task; currently it is one-shot decision. If we add historical data in the plausibility
+we get few-shot decision." Confirmed in the pipeline: per-reading DST uncertainty was purely
+instantaneous (0.02 + 0.10*laser_noise), so the belief/plausibility interval knew nothing about
+how CONSISTENT the metric had been — an analogy oscillating across a QoE boundary could pass as
+"plausible" on one lucky read.
+
+**Fix (bridge-side, reasoner untouched): few-shot margin.** Each reading's uncertainty now adds
+the HISTORICAL dispersion of the metric itself: `u = u_inst + k*std(window ~2.5s)`, capped at
+0.35 (`G1_M2_HIST_K`, default 0.4; 0 reverts to one-shot). Effect through Renxi's own formula:
+inconsistent metric -> wider belief/plausibility interval -> belief_fulfillment (the gate basis)
+drops and uncertainty_gap penalises the ranking -> plausibility requires CONSISTENCY across
+recent shots, not a single favourable reading. k=0.4 chosen by offline A/B over the 7 runs of
+07-03: clean-run FALLBACK rises moderately (e.g. 15->24%), the 584 s failure run stays clearly
+separated (72%), and with the P9 escalation on top: 0 false aborts on the 6 clean runs, the bad
+run still aborts at t=93 s (the progress condition protects slow-but-advancing runs).
+Note the decision layer already had few-shot elements (switch/action persistence, median
+smoothing); this closes the gap at the DST-margin level where Renxi pointed.
+
 ---
 
 ## Simulation harness (how fixes get accepted now)

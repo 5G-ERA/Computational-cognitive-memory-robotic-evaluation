@@ -428,6 +428,17 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   `G1_NOVIS=1`), mapa/waypoints/puerta del escenario sim (`G1_REFMAP`, `G1_DOOR_X/Y/AXIS`).
   Preguntar: ¿motor (Gazebo/Isaac/propio)? ¿interfaz (ROS2/sockets/misma API WebRTC)?
 
+### 8.17 P10 margen FEW-SHOT (Renxi, 07-03): confianza histórica en la plausibilidad
+
+- Renxi: la analogía puede salir "muy plausible" con margen de calibración fino y aun así no
+  valer en la realidad — la decisión era ONE-SHOT (incertidumbre DST solo instantánea). Fix en
+  el bridge (su reasoner intacto): la incertidumbre de cada lectura suma la desviación típica
+  HISTÓRICA de la métrica (`u = u_inst + k·σ_ventana`, tope 0.35, `G1_M2_HIST_K=0.4`, 0=one-shot).
+  Una métrica que oscila sobre una frontera QoE ensancha su intervalo belief/plausibility →
+  cae la belief_fulfillment (base del gate) y crece el uncertainty_gap → la plausibilidad exige
+  consistencia entre varios shots. A/B offline (7 runs): limpias +9pp de FALLBACK (moderado),
+  la run mala separada (72%), y con la escalada P9: 0 abortos falsos, la mala aborta a t=93 s.
+
 ### 8.4 Próximos pasos (en orden)
 
 1. **Prueba goto B** en el Ubuntu (percepción ON; el gate ya lo exige). Mirar en el log, en este orden:
