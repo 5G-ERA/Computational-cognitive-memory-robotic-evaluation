@@ -431,9 +431,14 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   falta relanzar el contenedor para el adaptador. Volcados en `sim/container_dump/` (00/01 ok;
   02 salió vacío por profundidad del find). PENDIENTE: dump 03/04 (workspace + bash_history =
   cómo se lanza la sim), topics/nodos CON la sim corriendo, y `docker cp` del workspace a
-  `sim/ws_src`. PLAN: `g1_sim_adapter.py` = FakeCDP con la misma interfaz que el puente USB
-  (pose / nube 'location' plana / cmd {lx,ly,rx,ry}→/cmd_vel) vía foxglove websocket :8765 →
-  g1_goto+META2+engagement corren SIN CAMBIOS contra la sim, etiquetados `G1_ENV=sim`.
+  `sim/ws_src`. **ADAPTADOR IMPLEMENTADO** (`g1_sim_adapter.py`, tests offline OK): SimCDP que
+  resuelve los snippets JS del stack contra ROS2 via rosbridge:8765 (instalado en el
+  contenedor) — /odom→pose, /scan 360°→nube location, __cmd→/cmd_vel con la física calibrada
+  del real (deadzone 0.3, signos de strafe/giro medidos). Escenario sim aislado en sim/
+  (waypoints_sim, ref_map_room generado del .world, nav_map_sim) sin tocar los ficheros del
+  lab; sim.launch.py con `gui:=false` para headless. Lanzamiento completo en sim/README.md.
+  PENDIENTE: primera run `python g1_sim_adapter.py gotoviz B` (A→B esquivando el pilar) y
+  luego añadir pared+vano de 0.8 m al room.world para replicar la puerta del lab.
 
 ### 8.17 P10 margen FEW-SHOT (Renxi, 07-03): confianza histórica en la plausibilidad
 

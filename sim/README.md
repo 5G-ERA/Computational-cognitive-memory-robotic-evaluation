@@ -31,15 +31,38 @@ docker exec 48e7c50b26d6 bash -lc 'source /opt/ros/humble/setup.bash; timeout 5 
 # docker cp 48e7c50b26d6:/home/ubuntu/ros2_ws/src sim/ws_src
 ```
 
-## Plan de integración (mismo código que el robot real)
+## Integración (IMPLEMENTADA): `g1_sim_adapter.py` — mismo código que el robot real
 
-`g1_sim_adapter.py` (pendiente, tras ver topics): un **FakeCDP** que implementa la interfaz del
-puente USB real — pose, nube `location` en formato plano `[x,y,z,...]`, comando
-`{lx,ly,rx,ry}` → `/cmd_vel` — hablando con el contenedor por el websocket de foxglove (:8765).
-Así `g1_goto.py` + META2 + engagement corren **sin cambios** contra la simulación.
+El adaptador suplanta el objeto CDP del WebView con un **SimCDP** que resuelve los mismos
+snippets JS contra ROS2 vía **rosbridge** (JSON/websocket, puerto 8765):
+`window.__cmd{lx,ly,rx,ry}`→`/cmd_vel` (misma física calibrada: deadzone 0.3, lx>0=DERECHA→vy<0,
+rx→wz≈−1.55·rx, ly 0.4→0.30 m/s) · `/odom`→pose · `/scan` 360°→nube `location` plana en frame
+mapa. Escenario sim aislado: `sim/waypoints_sim.json`, `sim/ref_map_room.json` (generado del
+room.world: 4 paredes + pilar), `sim/nav_map_sim.json` — **no toca los ficheros del lab**.
+Defaults de sim: `G1_ENV=sim`, `G1_SIM_ID=room_v1`, `G1_NOVIS=1` (sin cámara), engagement de
+puerta OFF (room.world no tiene puerta), reloc-guard OFF (pose perfecta).
 
-Cada run de sim se lanza con `G1_ENV=sim G1_SIM_ID=<escenario>` → queda etiquetada en dataset,
-goto.log y `runs_summary.csv` (columnas `env`/`sim_id`) y no se mezcla jamás con las runs de
-robot real en el análisis. Además harán falta: mapa/waypoints del escenario sim (`G1_REFMAP`,
-`waypoints.json` propio) y la puerta del mundo simulado (`G1_DOOR_X/Y/AXIS`), o un escenario
-que replique la geometría del lab.
+### Lanzar una run de simulación
+
+```bash
+# Contenedor, terminal 1 (docker exec -it 48e7c50b26d6 bash):
+source /opt/ros/humble/setup.bash && source <ws>/install/setup.bash
+ros2 launch g1_sim sim.launch.py gui:=false
+
+# Contenedor, terminal 2:
+source /opt/ros/humble/setup.bash
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=8765
+
+# Mac, carpeta G1 ROBOT (venv con websocket-client + matplotlib):
+python g1_sim_adapter.py gotoviz B                  # A->B esquivando el pilar
+G1_META2=1 python g1_sim_adapter.py gotoviz B       # con gobernanza en shadow
+G1_META2=2 python g1_sim_adapter.py gotoviz B       # gobernanza activa
+```
+
+Las runs quedan en `dataset/` etiquetadas `env=sim / sim_id=room_v1` (dataset, goto.log y
+columnas `env`/`sim_id` del CSV) — jamás se mezclan con las runs de robot real. Instalación
+única en el contenedor: `apt update && apt install -y ros-humble-rosbridge-suite`.
+
+Siguiente iteración del escenario: añadir al `room.world` una pared divisoria con un vano de
+0.8 m replicando la puerta del lab → activar engagement con `G1_DOOR_ENGAGE=1 G1_DOOR_X/Y/AXIS`
+del mundo sim, y A/B de la matriz de condiciones también en simulación.

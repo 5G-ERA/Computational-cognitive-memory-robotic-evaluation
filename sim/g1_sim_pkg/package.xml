@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>g1_sim</name>
+  <version>0.0.1</version>
+  <description>Minimal G1 stand-in sim for SLAM/Nav2 (Gazebo Classic), headless-capable</description>
+  <maintainer email="adrian@example.com">adrian</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>
