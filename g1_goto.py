@@ -29,6 +29,12 @@ try:
 except Exception:
     Meta2Bridge = None
 META2_MODE = os.environ.get("G1_META2", "0") # 0=off | 1=SHADOW (decide+loguea, no toca control) | 2=ACTIVO (techo de velocidad por analogia)
+# --- ENTORNO de la prueba (pedido del tutor 2026-07-03, campaña de simulacion): separa las runs de
+# SIMULACION de las de robot REAL en dataset/log/CSV para que jamas se mezclen en el analisis.
+#   G1_ENV=real (defecto) | sim      ·  G1_SIM_ID=<etiqueta libre del contenedor/escenario> (opcional)
+RUN_ENV = os.environ.get("G1_ENV", "real").strip().lower() or "real"
+if RUN_ENV not in ("real", "sim"):
+    print(f"  AVISO: G1_ENV='{RUN_ENV}' no es 'real' ni 'sim'; se registra tal cual.")
 # --- ESCALADA DE EXPERIENCIA (supervisor, 2026-07-03, run 100927: 584s en bucle en la puerta con
 # FALLBACK 68% + HELP 14% y nadie abortaba): "the experience should inform the robot that all
 # actions are not good and abort". Si la gobernanza sostiene que NINGUNA analogia sirve Y no hay
@@ -178,6 +184,8 @@ class RunRecorder:
         self.mode = mode
         self.fname = os.path.join(DATASET_DIR, time.strftime("%Y%m%d_%H%M%S") + f"_{mode}_{label}.json")
         self.rec = {"schema": "g1_goto_run/v1", "mode": mode, "label": label,
+                    "env": RUN_ENV,                      # 'real' | 'sim' (G1_ENV): separa robot fisico de simulacion
+                    "sim_id": os.environ.get("G1_SIM_ID", "") or None,   # etiqueta libre del contenedor/escenario sim
                     "goal": {"x": goal[0], "y": goal[1]}, "pcd": pcd, "OCELL": g.OCELL,
                     "hband": [HBAND_LO, HBAND_HI], "started": time.strftime("%Y-%m-%d %H:%M:%S"),
                     "samples": [], "events": [], "laser_snapshots": [], "telemetry": [], "summary": {}}
@@ -1150,7 +1158,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     contacto por IMU/odom y desatasco (reusados del frontier explorer). Para al llegar. Ctrl+C aborta.
     Si se pasan vshare/lock/stop_event, publica el estado para la ventana en vivo (modo viz)."""
     print(f"\n>>> GOTO '{label}' -> ({wx:+.2f},{wy:+.2f}). Mando en mano (L2+B). Ctrl+C aborta.")
-    lg.write(f"\n=== RUN ours '{label}' -> ({wx:+.2f},{wy:+.2f})  {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n"); lg.flush()
+    if RUN_ENV != "real":
+        print(f"    ENTORNO: {RUN_ENV.upper()}" + (f" (id: {os.environ.get('G1_SIM_ID')})" if os.environ.get("G1_SIM_ID") else "")
+              + "  — esta run se registra como SIMULACION, no cuenta como run de robot")
+    lg.write(f"\n=== RUN ours '{label}' -> ({wx:+.2f},{wy:+.2f})  {time.strftime('%Y-%m-%d %H:%M:%S')} "
+             f"env={RUN_ENV}{('/' + os.environ.get('G1_SIM_ID')) if os.environ.get('G1_SIM_ID') else ''} ===\n"); lg.flush()
     cdp.eval(g.LOWSTATE_JS)                       # contacto rapido por par/accel
     # espera pose + primera nube
     print("  Esperando pose localizada y primera nube...", end="", flush=True)

@@ -38,6 +38,8 @@ def main():
         rows.append({
             "file": os.path.basename(f),
             "governance": d.get("governance", "?"),        # DCE / DCE-<ablation> / FSM / default
+            "env": d.get("env", "real"),                   # real | sim (G1_ENV; runs viejas = real)
+            "sim_id": d.get("sim_id", "") or "",           # etiqueta del contenedor/escenario sim
             "mode": d.get("mode", ""),                     # ours / native
             "condition": "",                               # <-- FILL: door / payload_no_lid / human / low_batt
             "result": d.get("result", ""),
@@ -80,7 +82,7 @@ def main():
             "tick_ms_p95": sm.get("tick_ms_p95", ""),
             "notes": "",                                   # <-- FILL: appropriate switch? anything odd?
         })
-    cols = ["file", "governance", "mode", "condition", "result", "time_s", "path_m", "efficiency",
+    cols = ["file", "governance", "env", "sim_id", "mode", "condition", "result", "time_s", "path_m", "efficiency",
             "collisions", "c0min", "spills_human", "perc_queries", "meta_switches", "fsm_interventions",
             "meta2_mode", "meta2_capped_ticks",
             "meta2_on", "meta2_switches", "meta2_helps", "meta2_fallbacks", "meta2_fallback_pct",
