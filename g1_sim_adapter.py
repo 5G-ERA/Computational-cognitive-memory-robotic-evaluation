@@ -42,10 +42,17 @@ SIM_DIR = os.path.join(HERE, "sim")
 SIM_URL = os.environ.get("G1_SIM_URL", "ws://localhost:8765")
 
 # --- mapeo stick -> velocidad (MISMA fisica calibrada en el robot real) ---
-DEADZONE = 0.30          # por debajo el G1 real no se mueve; la sim lo replica
-K_FWD = 0.75             # ly=0.40 -> 0.30 m/s (medido en real)
-K_LAT = 0.75             # misma escala lateral; lx>0 = DERECHA fisica -> vy NEGATIVA en ROS
-K_YAW = 1.55             # rad/s por unidad de rx; rx=+0.45 -> -40 deg/s (TURN-CAL real) -> signo -
+# MAPEO DE STICKS — CALIBRADO CONTRA EL ROBOT REAL (2 puntos medidos, run 20260703_093703):
+#   ly=0.40 -> 0.30 m/s   y   ly=0.28 -> 0.18 m/s (mediana de 75 muestras ENG-F/DWA lentas)
+# El modelo correcto es RESTAR la deadzone, no cortar: v = K * (|s| - DZ), s>DZ.
+# El mapeo antiguo (corte duro en 0.30) ANULABA el 0.28 del engagement de puerta: el robot
+# se congelaba en ENG-F, el detector de atasco marcaba "colisiones" fantasma que sembraban
+# celdas de obstaculo en el pasillo (la "columna que no existe") y la run acababa abortada.
+# La topologia del lab.world era correcta: cero cajas a <0.45 m de las 11 "colisiones".
+DEADZONE = float(os.environ.get("G1_SIM_DZ", "0.10"))    # por debajo, cero de verdad
+K_FWD = float(os.environ.get("G1_SIM_KFWD", "1.0"))      # 1.0*(0.40-0.10)=0.30 ; 1.0*(0.28-0.10)=0.18
+K_LAT = float(os.environ.get("G1_SIM_KLAT", "1.0"))      # misma escala; lx>0 = DERECHA -> vy NEGATIVA
+K_YAW = float(os.environ.get("G1_SIM_KYAW", "2.0"))      # 2.0*(0.45-0.10)=0.70 rad/s = 40 deg/s ; signo -
 
 ROOM_WALLS = [           # room.world: (cx, cy, sx, sy) de cada caja (proyeccion 2D)
     (0.0, 3.0, 8.0, 0.1), (0.0, -3.0, 8.0, 0.1),
@@ -171,7 +178,8 @@ class SimCDP:
         m = _CMD_RE.search(e.replace(" ", ""))
         if m:                                             # driver: window.__cmd={lx,ly,rx,ry}
             lx, ly, rx, _ = (float(v) for v in m.groups())
-            dz = lambda v: 0.0 if abs(v) < DEADZONE else v
+            # deadzone RESTADA (como el robot real), no corte duro: v = K*(|s|-DZ)
+            dz = lambda v: 0.0 if abs(v) <= DEADZONE else math.copysign(abs(v) - DEADZONE, v)
             lx, ly, rx = dz(lx), dz(ly), dz(rx)
             self.b.publish_cmd(K_FWD * ly, -K_LAT * lx, -K_YAW * rx)
             self.b.last_cmd_t = time.time()
@@ -220,10 +228,14 @@ def _sim_ref_points(step=0.05):
 
 
 def main():
+    # --- escenario: 'lab' (mundo generado del MAPA REAL; mismos waypoints/puerta que el robot)
+    #     o 'room' (sala sintetica 8x6 con pilar). G1_SIM_SCENARIO=room para la sintetica.
+    scenario = os.environ.get("G1_SIM_SCENARIO", "lab").strip().lower()
     os.environ.setdefault("G1_ENV", "sim")
-    os.environ.setdefault("G1_SIM_ID", "room_v1")
+    os.environ.setdefault("G1_SIM_ID", "lab_v1" if scenario == "lab" else "room_v1")
     os.environ.setdefault("G1_NOVIS", "1")            # sin camara/percepcion en la sim (por ahora)
-    os.environ.setdefault("G1_DOOR_ENGAGE", "0")      # room.world no tiene puerta
+    if scenario != "lab":
+        os.environ.setdefault("G1_DOOR_ENGAGE", "0")  # room.world no tiene puerta
     os.environ.setdefault("G1_RELOCGUARD", "0")       # en sim la pose es perfecta: guardia innecesaria
     os.environ.setdefault("G1_NOGATE", "1")           # gate de "reloc dudosa" (arrancar lejos de un
                                                       # waypoint): sin sentido en sim, el spawn es (0,0)
@@ -243,32 +255,39 @@ def main():
                 pass
     try:
         import matplotlib
-        print(f"  backend grafico: {matplotlib.get_backend()}"
-              + ("  (SIN VENTANA: backend no interactivo!)" if "agg" in matplotlib.get_backend().lower() else ""))
+        _bk = matplotlib.get_backend()
+        print(f"  backend grafico: {_bk}"
+              + ("  (SIN VENTANA: backend no interactivo!)" if _bk.lower() in ("agg", "pdf", "svg", "ps", "template") else ""))
     except Exception as e:
         print("  matplotlib no importable:", repr(e))
 
     os.makedirs(SIM_DIR, exist_ok=True)
-    wp_file = os.path.join(SIM_DIR, "waypoints_sim.json")
-    if not os.path.exists(wp_file):
-        json.dump(SIM_WAYPOINTS, open(wp_file, "w"), indent=2)
-        print(f"  waypoints de sim creados: {wp_file}")
-    ref_file = os.path.join(SIM_DIR, "ref_map_room.json")
-    if not os.path.exists(ref_file):
-        pts = _sim_ref_points()
-        json.dump({"frame": "sim room.world", "src": "g1_sim_adapter", "npts": len(pts),
-                   "points": [list(p) for p in pts]}, open(ref_file, "w"))
-        print(f"  refmap de sim creado: {ref_file} ({len(pts)} puntos)")
+    if scenario != "lab":
+        wp_file = os.path.join(SIM_DIR, "waypoints_sim.json")
+        if not os.path.exists(wp_file):
+            json.dump(SIM_WAYPOINTS, open(wp_file, "w"), indent=2)
+            print(f"  waypoints de sim creados: {wp_file}")
+        ref_file = os.path.join(SIM_DIR, "ref_map_room.json")
+        if not os.path.exists(ref_file):
+            pts = _sim_ref_points()
+            json.dump({"frame": "sim room.world", "src": "g1_sim_adapter", "npts": len(pts),
+                       "points": [list(p) for p in pts]}, open(ref_file, "w"))
+            print(f"  refmap de sim creado: {ref_file} ({len(pts)} puntos)")
 
     print(f">>> SIM ADAPTER: conectando a rosbridge {SIM_URL} ...")
     bridge = RosBridge(SIM_URL)
     cdp = SimCDP(bridge)
-    for _ in range(20):
+    print("  esperando /odom (hasta 30s; el mundo del lab tarda en cargar)...", end="", flush=True)
+    for i in range(120):
         if bridge.odom is not None:
+            print(" ok")
             break
+        if i % 8 == 7:
+            print(".", end="", flush=True)
         time.sleep(0.25)
     if bridge.odom is None:
-        print("  SIN /odom: ¿esta la sim lanzada? (ros2 launch g1_sim sim.launch.py gui:=false)")
+        print("\n  SIN /odom: la sim no esta publicando. Comprueba en la T1 del contenedor que salio")
+        print("  'Successfully spawned entity [g1]' (con GUI la carga puede matar el spawn: usa headless).")
         sys.exit(1)
     po = cdp._pose7()
     print(f"  /odom OK pose=({po[0]:+.2f},{po[1]:+.2f}) | /scan: "
@@ -278,11 +297,26 @@ def main():
     import g1_goto
     g.get_cdp = lambda: cdp                                    # todo el stack usa el SimCDP
     g1_goto.get_live_cdp = lambda *a, **k: cdp
-    g1_goto.WP_FILE = wp_file                                  # escenario SIM (no toca lo del lab)
-    g1_goto.MAP_FILE = os.path.join(SIM_DIR, "nav_map_sim.json")
-    _pts = [(p[0], p[1]) for p in json.load(open(ref_file))["points"]]
-    g1_goto.ref_points = lambda: list(_pts)
-    g1_goto.load_static_map = lambda: set()                    # sin muebles conocidos en la sim v1
+    if scenario == "lab":
+        # escenario LAB: ficheros REALES (waypoints.json, refmap summit, nav_map) y engagement ON —
+        # el mundo lab.world esta en el MISMO frame G1, asi que no hay nada que parchear salvo
+        # proteger el nav_map.json real de escrituras (waypoint/sweep en sim escriben en copia).
+        nm_lab = os.path.join(SIM_DIR, "nav_map_lab.json")
+        if not os.path.exists(nm_lab):
+            if os.environ.get("G1_SIM_FURN") == "1" and os.path.exists(g1_goto.MAP_FILE):
+                import shutil                                  # mundo CON muebles: sembrar los reales
+                shutil.copy(g1_goto.MAP_FILE, nm_lab)
+            else:                                              # lab.world v1 = SOLO PAREDES: mapa de
+                json.dump({"cells": [], "OCELL": 0.2,          # muebles vacio (coherente con el mundo)
+                           "frame": "map", "hband": [-0.5, 0.6]}, open(nm_lab, "w"))
+        g1_goto.MAP_FILE = nm_lab
+        print("  escenario LAB: mapa/waypoints/puerta REALES (lab.world solo-paredes, frame G1)")
+    else:
+        g1_goto.WP_FILE = wp_file                              # escenario sintetico (no toca lo del lab)
+        g1_goto.MAP_FILE = os.path.join(SIM_DIR, "nav_map_sim.json")
+        _pts = [(p[0], p[1]) for p in json.load(open(ref_file))["points"]]
+        g1_goto.ref_points = lambda: list(_pts)
+        g1_goto.load_static_map = lambda: set()                # sin muebles conocidos en la room v1
 
     sys.argv = ["g1_goto.py"] + sys.argv[1:]
     g1_goto.main()
