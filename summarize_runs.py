@@ -16,6 +16,12 @@ def mean(s, k):
     return round(sum(v) / len(v), 3) if v else ""
 
 
+def _pct(s, pred):
+    """% de samples CON dato meta2 que cumplen pred (ticks sin meta2 no cuentan)."""
+    v = [r for r in s if r.get("meta2_act")]
+    return round(100.0 * sum(1 for r in v if pred(r)) / len(v), 1) if v else ""
+
+
 def main():
     rows = []
     for f in sorted(glob.glob("dataset/*.json")):
@@ -44,6 +50,16 @@ def main():
             "perc_queries": sm.get("perc_queries", ""),
             "meta_switches": sum(1 for e in ev if e.get("kind") == "meta_switch"),
             "fsm_interventions": sum(1 for e in ev if e.get("kind") == "fsm_intervention"),
+            # --- META2 (Meta-Reasoner 2.0, G1_META2 shadow/activo): agregados por run ---
+            "meta2_on": ("1" if any(r.get("meta2_act") for r in s) else ""),
+            "meta2_switches": sum(1 for e in ev if e.get("kind") == "meta2_switch"),
+            "meta2_helps": sum(1 for e in ev if e.get("kind") == "meta2_help"),
+            "meta2_fallbacks": sum(1 for e in ev if e.get("kind") == "meta2_fallback"),
+            "meta2_fallback_pct": _pct(s, lambda r: str(r.get("meta2_act", "")).startswith("FALLBACK")),
+            "meta2_help_pct": _pct(s, lambda r: str(r.get("meta2_act", "")).startswith("HELP")),
+            "meta2_cautious_pct": _pct(s, lambda r: r.get("meta2_active") == "Cautious_Nav"),
+            "meta2_mean_tension": mean(s, "meta2_tens"),
+            "meta2_mean_fulfillment": mean(s, "meta2_ful"),
             "mean_clearance": mean(s, "clearance"),
             "mean_progression": mean(s, "progression"),
             "mean_reliability": mean(s, "reliability"),
@@ -64,6 +80,8 @@ def main():
         })
     cols = ["file", "governance", "mode", "condition", "result", "time_s", "path_m", "efficiency",
             "collisions", "c0min", "spills_human", "perc_queries", "meta_switches", "fsm_interventions",
+            "meta2_on", "meta2_switches", "meta2_helps", "meta2_fallbacks", "meta2_fallback_pct",
+            "meta2_help_pct", "meta2_cautious_pct", "meta2_mean_tension", "meta2_mean_fulfillment",
             "mean_clearance", "mean_progression", "mean_reliability",
             "laser_noise_mean", "laser_noise_max", "filt_rej_mean", "scan_hz", "stale_pct", "gated_pct",
             "safer_inserts", "map_adds", "map_dels", "obs_max", "reloc_jumps", "tick_ms_p95", "notes"]
