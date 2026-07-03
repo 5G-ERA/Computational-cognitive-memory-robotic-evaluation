@@ -95,6 +95,13 @@ Paper del tutor sobre **DCA/DCE** (Decentralised Capability Abstraction/Ecosyste
   P8b/8.12) + **ENGAGEMENT de puerta** (`G1_DOOR_ENGAGE=1`, P2c/8.13: pre-entrada → parar →
   alinear ±8° al eje 135° → cruzar recto). Adrian: "ha funcionado muy bien" — puerta cruzada
   limpia. ES LA CONFIGURACIÓN ACTUAL (defaults ON). No tocar sin A/B.
+- **META2 (07-03)**: Meta-Reasoner 2.0 integrado (`G1_META2=1` shadow / `=2` activo, 8.14) y
+  VALIDADO en shadow (decisiones coherentes, FALLBACK precede a las colisiones). Tras la run
+  100927 (584 s de bucle en puerta): **escalada de experiencia** `G1_M2_ABORT=1` (HELP≥8 s o
+  ventana mala sin progreso → ABORT; replay: t=94 s vs 584 s, 0/6 falsos) y **canal de
+  resistencia `mobility`** con veto duro (8.15). Modo y entorno auto-registrados (8.16:
+  `meta2_mode`/`meta2_capped_ticks`, `G1_ENV=real|sim`+`G1_SIM_ID`). PENDIENTE: primera run
+  confirmada en `G1_META2=2` y arrancar la campaña de simulación del tutor.
 - **Bugs cerrados hoy (con mediciones)**: dedup de barrido · clamp 0.4→0.7 (NEAR_BLIND se comía los
   avisos) · signo del strafe · anti-jaula (clamp solo central+alto; visión por score, sin bypass).
 - **PENDIENTE de validar en robot (en orden, UNA por run)**: ① B→A con fix anti-jaula
@@ -401,6 +408,25 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   (primera B→A sin colisión). El engagement B→A funciona pero el marco derecho sigue costando
   presión: el canal mobility es la respuesta de gobernanza; el micro-ajuste `G1_DOOR_AXIS≈-48`
   para BA queda como A/B de campo.
+
+### 8.16 Registro de MODO y de ENTORNO (sim vs real) — mañana 07-03, tras la duda de las 10:07
+
+- **Modo META2 a prueba de dudas** (las runs 100739/100927 no se pudieron verificar como
+  activo/shadow): ahora queda en 4 capas independientes — ① cabecera del dataset
+  (`meta2_mode`, `meta2_enabled`), ② summary (`meta2_mode` + `meta2_capped_ticks` = ticks
+  realmente capados; >0 ⟺ activo ACTUANDO), ③ evento de flanco `meta2_cap_on` + línea
+  `META2-CAP ON` en goto.log cada vez que un techo empieza a recortar, ④ columnas
+  `meta2_mode`/`meta2_capped_ticks` en runs_summary.csv. Regla de lectura: mode=2 con
+  capped_ticks=0 = activo pero nunca hizo falta capar; mode vacío = run pre-META2.
+- **Campaña de SIMULACIÓN (pedido del tutor)**: nuevo `G1_ENV=real|sim` (defecto real) +
+  `G1_SIM_ID=<etiqueta del contenedor/escenario>`. Se marca en el RunRecorder → lo heredan
+  TODOS los tipos de run. Va en cabecera del dataset (`env`, `sim_id`), en la cabecera de run
+  del goto.log (`env=sim/...`), aviso en consola ("no cuenta como run de robot") y columnas
+  `env`/`sim_id` en el CSV (filtrar env=real para la tabla del paper). Runs viejas = real.
+- **Estado de la sim**: existe un contenedor con lo básico y un mapa básico (Adrian). PENDIENTE
+  de definir la integración: fuente de pose/nube en lugar del WebView/CDP, percepción (fake o
+  `G1_NOVIS=1`), mapa/waypoints/puerta del escenario sim (`G1_REFMAP`, `G1_DOOR_X/Y/AXIS`).
+  Preguntar: ¿motor (Gazebo/Isaac/propio)? ¿interfaz (ROS2/sockets/misma API WebRTC)?
 
 ### 8.4 Próximos pasos (en orden)
 
