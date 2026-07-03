@@ -1,0 +1,526 @@
+<robot name="g1_23dof">
+  <material name="dark">
+    <color rgba="0.2 0.2 0.2 1" />
+  </material>
+  <material name="white">
+    <color rgba="0.7 0.7 0.7 1" />
+  </material>
+
+  <mujoco>
+    <compiler meshdir="meshes" discardvisual="false" />
+  </mujoco>
+
+  
+  
+
+  <link name="pelvis">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/pelvis.STL" />
+      </geometry>
+      <material name="dark" />
+    </visual>
+  </link>
+  <link name="pelvis_contour_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/pelvis_contour_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="pelvis_contour_joint" type="fixed">
+    <parent link="pelvis" />
+    <child link="pelvis_contour_link" />
+  </joint>
+
+  
+  <link name="left_hip_pitch_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_hip_pitch_link.STL" />
+      </geometry>
+      <material name="dark" />
+    </visual>
+    </link>
+  <joint name="left_hip_pitch_joint" type="fixed">
+    <origin xyz="0 0.064452 -0.1027" rpy="0 0 0" />
+    <parent link="pelvis" />
+    <child link="left_hip_pitch_link" />
+    </joint>
+  <link name="left_hip_roll_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_hip_roll_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="left_hip_roll_joint" type="fixed">
+    <origin xyz="0 0.052 -0.030465" rpy="0 -0.1749 0" />
+    <parent link="left_hip_pitch_link" />
+    <child link="left_hip_roll_link" />
+    </joint>
+  <link name="left_hip_yaw_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_hip_yaw_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="left_hip_yaw_joint" type="fixed">
+    <origin xyz="0.025001 0 -0.12412" rpy="0 0 0" />
+    <parent link="left_hip_roll_link" />
+    <child link="left_hip_yaw_link" />
+    </joint>
+  <link name="left_knee_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_knee_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="left_knee_joint" type="fixed">
+    <origin xyz="-0.078273 0.0021489 -0.17734" rpy="0 0.1749 0" />
+    <parent link="left_hip_yaw_link" />
+    <child link="left_knee_link" />
+    </joint>
+  <link name="left_ankle_pitch_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_ankle_pitch_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="left_ankle_pitch_joint" type="fixed">
+    <origin xyz="0 -9.4445E-05 -0.30001" rpy="0 0 0" />
+    <parent link="left_knee_link" />
+    <child link="left_ankle_pitch_link" />
+    </joint>
+  <link name="left_ankle_roll_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_ankle_roll_link.STL" />
+      </geometry>
+      <material name="dark" />
+    </visual>
+    </link>
+  <joint name="left_ankle_roll_joint" type="fixed">
+    <origin xyz="0 0 -0.017558" rpy="0 0 0" />
+    <parent link="left_ankle_pitch_link" />
+    <child link="left_ankle_roll_link" />
+    </joint>
+  <link name="right_hip_pitch_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_hip_pitch_link.STL" />
+      </geometry>
+      <material name="dark" />
+    </visual>
+    </link>
+  <joint name="right_hip_pitch_joint" type="fixed">
+    <origin xyz="0 -0.064452 -0.1027" rpy="0 0 0" />
+    <parent link="pelvis" />
+    <child link="right_hip_pitch_link" />
+    </joint>
+  <link name="right_hip_roll_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_hip_roll_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="right_hip_roll_joint" type="fixed">
+    <origin xyz="0 -0.052 -0.030465" rpy="0 -0.1749 0" />
+    <parent link="right_hip_pitch_link" />
+    <child link="right_hip_roll_link" />
+    </joint>
+  <link name="right_hip_yaw_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_hip_yaw_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="right_hip_yaw_joint" type="fixed">
+    <origin xyz="0.025001 0 -0.12412" rpy="0 0 0" />
+    <parent link="right_hip_roll_link" />
+    <child link="right_hip_yaw_link" />
+    </joint>
+  <link name="right_knee_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_knee_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="right_knee_joint" type="fixed">
+    <origin xyz="-0.078273 -0.0021489 -0.17734" rpy="0 0.1749 0" />
+    <parent link="right_hip_yaw_link" />
+    <child link="right_knee_link" />
+    </joint>
+  <link name="right_ankle_pitch_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_ankle_pitch_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="right_ankle_pitch_joint" type="fixed">
+    <origin xyz="0 9.4445E-05 -0.30001" rpy="0 0 0" />
+    <parent link="right_knee_link" />
+    <child link="right_ankle_pitch_link" />
+    </joint>
+  <link name="right_ankle_roll_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_ankle_roll_link.STL" />
+      </geometry>
+      <material name="dark" />
+    </visual>
+    </link>
+  <joint name="right_ankle_roll_joint" type="fixed">
+    <origin xyz="0 0 -0.017558" rpy="0 0 0" />
+    <parent link="right_ankle_pitch_link" />
+    <child link="right_ankle_roll_link" />
+    </joint>
+
+  
+  <link name="waist_yaw_fixed_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/waist_yaw_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+  </link>
+  <joint name="waist_yaw_fixed_joint" type="fixed">
+    <origin xyz="0.0039635 0 -0.054" rpy="0 0 0" />
+    <parent link="torso_link" />
+    <child link="waist_yaw_fixed_link" />
+  </joint>
+  <joint name="waist_yaw_joint" type="fixed">
+    <origin xyz="-0.0039635 0 0.054" rpy="0 0 0" />
+    <parent link="pelvis" />
+    <child link="torso_link" />
+    </joint>
+  <link name="torso_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/torso_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+
+  
+  <joint name="logo_joint" type="fixed">
+    <origin xyz="0.0039635 0 -0.054" rpy="0 0 0" />
+    <parent link="torso_link" />
+    <child link="logo_link" />
+  </joint>
+  <link name="logo_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/logo_link.STL" />
+      </geometry>
+      <material name="dark" />
+    </visual>
+    </link>
+
+  
+  <link name="head_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/head_link.STL" />
+      </geometry>
+      <material name="dark" />
+    </visual>
+    </link>
+  <joint name="head_joint" type="fixed">
+    <origin xyz="0.0039635 0 -0.054" rpy="0 0 0" />
+    <parent link="torso_link" />
+    <child link="head_link" />
+  </joint>
+
+  
+  <link name="waist_support_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/waist_support_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="waist_support_joint" type="fixed">
+    <origin xyz="0.0039635 0 -0.054" rpy="0 0 0" />
+    <parent link="torso_link" />
+    <child link="waist_support_link" />
+  </joint>
+
+  
+  <link name="imu_in_torso" />
+  <joint name="imu_in_torso_joint" type="fixed">
+    <origin xyz="-0.03959 -0.00224 0.13792" rpy="0 0 0" />
+    <parent link="torso_link" />
+    <child link="imu_in_torso" />
+  </joint>
+
+  <link name="imu_in_pelvis" />
+  <joint name="imu_in_pelvis_joint" type="fixed">
+    <origin xyz="0.04525 0 -0.08339" rpy="0 0 0" />
+    <parent link="pelvis" />
+    <child link="imu_in_pelvis" />
+  </joint>
+
+  
+  <link name="d435_link" />
+  <joint name="d435_joint" type="fixed">
+    <origin xyz="0.0576235 0.01753 0.41987" rpy="0 0.8307767239493009 0" />
+    <parent link="torso_link" />
+    <child link="d435_link" />
+  </joint>
+
+  
+  <link name="mid360_link" />
+  <joint name="mid360_joint" type="fixed">
+    <origin xyz="0.0002835 0.00003 0.40618" rpy="0 0.04014257279586953 0" />
+    <parent link="torso_link" />
+    <child link="mid360_link" />
+  </joint>
+
+  
+  <link name="left_shoulder_pitch_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_shoulder_pitch_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="left_shoulder_pitch_joint" type="fixed">
+    <origin xyz="0.0039563 0.10022 0.23778" rpy="0.27931 5.4949E-05 -0.00019159" />
+    <parent link="torso_link" />
+    <child link="left_shoulder_pitch_link" />
+    </joint>
+  <link name="left_shoulder_roll_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_shoulder_roll_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="left_shoulder_roll_joint" type="fixed">
+    <origin xyz="0 0.038 -0.013831" rpy="-0.27925 0 0" />
+    <parent link="left_shoulder_pitch_link" />
+    <child link="left_shoulder_roll_link" />
+    </joint>
+  <link name="left_shoulder_yaw_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_shoulder_yaw_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="left_shoulder_yaw_joint" type="fixed">
+    <origin xyz="0 0.00624 -0.1032" rpy="0 0 0" />
+    <parent link="left_shoulder_roll_link" />
+    <child link="left_shoulder_yaw_link" />
+    </joint>
+  <link name="left_elbow_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_elbow_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="left_elbow_joint" type="fixed">
+    <origin xyz="0.015783 0 -0.080518" rpy="0 0 0" />
+    <parent link="left_shoulder_yaw_link" />
+    <child link="left_elbow_link" />
+    </joint>
+  <joint name="left_wrist_roll_joint" type="fixed">
+    <origin xyz="0.100 0.00188791 -0.010" rpy="0 0 0" />
+    <parent link="left_elbow_link" />
+    <child link="left_wrist_roll_rubber_hand" />
+    </joint>
+  <link name="left_wrist_roll_rubber_hand">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/left_wrist_roll_rubber_hand.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <link name="right_shoulder_pitch_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_shoulder_pitch_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="right_shoulder_pitch_joint" type="fixed">
+    <origin xyz="0.0039563 -0.10021 0.23778" rpy="-0.27931 5.4949E-05 0.00019159" />
+    <parent link="torso_link" />
+    <child link="right_shoulder_pitch_link" />
+    </joint>
+  <link name="right_shoulder_roll_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_shoulder_roll_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="right_shoulder_roll_joint" type="fixed">
+    <origin xyz="0 -0.038 -0.013831" rpy="0.27925 0 0" />
+    <parent link="right_shoulder_pitch_link" />
+    <child link="right_shoulder_roll_link" />
+    </joint>
+  <link name="right_shoulder_yaw_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_shoulder_yaw_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="right_shoulder_yaw_joint" type="fixed">
+    <origin xyz="0 -0.00624 -0.1032" rpy="0 0 0" />
+    <parent link="right_shoulder_roll_link" />
+    <child link="right_shoulder_yaw_link" />
+    </joint>
+  <link name="right_elbow_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_elbow_link.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+  <joint name="right_elbow_joint" type="fixed">
+    <origin xyz="0.015783 0 -0.080518" rpy="0 0 0" />
+    <parent link="right_shoulder_yaw_link" />
+    <child link="right_elbow_link" />
+    </joint>
+  <joint name="right_wrist_roll_joint" type="fixed">
+    <origin xyz="0.100 -0.00188791 -0.010" rpy="0 0 0" />
+    <parent link="right_elbow_link" />
+    <child link="right_wrist_roll_rubber_hand" />
+    </joint>
+  <link name="right_wrist_roll_rubber_hand">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://g1_description/meshes/right_wrist_roll_rubber_hand.STL" />
+      </geometry>
+      <material name="white" />
+    </visual>
+    </link>
+<link name="base_footprint"><inertial><origin xyz="0 0 0.10" rpy="0 0 0" /><mass value="60.0" /><inertia ixx="50" iyy="50" izz="50" ixy="0" ixz="0" iyz="0" /></inertial><collision><origin xyz="0 0 0.55" /><geometry><box size="0.30 0.44 1.10" /></geometry></collision></link><!-- ANTI-VUELCO + CUERPO FISICO (2026-07-03): CG bajo, inercia enorme (los tirones del planar_move no lo rotan) y UNA caja de colision (los meshes del G1 son visual-only: sin ella el robot era un fantasma que atravesaba paredes). CAJA 2026-07-03 tarde: 0.44 de ancho x 1.10 de alto = envolvente real del G1 (hombros ~0.44, dato P2 de PROBLEMS.md). La caja anterior (0.25 ancho x 0.70 alto, solo pelvis) dejaba hombros/torso/brazos visuales SIN fisica: al rozar una pared (fisica correcta) el cuerpo visible se hundia en ella y PARECIA atravesarla. TOPE de altura 1.10: el lidar simulado esta a z~1.20 y una caja mas alta se veria a si misma en todos los rayos. --><joint name="base_joint" type="fixed"><parent link="base_footprint" /><child link="pelvis" /><origin xyz="0 0 0.793" rpy="0 0 0" /></joint><link name="lidar_link"><inertial><origin xyz="0 0 0" rpy="0 0 0" /><mass value="0.05" /><inertia ixx="0.0001" iyy="0.0001" izz="0.0001" ixy="0" ixz="0" iyz="0" /></inertial></link><joint name="lidar_joint" type="fixed"><parent link="torso_link" /><child link="lidar_link" /><origin xyz="0.0002835 0.00003 0.40618" rpy="0 0 0" /></joint>
+  <gazebo reference="base_footprint">
+    <gravity>false</gravity>
+  </gazebo>
+  <gazebo>
+    <plugin name="planar_move" filename="libgazebo_ros_planar_move.so">
+      <ros><namespace>/</namespace></ros>
+      <command_topic>cmd_vel</command_topic>
+      <odometry_topic>odom</odometry_topic>
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <odometry_rate>30.0</odometry_rate>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+    </plugin>
+  </gazebo>
+  <gazebo reference="lidar_link">
+    <sensor name="lidar" type="ray">
+      <always_on>true</always_on><update_rate>10</update_rate>
+      <ray><scan><horizontal>
+        <samples>360</samples><resolution>1</resolution>
+        <min_angle>-3.14159</min_angle><max_angle>3.14159</max_angle>
+      </horizontal></scan>
+      <range><min>0.15</min><max>12.0</max><resolution>0.01</resolution></range></ray>
+      <plugin name="lidar_ros" filename="libgazebo_ros_ray_sensor.so">
+        <ros><namespace>/</namespace><remapping>~/out:=scan</remapping></ros>
+        <output_type>sensor_msgs/LaserScan</output_type>
+        <frame_name>lidar_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- MATERIALES GAZEBO (anadidos 2026-07-03: los STL no llevan color y el URDF
+       <material> solo lo usa RViz -> el robot salia BLANCO en gzclient) -->
+  <gazebo reference="pelvis"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="pelvis_contour_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="left_hip_pitch_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="left_hip_roll_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="left_hip_yaw_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="left_knee_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="left_ankle_pitch_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="left_ankle_roll_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="right_hip_pitch_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="right_hip_roll_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="right_hip_yaw_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="right_knee_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="right_ankle_pitch_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="right_ankle_roll_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="waist_yaw_fixed_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="torso_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="logo_link"><material>Gazebo/FlatBlack</material></gazebo>
+  <gazebo reference="head_link"><material>Gazebo/FlatBlack</material></gazebo>
+  <gazebo reference="waist_support_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="d435_link"><material>Gazebo/FlatBlack</material></gazebo>
+  <gazebo reference="mid360_link"><material>Gazebo/FlatBlack</material></gazebo>
+  <gazebo reference="left_shoulder_pitch_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="left_shoulder_roll_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="left_shoulder_yaw_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="left_elbow_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="left_wrist_roll_rubber_hand"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="right_shoulder_pitch_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="right_shoulder_roll_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="right_shoulder_yaw_link"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="right_elbow_link"><material>Gazebo/Grey</material></gazebo>
+  <gazebo reference="right_wrist_roll_rubber_hand"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="lidar_link"><material>Gazebo/FlatBlack</material></gazebo>
+  <gazebo reference="base_footprint"><mu1>0.0</mu1><mu2>0.0</mu2></gazebo>
+</robot>
