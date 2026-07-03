@@ -28,6 +28,55 @@ keys and proprietary assets are **not** redistributed here.
 
 ---
 
+## CURRENT PIPELINE (July 2026) — A↔B navigation + DCE governance
+
+The project has moved from reactive exploration to a **validated A↔B door-crossing pipeline**
+used as the real-robot testbed for the DCA/DCE evaluation (see the tutor's paper *Decentralised
+MetaReasoning Through Capability Abstraction* and `docs/META2_GOVERNANCE.md`):
+
+- **Global plan on the full static map** (`G1_GLOBALMAP=static`): walls = hard cost (uninflated,
+  the real ~0.8 m door survives), known furniture from `nav_map.json` = soft cost + wall halo.
+  Deterministic plan; the local DWA keeps using the live laser. Export/inspect the map with
+  `g1_get_static_map.py` (local | webview | pcd).
+- **Door ENGAGEMENT** (`G1_DOOR_ENGAGE=1`): pre-entry point on the door axis (from the static
+  map), stop, rotate until |yaw−axis| ≤ 8°, cross straight with re-align on biped drift.
+  Works both directions (A→B and B→A).
+- **META2 governance** (`G1_META2=1` shadow / `=2` active): Meta-Reasoner 2.0 (the tutor's
+  configuration-first DCE runtime, package `meta-reasoner-2.0/`) fed each tick with the robot's
+  shared experience — safety←clearance, progression, **mobility** (resistance channel:
+  achieved/commanded speed), reliability/uncertainty with a **few-shot historical margin**.
+  Outputs KEEP/SWITCH/FALLBACK/HELP; active mode applies per-analogy speed ceilings and the
+  **experience escalation** aborts the run when sustained experience says no analogy is valid.
+- **Everything is measured**: per-tick dataset (`dataset/<run>.json`) with SEI metrics, META2
+  decisions, collisions with pre-impact camera frames; `summarize_runs.py` → `runs_summary.csv`
+  (one row per run: governance, env sim/real, times, collisions, META2 aggregates) — the raw
+  results table for the paper. `autopsy.py` renders a full HTML report per run.
+- **Reproducible experiments**: every change is env-revertible, validated by offline replay
+  against all logged runs before touching the robot (`g1_replay.py`, `sim_globalplan.py`,
+  bridge replay), and the frozen git branch **`baseline`** holds the validated navigation
+  config without governance for fair comparison.
+
+Quick start (on the Ubuntu machine driving the robot):
+
+```bash
+git pull                                   # ALWAYS first
+# T1: perception server
+G1_FLOORCOLOR=1 python perception_server.py --host 0.0.0.0 --port 8008 \
+    --fx 300 --fy 300 --cx 160 --cy 120 --cam-h 1.10 --cam-pitch -10
+# T2: navigation with governance active
+G1_META2=2 G1_PERC=127.0.0.1:8008 python g1_goto.py gotoviz B
+```
+
+Key env flags: `G1_META2` (0/1/2) · `G1_M2_ABORT` (experience escalation) · `G1_M2_HIST_K`
+(few-shot margin; 0 = one-shot ablation) · `G1_GLOBALMAP` (static/hard/ref/live) ·
+`G1_DOOR_ENGAGE` · `G1_ENV=real|sim` + `G1_SIM_ID` (simulation campaign tagging) ·
+`G1_AGGR_R`, `G1_HARDGUARD`, `G1_ESCAPE`, `G1_RELOCGUARD` (safety layers).
+
+Project memory lives in **`HANDOFF.md`** (session-by-session state) and **`PROBLEMS.md`**
+(the tutor's problem list, one fix per run, with evidence). Read those first.
+
+---
+
 ## Why it's hard (the constraints)
 
 The G1 Air is **not** the EDU/developer unit:
@@ -147,10 +196,13 @@ chair to an identical chair elsewhere (analogy). See `AUTONOMOUS_NAVIGATION.md`.
 
 ## Status
 
-Working: SLAM read, teleop injection, closed-loop motion, reactive A→B, autonomous exploration with
-coverage bias, collision memory, live cloud+camera viz. Known limits and the improvement roadmap are
-in `AUTONOMOUS_NAVIGATION.md` (current focus: making the camera/depth layer act *in time*, and moving
-from reactive wander to frontier exploration with planning).
+Working (validated on the robot, July 2026): SLAM read, teleop injection, closed-loop motion,
+**A↔B door crossing on a static global plan with door engagement** (best runs: A→B 54.9 s /
+0 collisions, B→A 108 s / 0 collisions), GPU perception with floor-color channel, **DCE
+governance in shadow and active modes with experience-abort escalation**, full per-run
+instrumentation for the paper's evaluation. Historical exploration modes (`g1_nav.py explore/
+frontier`) still work. Current state, open problems and next steps: `HANDOFF.md` + `PROBLEMS.md`;
+governance architecture: `docs/META2_GOVERNANCE.md`.
 
 ## Disclaimer
 
