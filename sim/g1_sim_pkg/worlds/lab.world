@@ -1023,6 +1023,30 @@
       <visual name="v_w520"><pose>-4.80 6.60 1.10 0 0 0</pose><geometry><box><size>0.50 0.10 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
       <collision name="c_w521"><pose>-4.70 6.75 1.10 0 0 0</pose><geometry><box><size>0.30 0.20 2.20</size></box></geometry></collision>
       <visual name="v_w521"><pose>-4.70 6.75 1.10 0 0 0</pose><geometry><box><size>0.30 0.20 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+          <collision name="c_w151"><pose>-3.7 0.2 1.10 0 0 0</pose><geometry><box><size>0.3 0.3 2.20</size></box></geometry></collision>
+      <visual name="v_w151"><pose>-3.7 0.2 1.10 0 0 0</pose><geometry><box><size>0.3 0.3 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w156"><pose>-3.75 0.4 1.10 0 0 0</pose><geometry><box><size>0.2 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w156"><pose>-3.75 0.4 1.10 0 0 0</pose><geometry><box><size>0.2 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w158"><pose>-3.751 0.5 1.10 0 0 0</pose><geometry><box><size>0.197 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w158"><pose>-3.751 0.5 1.10 0 0 0</pose><geometry><box><size>0.197 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w161"><pose>-3.901 0.6 1.10 0 0 0</pose><geometry><box><size>0.297 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w161"><pose>-3.901 0.6 1.10 0 0 0</pose><geometry><box><size>0.297 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w165"><pose>-4.308 0.7 1.10 0 0 0</pose><geometry><box><size>0.684 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w165"><pose>-4.308 0.7 1.10 0 0 0</pose><geometry><box><size>0.684 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w201"><pose>-4.635 1.2 1.10 0 0 0</pose><geometry><box><size>0.43 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w201"><pose>-4.635 1.2 1.10 0 0 0</pose><geometry><box><size>0.43 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w202"><pose>-3.249 1.2 1.10 0 0 0</pose><geometry><box><size>0.197 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w202"><pose>-3.249 1.2 1.10 0 0 0</pose><geometry><box><size>0.197 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w209"><pose>-4.551 1.3 1.10 0 0 0</pose><geometry><box><size>0.197 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w209"><pose>-4.551 1.3 1.10 0 0 0</pose><geometry><box><size>0.197 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w210"><pose>-3.215 1.3 1.10 0 0 0</pose><geometry><box><size>0.33 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w210"><pose>-3.215 1.3 1.10 0 0 0</pose><geometry><box><size>0.33 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w217"><pose>-4.701 1.4 1.10 0 0 0</pose><geometry><box><size>0.297 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w217"><pose>-4.701 1.4 1.10 0 0 0</pose><geometry><box><size>0.297 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w225"><pose>-4.851 1.5 1.10 0 0 0</pose><geometry><box><size>0.397 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w225"><pose>-4.851 1.5 1.10 0 0 0</pose><geometry><box><size>0.397 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      <collision name="c_w234"><pose>-5.051 1.6 1.10 0 0 0</pose><geometry><box><size>0.597 0.1 2.20</size></box></geometry></collision>
+      <visual name="v_w234"><pose>-5.051 1.6 1.10 0 0 0</pose><geometry><box><size>0.597 0.1 2.20</size></box></geometry><material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
     </link></model>
   </world>
 </sdf>
