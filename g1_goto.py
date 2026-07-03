@@ -1922,7 +1922,13 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # --- META2: decision de gobernanza DCE a ~2Hz con las metricas del tick ---
             if meta2 is not None:
                 try:
-                    _o = meta2.tick(now, m_clear, m_prog, m_rel, ss2.get("laser_noise"), h.get("bat"))
+                    # parada COMANDADA (alinear/girar/strafe del engagement o de DOOR): progression=0
+                    # es voluntaria -> el bridge la congela para no reportar estancamiento falso
+                    _php = ph.strip().replace("AGR-", "").rstrip("!HM")
+                    _hold = _php.startswith(("ENG-T", "ENG-AL", "ENG-RE", "ENG-WT", "ENG-C",
+                                             "DOOR-AL", "DOOR-WT", "DOOR-CTR", "DWA-T", "SEEK-T"))
+                    _o = meta2.tick(now, m_clear, m_prog, m_rel, ss2.get("laser_noise"), h.get("bat"),
+                                    hold_progression=_hold)
                 except Exception as e:
                     _o = None
                     if now - vis_log_t > 10.0:

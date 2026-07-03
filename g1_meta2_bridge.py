@@ -72,6 +72,9 @@ class Meta2Bridge:
     - FALLBACK/HELP solo actúan (cap) tras 2 seguidas; 1 suelta se loguea como aviso."""
 
     PERSIST_SWITCH = 3
+    PERSIST_RELAX = 6   # vuelta al perfil PREFERIDO: mas lenta (3s) que la huida a Cautious (1.5s).
+                        # Run 093510: el stop-and-go del arranque daba 4 switches en 10s con persistencia
+                        # simetrica. Histeresis clasica: rapido hacia la cautela, lento hacia la confianza.
     SWITCH_MARGIN = 0.08
     PERSIST_ACTION = 2
     WARMUP = 4          # primeras decisiones: solo observar (arranque con métricas a 0)
@@ -98,11 +101,18 @@ class Meta2Bridge:
             h.pop(0)
         return self._med(h)
 
-    def tick(self, now, clearance, progression, reliability, laser_noise=None, bat=None):
-        """Devuelve dict de decisión a ~1/period Hz, o None si toca esperar (throttle)."""
+    def tick(self, now, clearance, progression, reliability, laser_noise=None, bat=None,
+             hold_progression=False):
+        """Devuelve dict de decisión a ~1/period Hz, o None si toca esperar (throttle).
+        hold_progression=True cuando el robot esta PARADO A PROPOSITO (alineando en el
+        engagement, girando en el sitio): la progression=0 de ese momento es comandada, no
+        un atasco -> se CONGELA en su ultima mediana real en vez de reportar estancamiento
+        falso (run 093841: 41%% de ticks FALLBACK, casi todos durante ENG-AL/giros)."""
         if now - self.last_t < self.period:
             return None
         self.last_t = now
+        if hold_progression and self.hist["progression"]:
+            progression = self._med(self.hist["progression"])
         # reliability/noise tambien con MEDIANA de 5: la rel real tiene rafagas de 1-2 ticks a 0.0
         # (nz se dispara al girar) y el valor instantaneo inflaba el margen DST a golpes.
         rel = self._push("rel", max(0.0, min(1.0, float(reliability if reliability is not None else 1.0))))
@@ -155,7 +165,8 @@ class Meta2Bridge:
                 self.pend_n += 1
             else:
                 self.pend, self.pend_n = raw_active, 1
-            if self.pend_n >= self.PERSIST_SWITCH:
+            need = self.PERSIST_RELAX if raw_active == pref else self.PERSIST_SWITCH
+            if self.pend_n >= need:
                 self.applied = raw_active; self.pend = None; self.pend_n = 0
                 self.n_switch += 1
                 confirmed_switch = True
@@ -195,7 +206,11 @@ def _replay(path):
         c = s.get("clearance"); p = s.get("progression")
         if c is None or p is None:
             continue
-        o = br.tick(s["t"], c, p, s.get("reliability"), s.get("laser_noise"), s.get("bat"))
+        php = str(s.get("phase", "")).replace("AGR-", "")
+        hold = php.startswith(("ENG-T", "ENG-AL", "ENG-RE", "ENG-WT", "ENG-C",
+                               "DOOR-AL", "DOOR-WT", "DOOR-CTR", "DWA-T", "SEEK-T"))
+        o = br.tick(s["t"], c, p, s.get("reliability"), s.get("laser_noise"), s.get("bat"),
+                    hold_progression=hold)
         if o and (o["changed"] or o["action"] not in ("KEEP",)):
             seq.append((round(s["t"], 1), o["action"], o["active"], o["tension"], o["fulfillment"]))
     print(f"{os.path.basename(path)}: {br.n_calls} decisiones, {br.n_switch} switches")
