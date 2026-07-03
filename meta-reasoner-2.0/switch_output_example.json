@@ -1,0 +1,27 @@
+{
+  "action": "SWITCH",
+  "active_before": "Efficient_Nav",
+  "active_after": "Cautious_Nav",
+  "switch_to": "Cautious_Nav",
+  "reason": "Decision completed.",
+  "candidate_scores": {
+    "Efficient_Nav": {
+      "deployable": false,
+      "rejection_reason": "fulfillment_threshold_failed",
+      "task_projected_tension": 0.85,
+      "task_stable_fulfillment": 0.392
+    },
+    "Cautious_Nav": {
+      "deployable": true,
+      "rejection_reason": null,
+      "task_projected_tension": 0.4,
+      "task_stable_fulfillment": 0.586
+    },
+    "Search_Lid": {
+      "deployable": false,
+      "rejection_reason": "fulfillment_threshold_failed",
+      "task_projected_tension": 0.0,
+      "task_stable_fulfillment": 0.115
+    }
+  }
+}

@@ -24,6 +24,11 @@ try:
 except Exception:
     g1_perception = None
 import g1_metrics                            # metricas SEI: clearance (percepcion) + progression (rendimiento)
+try:
+    from g1_meta2_bridge import Meta2Bridge  # DCE runtime (Meta-Reasoner 2.0 de Renxi), opcional
+except Exception:
+    Meta2Bridge = None
+META2_MODE = os.environ.get("G1_META2", "0") # 0=off | 1=SHADOW (decide+loguea, no toca control) | 2=ACTIVO (techo de velocidad por analogia)
 
 WP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "waypoints.json")
 MAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nav_map.json")
@@ -38,14 +43,51 @@ NAV_REACH = 0.35                 # m: se considera ALCANZADO el waypoint
 NAV_OMAP_TTL = 60.0              # s: la nube es estatica; TTL medio purga obstaculos dinamicos (persona que pasa)
 GATE_M = 0.6                     # m: si arrancas a > esto del waypoint mas cercano = relocalizacion dudosa (como la app)
 AGGR_AFTER = 12.0                # s atascado sin ACERCARSE al destino -> activa modo AGRESIVO (cruza la puerta)
-AGGR_ROBOT_R = 0.13              # m: holgura reducida en modo agresivo. Es el MINIMO de seguridad (no baja de aqui)
+AGGR_ROBOT_R = float(os.environ.get("G1_AGGR_R", "0.24"))   # m: holgura en modo agresivo (MINIMO de seguridad).
+# ^ 0.13->0.20 (Renxi 2026-07-02: "clearing is wrong, it does not cover the width of the hands"): el
+#   semiancho FISICO del G1 es ~0.22m de hombros y ~0.28-0.30m con el vaivén de brazos; 0.13 autorizaba
+#   huecos imposibles (roces con omap_near 42-81 en 152030/152330/152532). G1_AGGR_R=0.13 para revertir.
+# ^ 0.20->0.24 (Renxi 2026-07-02 tarde, run 171431: "increase clearance safety just a little"): col2 fue
+#   AGR-DOOR-GO empujando 3.5s con c0 0.62->0.38 hasta atrapar el HOMBRO derecho en el marco (-3.57,1.09);
+#   con 0.24 el DWA corta el avance antes de meter el hombro en huecos <~0.45m. G1_AGGR_R=0.20 revierte.
+GLOBAL_SRC = os.environ.get("G1_GLOBALMAP", "static")        # plan GLOBAL: static (DEFECTO 2026-07-02 P8b:
+                                 # paredes=inf sin inflar + muebles conocidos en coste BLANDO) | hard (P8 v1:
+                                 # todo pared dura -- MEDIDO offline: con INFL_HARD=1 sella la puerta de ~0.8m
+                                 # y el A* caia SIEMPRE al fallback sin mapa duro) | ref | live
+GLOB_SOFT = float(os.environ.get("G1_GLOB_SOFT", "9.0"))     # coste blando por celda de MUEBLE conocido (plan global)
+GLOB_HALO = float(os.environ.get("G1_GLOB_HALO", "4.0"))     # coste blando del halo de 1 celda alrededor del mueble
+GLOB_WALL_HALO = float(os.environ.get("G1_GLOB_WHALO", "6.0"))  # coste blando 1 celda junto a PARED (run 171431:
+                                 # el plan pegaba el carrot a 0.2m de pared/cajonera -> mano dcha a la cajonera
+                                 # en (-1,0.5); con halo el plan prefiere el CENTRO del vano y se despega de los
+                                 # bordes sin sellar nada (es coste, no pared). G1_GLOB_WHALO=0 revierte.
+                                 # Run 122857: c0min=0.16 y roces laterales en pared/marco -> con el bamboleo
+                                 # del bipedo, 0.13 es rozar por diseno. Probar G1_AGGR_R=0.16 si repite (A/B).
 PERC_PERIOD = 0.3                # s entre consultas al servidor de percepcion GPU (depth->scan virtual de la mesa)
 DOOR_CENTER = (os.environ.get("G1_DOOR_CENTER", "1") == "1")   # centrar izq/dcha en la puerta (idea de Renxi): strafe al lado mas libre
 DOOR_BAL_TH = 0.22               # |clear_left - clear_right| (normalizado) para considerar el robot DESCENTRADO
 DOOR_STRAFE = 0.34               # magnitud del strafe lateral (> deadzone ~0.3, si no el robot no se mueve)
-DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "1"))  # +1/-1: si centra al lado EQUIVOCADO, lanza con G1_STRAFE_SIGN=-1
+DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "-1"))  # DEFAULT -1 (2026-07-02): MEDIDO en runs
+                                 # 123933 (46 ticks orden izq -> 38cm a la DERECHA) y 122857 (51 ticks, 98cm
+                                 # contra lo ordenado): el mapeo fisico de lx esta INVERTIDO. DOOR-CTR centraba
+                                 # HACIA el obstaculo. Verificar con STRAFE-CAL en el log; G1_STRAFE_SIGN=1 lo revierte.
 DOOR_MIN_GOAL = 1.3              # m: por debajo de esta distancia a B NO hay puerta (es el goal con un mueble):
                                  # desactiva la maniobra de puerta y deja que el DWA rodee el obstaculo (si no, empujaba recto)
+# --- ENGAGEMENT de puerta ANCLADO AL MAPA ESTATICO (Renxi/Adrian 2026-07-02 tarde) ---
+# Runs 171431/172840/173422: TODAS las colisiones en (-3.75,1.22) con yaw 101-119 cuando el eje del vano
+# es ~135 -> el robot entra 20-30 grados under-rotated y el HOMBRO DERECHO lidera contra el marco. La
+# maniobra DOOR-* solo saltaba "ya en zona estrecha" (c0<0.9), y c0 parpadea a 2.50 en la boca (marco
+# LiDAR-ciego) -> aproximaciones en DWA-F a 0.40 sin alinear. Fix: posicion de PRE-ENTRADA fija en el eje
+# del vano (conocido del mapa estatico) -> ir alli -> PARAR -> rotar hasta |err|<=8 -> cruzar RECTO
+# (re-alinea si el bipedo deriva >14). "No importa pararse un segundo y calcular bien" (Adrian).
+DOOR_ENGAGE = (os.environ.get("G1_DOOR_ENGAGE", "1") == "1")   # G1_DOOR_ENGAGE=0 revierte
+DOOR_CX = float(os.environ.get("G1_DOOR_X", "-3.90"))    # centro del vano (frame G1, del mapa estatico)
+DOOR_CY = float(os.environ.get("G1_DOOR_Y", "1.25"))
+DOOR_AXIS = float(os.environ.get("G1_DOOR_AXIS", "135.0"))     # deg: direccion de cruce lado A -> lado B
+DOOR_ENG_D = float(os.environ.get("G1_DOOR_ENG_D", "0.85"))    # m del centro al punto de engagement
+DOOR_ENG_TOL = 0.22              # m: engagement alcanzado
+DOOR_ALIGN_TOL = 8.0             # deg: alineado para cruzar (2 ticks seguidos)
+DOOR_REALIGN = 14.0              # deg: deriva durante el cruce -> parar y re-alinear
+DOOR_EXIT_D = 0.75               # m pasado el centro = cruzado (vuelve el control normal)
 # --- Filtro de PERSISTENCIA (K-de-N barridos frescos) ---
 # OJO (investigado 2026-07-02): el Mid-360 usa escaneo NO REPETITIVO (Livox) -> dos barridos consecutivos
 # muestrean DIRECCIONES DISTINTAS del FOV. El parpadeo celda-a-celda entre barridos es INHERENTE al sensor,
@@ -58,6 +100,8 @@ DOOR_MIN_GOAL = 1.3              # m: por debajo de esta distancia a B NO hay pu
 PERSIST_N = int(os.environ.get("G1_PERSIST_N", "3"))   # ventana de barridos FRESCOS recientes
 PERSIST_K = int(os.environ.get("G1_PERSIST_K", "2"))   # una celda que SOLO ve el laser (no esta en el mapa) cuenta si aparece en >=K de los ultimos N
 STALE_WARN_TICKS = 10            # ticks seguidos con la nube SIN refrescar antes de avisar en el log (~3s a 0.3s/tick)
+FILM_PERIOD = float(os.environ.get("G1_FILM", "3.0"))   # s entre frames de la PELICULA de la run (0 = off).
+                                 # ~30 jpgs de 5KB por run: la aproximacion a CUALQUIER incidente queda grabada.
 # --- GUARDIA ANTI-DIVERGENCIA de relocalizacion (fix 2 del handoff; se perdio en el rollback) ---
 # Run 134458: 78 reloc_jumps encadenados, path_m=582, pose final a 538m -> el robot CAMINABA en coordenadas
 # de fantasia. Una correccion legitima de reloc es UN salto y luego estable; divergencia = saltos repetidos.
@@ -65,6 +109,25 @@ STALE_WARN_TICKS = 10            # ticks seguidos con la nube SIN refrescar ante
 RELOC_GUARD = (os.environ.get("G1_RELOCGUARD", "1") == "1")   # G1_RELOCGUARD=0 lo desactiva (A/B estricto)
 RELOC_STOP_N = int(os.environ.get("G1_RELOC_N", "4"))         # nº de saltos >0.5m...
 RELOC_STOP_WIN = float(os.environ.get("G1_RELOC_WIN", "10.0"))  # ...dentro de esta ventana (s) = divergencia
+# --- OBSTACULOS DE ALTA CONFIANZA (Renxi): pared del mapa / score saturado / colision. ---
+HARD_GUARD = (os.environ.get("G1_HARDGUARD", "1") == "1")   # ON por defecto (replay 29 runs: 0 activaciones
+# en runs limpias -> coste cero; 4 STOPs pre-colision en 150440. Paredes NO negociables. =0 revierte).
+HARD_STOP = float(os.environ.get("G1_HARD_STOP", "0.22"))    # m: no avanzar con pared a menos de esto
+HARD_SLOW = float(os.environ.get("G1_HARD_SLOW", "0.45"))    # m: acercarse a pared -> velocidad reducida
+# --- ESCAPE al arranque (HANDOFF 8.8): el waypoint B quedo grabado con la nariz a ~40cm del sofa -> cada
+# vuelta B->A NACE encajonada: sin sitio para girar, choca en el propio punto de inicio (150440: golpes en
+# t=4s y t=12.5s sin salir del punto de arranque; 143039: 39/54s atascado). Si al arrancar nace encajonado,
+# retrocede ~ESC_DIST en RECTO antes de planificar. Actua UNA sola vez, solo en los primeros 5s de la run.
+# DISPARO doble (medido en las 3 vueltas fallidas + 4 arranques buenos):
+#   laser:  c0 < ESC_TRIG  — PERO el sofa a 40cm cae en la banda ciega del Mid-360: en 150440 c0=1.92
+#           "libre" hasta el golpe (c0 0.22 recien EN t=4.4s) y en 143039 nunca bajo de 1.0. Solo, no basta.
+#   vision: carpet_pct < ESC_CARPET — la camara SI lo ve: enterrada en el sofa lee 0.00-0.43 (el sofa crema
+#           ademas CLASIFICA como moqueta e infla el valor, por eso 0.50 y no 0.12); arranques buenos leen
+#           0.86-0.95. Es el caso meta-reasoning de Renxi: LiDAR dice "libre", la vision desempata.
+ESCAPE_ON = (os.environ.get("G1_ESCAPE", "1") == "1")        # G1_ESCAPE=0 lo desactiva (A/B estricto)
+ESC_TRIG = float(os.environ.get("G1_ESC_TRIG", "0.45"))      # m: c0 al arranque por debajo = nace encajonado
+ESC_CARPET = float(os.environ.get("G1_ESC_CARPET", "0.50"))  # frac: menos suelo visible que esto al arrancar = encajonado
+ESC_DIST = float(os.environ.get("G1_ESC_DIST", "0.50"))      # m: cuanto retrocede antes de planificar
 # --- Mapa de obstaculos con SCORE/DECAY (anti acumulacion de ruido) ---
 # Antes: celda confirmada -> entra al instante y dura 60s (TTL). Con el robot parado en la puerta y el LiDAR
 # de cabeza vibrando, el mapa = UNION de todo lo visto en 60s -> cientos de celdas falsas (obs 142->521 en 18s).
@@ -176,7 +239,132 @@ class RunRecorder:
             print(f"  [dataset] travesia guardada -> {self.fname}")
         except Exception as e:
             print("  [dataset] no se pudo guardar:", repr(e))
+        try:
+            self._append_stats()                       # fila estadistica AUTOMATICA (Adrian: estudios stats)
+        except Exception as e:
+            print("  [stats] no se pudo escribir runs_stats.csv:", repr(e))
         return self.fname
+
+    def _append_stats(self):
+        """Al terminar CUALQUIER run (llegada/Ctrl+C/aborto/guardia) anade UNA fila a
+        dataset/runs_stats.csv con todo lo relevante para estudios estadisticos. Autocontenido:
+        no hay que acordarse de correr summarize_runs; el CSV crece run a run."""
+        import csv as _csv
+        s = self.rec.get("samples", []); ev = self.rec.get("events", []); sm = self.rec.get("summary", {}) or {}
+
+        def _mean(k):
+            v = [x.get(k) for x in s if isinstance(x.get(k), (int, float))]
+            return round(sum(v) / len(v), 3) if v else ""
+
+        def _minv(k):
+            v = [x.get(k) for x in s if isinstance(x.get(k), (int, float))]
+            return round(min(v), 3) if v else ""
+
+        def _maxv(k):
+            v = [x.get(k) for x in s if isinstance(x.get(k), (int, float))]
+            return round(max(v), 3) if v else ""
+
+        def _first(k):
+            for x in s:
+                if isinstance(x.get(k), (int, float)):
+                    return x[k]
+            return ""
+
+        def _last(k):
+            for x in reversed(s):
+                if isinstance(x.get(k), (int, float)):
+                    return x[k]
+            return ""
+
+        # episodios de ATASCO: >8 s sin acercarse >=0.10 m al objetivo (mismo criterio que AGGR_AFTER)
+        stuck_n = 0; stuck_s = 0.0; best_d = None; last_imp = None; in_stuck = False; prev_t = None
+        for x in s:
+            t, dd = x.get("t", 0.0), x.get("d")
+            if dd is None:
+                continue
+            if best_d is None or dd < best_d - 0.10:
+                best_d = dd; last_imp = t; in_stuck = False
+            elif last_imp is not None and (t - last_imp) > 8.0:
+                if not in_stuck:
+                    stuck_n += 1; in_stuck = True
+            if in_stuck and prev_t is not None:
+                stuck_s += max(0.0, t - prev_t)
+            prev_t = t
+        # tiempo por familia de fase (%)
+        fam = {"DWA": 0, "DOOR": 0, "BRK": 0, "SEEK": 0, "R": 0, "STOP": 0, "OTRO": 0}
+        for x in s:
+            p = (x.get("phase") or "").replace("AGR-", "")
+            k = ("DWA" if p.startswith("DWA") else "DOOR" if p.startswith("DOOR") else
+                 "BRK" if p.startswith("BRK") else "SEEK" if p.startswith("SEEK") else
+                 "R" if p.startswith("R-") or p.startswith("R") and "-" in p else
+                 "STOP" if p.startswith("STOP") else "OTRO")
+            fam[k] += 1
+        nt = max(1, len(s))
+        # detecciones YOLO por etiqueta (json compacto en una columna)
+        dets = {}
+        for x in s:
+            for dd in (x.get("dets") or []):
+                if dd and dd[0]:
+                    dets[dd[0]] = dets.get(dd[0], 0) + 1
+        # densidad de obstaculos por area recorrida (celdas medias / m2 del bbox de la trayectoria)
+        xs = [x["x"] for x in s]; ys = [x["y"] for x in s]
+        area = max(1.0, (max(xs) - min(xs) + 1.0) * (max(ys) - min(ys) + 1.0)) if s else 1.0
+        row = {
+            "run": os.path.basename(self.fname)[:-5],
+            "started": self.rec.get("started", ""), "mode": self.mode,
+            "goal": self.rec.get("label", ""), "result": self.rec.get("result", ""),
+            "time_s": sm.get("time_s", self.rec.get("duration_s", "")),
+            "path_m": sm.get("path_m", ""), "efficiency": sm.get("efficiency", ""),
+            "collisions": sum(1 for e in ev if e.get("kind") == "collision"),
+            "stuck_episodes": stuck_n, "stuck_time_s": round(stuck_s, 1),
+            "astar_fails": sum(1 for e in ev if e.get("kind") == "astar_fail"),
+            "aggressive_on": sum(1 for e in ev if e.get("kind") == "aggressive_on"),
+            "reloc_jumps": sm.get("reloc_jumps", ""),
+            "pct_dwa": round(100.0 * fam["DWA"] / nt, 1), "pct_door": round(100.0 * fam["DOOR"] / nt, 1),
+            "pct_brk": round(100.0 * fam["BRK"] / nt, 1), "pct_seek": round(100.0 * fam["SEEK"] / nt, 1),
+            "pct_recovery": round(100.0 * fam["R"] / nt, 1), "pct_stop": round(100.0 * fam["STOP"] / nt, 1),
+            "spd_mean": _mean("spd"), "c0_mean": _mean("c0"), "c0_min": sm.get("c0min", _minv("c0")),
+            "c0_hard_mean": _mean("c0_hard"), "c0_hard_min": _minv("c0_hard"),
+            "near_wall_ticks": sum(1 for x in s if isinstance(x.get("c0_hard"), (int, float)) and x["c0_hard"] < 0.35),
+            "obs_mean": _mean("nobs"), "obs_max": sm.get("obs_max", ""),
+            "obs_per_m2": round((_mean("nobs") or 0) / area, 2) if s else "",
+            "n_hard_mean": _mean("n_hard"), "colmap_cells": sm.get("colmap_cells", ""),
+            "perc_n_mean": _mean("perc_n"), "color_pts_mean": _mean("color_pts"),
+            "carpet_pct_mean": _mean("carpet_pct"), "color_near_mean": _mean("color_near"),
+            "dets_by_label": json.dumps(dets, ensure_ascii=False) if dets else "",
+            "laser_noise_mean": sm.get("laser_noise_mean", _mean("laser_noise")),
+            "filt_rej_mean": sm.get("filt_rej_mean", ""), "scan_hz": sm.get("scan_hz", ""),
+            "stale_pct": sm.get("stale_pct", ""), "gated_pct": sm.get("gated_pct", ""),
+            "safer_inserts": sm.get("safer_inserts", ""),
+            "map_adds": sm.get("map_adds", ""), "map_dels": sm.get("map_dels", ""),
+            "tick_ms_p95": sm.get("tick_ms_p95", ""),
+            "clearance_mean": _mean("clearance"), "clearance_min": _minv("clearance"), "clearance_max": _maxv("clearance"),
+            "progression_mean": _mean("progression"), "progression_min": _minv("progression"),
+            "progression_max": _maxv("progression"),
+            # confianza de sensores (Renxi): fiabilidad global, confianza de localizacion, ruido laser
+            "reliability_mean": _mean("reliability"), "reliability_min": _minv("reliability"),
+            "reliability_max": _maxv("reliability"),
+            "loc_conf_mean": _mean("loc_conf"), "loc_conf_min": _minv("loc_conf"), "loc_conf_max": _maxv("loc_conf"),
+            "laser_noise_min": _minv("laser_noise"), "laser_noise_max": sm.get("laser_noise_max", _maxv("laser_noise")),
+            # min/max de las lecturas principales (Renxi: ademas de la media)
+            "spd_max": _maxv("spd"), "c0_max": _maxv("c0"), "c0_hard_max": _maxv("c0_hard"),
+            "perc_n_min": _minv("perc_n"), "perc_n_max": _maxv("perc_n"),
+            "color_pts_max": _maxv("color_pts"), "carpet_pct_min": _minv("carpet_pct"),
+            "carpet_pct_max": _maxv("carpet_pct"),
+            # bateria (Renxi): nivel inicial/final, consumo de la travesia, minimo
+            "bat_start": _first("bat"), "bat_end": _last("bat"),
+            "bat_used": (round(_first("bat") - _last("bat"), 1)
+                         if isinstance(_first("bat"), (int, float)) and isinstance(_last("bat"), (int, float)) else ""),
+            "bat_min": _minv("bat"),
+        }
+        path = os.path.join(DATASET_DIR, "runs_stats.csv")
+        new_file = not os.path.exists(path)
+        with open(path, "a", newline="") as fo:
+            w = _csv.DictWriter(fo, fieldnames=list(row.keys()))
+            if new_file:
+                w.writeheader()
+            w.writerow(row)
+        print(f"  [stats] fila anadida -> {path}")
 
 # Hook independiente: captura la pose de RELOCALIZACION (mapa cargado) de rt/slam_info (currentPose sobre el
 # .pcd) y de slam_relocation/odom. NO depende del hook de mapeo (slam_mapping/odom).
@@ -799,6 +987,50 @@ def load_ref_map():
     return set((round(x / g.OCELL), round(y / g.OCELL)) for x, y in ref_points())
 
 
+def load_static_map():
+    """Celdas OCELL de MUEBLES ESTATICOS conocidos (nav_map.json, acumulado en waypoint/sweep).
+    Van al plan GLOBAL como coste BLANDO (G1_GLOBALMAP=static), NUNCA como pared dura: nav_map
+    acumula celdas de marco/hoja EN la boca de la puerta (medido 2026-07-02: sellan el vano en
+    x[-3.6,-3.2] y[0.8,1.6]) y como inf cerrarian el paso = gotcha de paredes fantasma."""
+    try:
+        d = json.load(open(MAP_FILE)); OC = d.get("OCELL", g.OCELL)
+        return set((c[0], c[1]) for c in d.get("cells", [])
+                   if -15 <= c[0] * OC <= 15 and -15 <= c[1] * OC <= 15)
+    except Exception:
+        return set()
+
+
+def global_static_costmap(walls, furn):
+    """Costmap del plan GLOBAL en modo 'static' (P8b, 2026-07-02):
+      - PAREDES (refmap) = inf SIN inflar. Medido offline: la puerta real mide ~4 celdas (0.8m)
+        y con INFL_HARD=1 se sella -> el modo 'hard' fallaba el A* en CADA replanificacion y caia
+        al fallback (solo paredes, sin hard_set): el mapa duro nunca llegaba de verdad al plan.
+      - MUEBLES conocidos + persistentes saturados + colisiones = coste BLANDO (GLOB_SOFT) con
+        halo de 1 celda (GLOB_HALO): el plan los RODEA si hay sitio pero JAMAS sellan un paso.
+    Validado offline con el mapa real (maps_out/map_static_local): A<->B y C->B cruzan SIEMPRE la
+    puerta real (34 celdas, sin ruta fantasma por el hueco sin mapear de arriba), plan determinista
+    (mismo mapa -> mismo plan: adios ddir tembloroso), 1 celda de mueble pisada vs 2-4 antes.
+    La seguridad fina sigue siendo del DWA local con el laser vivo (arquitectura Nav2)."""
+    cm = {c: math.inf for c in walls}
+    if GLOB_WALL_HALO > 0:                       # halo blando junto a pared: centra el plan en vanos
+        for (ox, oy) in walls:                   # y lo despega de bordes/cajoneras (run 171431, mano dcha)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    c = (ox + dx, oy + dy)
+                    if cm.get(c) != math.inf and cm.get(c, 0.0) < GLOB_WALL_HALO:
+                        cm[c] = GLOB_WALL_HALO
+    for (ox, oy) in furn:
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                c = (ox + dx, oy + dy)
+                if cm.get(c) == math.inf:
+                    continue
+                w = GLOB_SOFT if (dx == 0 and dy == 0) else GLOB_HALO
+                if cm.get(c, 0.0) < w:
+                    cm[c] = w
+    return cm
+
+
 def frame_check(lg, x0, y0):
     """Compara la pose INICIAL con el waypoint mas cercano. Si arrancas FISICAMENTE en un waypoint pero la
     pose dice que estas lejos de su coordenada guardada => la relocalizacion de esta sesion difiere de la
@@ -963,22 +1195,39 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 "gated_pct": round(100.0 * gated_ticks / n_ticks, 1) if n_ticks else None,
                 "safer_inserts": safer_ins, "map_adds": map_add, "map_dels": map_del,
                 "obs_max": obs_max, "reloc_jumps": njumps,
+                "colmap_cells": len(colmap),
                 "tick_ms_p95": round(1000.0 * p95, 1) if tick_dts else None}
     colmap = set()                                # colisiones PERMANENTES (no re-chocar en el mismo sitio)
     plan_pts = []; plan_t = 0; carrot = None
     fhist = []; prev_fwd = False; recov = None; ncol = 0; last_col_t = -99; rside = 1
     low_t = 0; last_low = None; lt_base = []; ah_base = []
     dhist = []; brk = None; brk_cool = 0; nbrk = 0; nstop = 0
+    esc = None; esc_done = False                  # maniobra de ESCAPE inicial (una sola vez por run)
     pose_t = time.time(); last_pose = None; t0 = time.time(); tprint = 0
     trail = []
     # --- diagnostico: calibracion de giro (signo real vs comandado) + spin ---
-    prev_yaw = None; prev_cmd = (0, 0, 0, 0); prev_lt = None
+    prev_yaw = None; prev_cmd = (0, 0, 0, 0); prev_lt = None; prev_xy = None; strafecal = []
     spin_acc = 0.0; prog_pos = None; prog_t = t0; turncal = []; phcount = {}
     minc0 = 9.9
     rd = RunRecorder("ours", label, (wx, wy))
     refmap = load_ref_map(); health_t = 0; hh = {}; cloud_ok = False; cloud_warned = False
+    staticmap = load_static_map()                            # muebles conocidos (nav_map) -> coste blando del plan global
     gplan = []; gplan_t = 0; cam_t = 0; cam_jpg = None
     aggressive = (os.environ.get("G1_AGGRESSIVE") == "1")    # modo agresivo (forzable; si no, se activa al atascarse)
+    eng = {"state": None, "ok": 0, "wt": 0, "cool": 0.0, "ts": 0.0}   # engagement de puerta (mapa estatico)
+    # --- META2 (G1_META2=1 shadow / =2 activo): gobernanza DCE con Meta-Reasoner 2.0 ---
+    meta2 = None; m2o = None
+    if META2_MODE in ("1", "2"):
+        if Meta2Bridge is None:
+            print("  META2 pedido pero g1_meta2_bridge/meta-reasoner-2.0 no importable -> OFF")
+        else:
+            try:
+                meta2 = Meta2Bridge()
+                print(f"  META2 {'ACTIVO (techo por analogia)' if META2_MODE == '2' else 'SHADOW (solo log)'}: "
+                      f"Meta-Reasoner 2.0, analogia inicial {meta2.applied}")
+                lg.write(f"META2 mode={META2_MODE} cfg=config_meta2_g1door.json init={meta2.applied}\n"); lg.flush()
+            except Exception as e:
+                print("  META2 no disponible:", repr(e))
     best_d = 1e9; best_d_t = t0; ROBOT_R0 = g.ROBOT_R        # progreso hacia B + holgura normal (para restaurar)
     vis_center = None; vis_nearrun = None; vis_t = 0         # VISION (suelo despejado) para la puerta (laser ruidoso ahi)
     vis_log_t = 0                                            # throttle del log [VIS] (que ve YOLO y si la nav lo usa)
@@ -999,9 +1248,13 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 rtest = perc.query(fr, 0.0, 0.0, 0.0)   # pose dummy: solo validamos que el pipeline responde
                 if rtest is not None:
                     vis_ready = True
-                    print(f" OK ({len(rtest.detections or [])} dets, {len(rtest.cells)} celdas, {rtest.latency_ms:.0f}ms)")
+                    # 'color_pts' solo existe si el servidor corre con G1_FLOORCOLOR=1 -> estado visible
+                    # desde el robot (run 120438: creiamos que el color estaba ON y perc_n=0 lo desmintio).
+                    fcs = "ON" if isinstance(getattr(rtest, "raw", None), dict) and "color_pts" in rtest.raw else "off"
+                    print(f" OK ({len(rtest.detections or [])} dets, {len(rtest.cells)} celdas, "
+                          f"{rtest.latency_ms:.0f}ms, floorcolor={fcs})")
                     lg.write(f"PERC-TEST OK dets={len(rtest.detections or [])} cells={len(rtest.cells)} "
-                             f"lat={rtest.latency_ms:.0f}ms\n"); lg.flush()
+                             f"lat={rtest.latency_ms:.0f}ms floorcolor={fcs}\n"); lg.flush()
                     break
             time.sleep(0.5)
         if not vis_ready:
@@ -1022,11 +1275,18 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             print("      (override consciente: G1_NOVIS=1 navega sin vision; la mesa sera invisible)")
             lg.write(f"PERC-GATE BLOCKED: {why} {time.strftime('%Y-%m-%d %H:%M:%S')}\n"); lg.flush()
             return False
-    perc_t = 0; perc_cells = set(); perc_dets = []; nperc = 0
+    perc_t = 0; perc_cells = set(); perc_dets = []; nperc = 0; perc_raw = {}
+    perc_rx_t = None; perc_seen = -1              # edad de la ULTIMA respuesta real del server (diag P3)
+    cambuf = deque(maxlen=20)                     # (t, jpg) ultimos ~6s de camara (autopsia pre-colision)
+    film_t = 0.0                                  # ultimo frame de la pelicula guardado
+    hg_log_t = 0.0; c0_hard = 9.9; hard_set = set()   # guardia de alta confianza
     sei = g1_metrics.SEIMetrics()                            # clearance + progression por tick (las 2 metricas del tutor)
     sens = g1_metrics.SensingMonitor()                       # auto-evaluacion de sensado (ruido/fiabilidad) = feedback de capacidad
     m_clear = 0.0; m_prog = 0.0; m_rel = 1.0; m_cl = 0.0; m_cr = 0.0
-    print(f"  mapa de referencia: {len(refmap)} celdas" + (" (sin mapa -> confianza N/A)" if not refmap else ""))
+    print(f"  mapa de referencia: {len(refmap)} celdas" + (" (sin mapa -> confianza N/A)" if not refmap else "")
+          + f" | muebles estaticos (nav_map): {len(staticmap)} celdas | plan global: {GLOBAL_SRC}")
+    lg.write(f"GLOBALMAP src={GLOBAL_SRC} walls={len(refmap)} static={len(staticmap)} "
+             f"soft={GLOB_SOFT}/{GLOB_HALO}\n"); lg.flush()
     try:
         while not (stop_event is not None and stop_event.is_set()):
             now = time.time()
@@ -1128,13 +1388,21 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 rej_sum += filt_rej; rej_n += 1
             # --- PERCEPCION GPU (HILO APARTE): depth -> scan virtual (la MESA que el LiDAR no ve) + suelo despejado ---
             if perc_worker is not None and now - perc_t > PERC_PERIOD:
-                perc_worker.submit(grab_cam(cdp), x, y, yaw)   # no bloquea: el hilo hace la consulta GPU
+                _fr = grab_cam(cdp)
+                cambuf.append((now, _fr))                      # buffer para la autopsia pre-colision
+                perc_worker.submit(_fr, x, y, yaw)             # no bloquea: el hilo hace la consulta GPU
                 perc_t = now
+                if FILM_PERIOD > 0 and _fr and now - film_t > FILM_PERIOD:   # PELICULA de la run
+                    rd.save_cam(f"t{int(now - t0):03d}s", _fr)
+                    film_t = now
             if perc_worker is not None and perc_worker.latest is not None:
                 res = perc_worker.latest                       # ultimo resultado disponible (puede ir 1-2 ticks por detras)
                 nperc = perc_worker.n_ok
+                if nperc != perc_seen:                         # respuesta NUEVA (no la cacheada del tick anterior)
+                    perc_rx_t = now; perc_seen = nperc
                 perc_cells = res.cells
                 perc_dets = res.detections or []
+                perc_raw = res.raw if isinstance(res.raw, dict) else {}   # telemetria del canal de color/puerta
                 if res.free_center is not None:                # VISION basada en depth/seg (mejor que la heuristica)
                     vis_center, vis_nearrun = res.free_center, (res.near_run or 0); vis_t = now
             vis_conf = {c for c in perc_cells         # obstaculos de vision (mesa) -> tambien pasan por el score
@@ -1157,7 +1425,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 # SEGURIDAD (prioridad sobre el anti-ruido): un obstaculo de laser CONFIRMADO y CERCA entra YA
                 # al mapa a score maximo, aunque el gate este congelando por giro y sin esperar al umbral. Esto
                 # habria metido la mesa a tiempo (choque run 164456: c0=2.50 hasta el impacto, perc_n=0).
-                near_now = {c for c in (confirmed | vis_conf)   # laser O vision: lo que este CERCA entra ya
+                # SOLO el laser CONFIRMADO salta el gate y el umbral (seguridad de campo cercano).
+                # La VISION pasa por el score normal (+1/frame, obstaculo en ~2 frames = ~1s): sigue
+                # siendo rapida para la mesa/escritorio, pero mientras el robot PIVOTA (turning_fast)
+                # no inserta nada -> imposible pintarse la jaula de clamps de la run 130524.
+                near_now = {c for c in confirmed
                             if math.hypot(c[0] * g.OCELL - x, c[1] * g.OCELL - y) < SAFE_R}
                 safer_ins += sum(1 for c in near_now if oscore.get(c, 0.0) < SC_OBST)   # (diag) forzadas por SAFE_R
                 for c in near_now:
@@ -1184,6 +1456,14 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                             oscore.pop(c, None); oseen.pop(c, None)
                 # mapa ACTIVO = celdas con score suficiente (omap sigue siendo celda->instante para el resto del codigo)
                 omap = {c: oseen[c] for c, s in oscore.items() if s >= SC_OBST}
+            # --- OBSTACULOS de ALTA CONFIANZA (idea de Renxi 2026-07-02): pared/mueble PERSISTENTE.
+            # El robot los trataba igual que el ruido (mismo margen agresivo de 0.13) y los "ignoraba".
+            # DURO = celda del mapa estatico confirmada, o score SATURADO (visto casi siempre), o colision.
+            if OLDMAP:
+                hard_set = set(colmap)
+            else:
+                hard_set = {c for c, sc in oscore.items()
+                            if sc >= SC_CAP or (refmap and c in refmap)} | colmap
             # (diag) churn del mapa ACTIVO: cuantas celdas entran/salen (ruido entrando = adds altos sin moverse)
             cur_oset_diag = set(omap.keys())
             tick_add = len(cur_oset_diag - prev_oset_diag); tick_del = len(prev_oset_diag - cur_oset_diag)
@@ -1206,12 +1486,20 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 if obst_dets or now - vis_log_t <= 0.01:   # resumen periodico aunque no haya detecciones
                     nvis_map = sum(1 for c in vis_conf if c in omap)
                     dstr = ",".join(f"{d.get('label')}@{(d.get('bearing_deg') or 0):+.0f}/{d.get('range_m')}m" for d in obst_dets) or "-"
-                    lg.write(f"[VIS] perc_n={len(perc_cells)} free_c={vis_center if vis_center is not None else '-'} "
-                             f"vismap={nvis_map}/{len(vis_conf)} dets=[{dstr}]\n")
+                    cdoor = perc_raw.get("door") or {}
+                    lg.write(f"[VIS] perc_n={len(perc_cells)} age={round(now - perc_rx_t, 1) if perc_rx_t is not None else '-'} "
+                             f"free_c={vis_center if vis_center is not None else '-'} "
+                             f"vismap={nvis_map}/{len(vis_conf)} color={perc_raw.get('color_pts', '-')} "
+                             f"carpet={perc_raw.get('carpet_pct', '-')} cnear={perc_raw.get('color_near', '-')} "
+                             f"crmin={perc_raw.get('color_rmin', '-')} door={cdoor.get('bearing_deg', '-')} "
+                             f"dets=[{dstr}]\n")
                 lg.flush()
             op = [(cx * g.OCELL, cy * g.OCELL) for (cx, cy) in oset
                   if abs(cx * g.OCELL - x) < 2.6 and abs(cy * g.OCELL - y) < 2.6]
+            op_hard = [(cx * g.OCELL, cy * g.OCELL) for (cx, cy) in hard_set
+                       if abs(cx * g.OCELL - x) < 2.6 and abs(cy * g.OCELL - y) < 2.6]
             c0 = clear_dir(x, y, yaw, 0, op); minc0 = min(minc0, c0)
+            c0_hard = clear_dir(x, y, yaw, 0, op_hard)         # holgura frontal contra PAREDES/persistentes
             mm = sei.update(now - t0, d_goal, c0)            # 2 metricas SEI: clearance (espacio libre) + progression (avance a B)
             m_clear, m_prog = mm["clearance"], mm["progression"]
             cl_left = clear_dir(x, y, yaw, +60, op); cl_right = clear_dir(x, y, yaw, -60, op)   # clearance IZQ/DCHA (Renxi: balancear)
@@ -1262,9 +1550,60 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 lg.write(f"COLISION #{ncol} [{ctype}] pos=({x:+.2f},{y:+.2f}) yaw={yaw:+.0f} c0={c0:.2f} obs={len(oset)} "
                          f"perc_n={len(perc_cells)} free_c={vis_center if vis_center is not None else '-'} dets=[{_cd}] "
                          f"-> {'VISION CIEGA (perc_n=0): mesa LiDAR-ciega no vista' if len(perc_cells) == 0 else 'vision aportaba celdas'}\n")
-                rd.event("collision", now - t0, x, y, {"src": ctype})
+                rd.event("collision", now - t0, x, y,
+                         {"src": ctype,
+                          "color_pts": perc_raw.get("color_pts"), "carpet_pct": perc_raw.get("carpet_pct"),
+                          "color_near": perc_raw.get("color_near"),
+                          # mapa ACTIVO alrededor en el instante del golpe: ¿el mapa LO SABIA y el DWA fallo,
+                          # o el obstaculo nunca llego al mapa? (la pregunta clave de cada autopsia)
+                          "omap_near": [[c[0], c[1]] for c in oset
+                                        if math.hypot(c[0] * g.OCELL - x, c[1] * g.OCELL - y) < 2.5][:400]})
                 rd.save_cloud(f"col{ncol}", [round(x, 3), round(y, 3), round(yaw, 1)], grab_full_cloud(cdp))
                 rd.save_cam(f"col{ncol}", grab_cam(cdp))
+                # AUTOPSIA: frames de la APROXIMACION (t-1s/-2s/-3s) — la foto del impacto suele ser
+                # una pared borrosa a 0 cm; lo diagnostico esta en lo que se veia ANTES.
+                for _ago in (1.0, 2.0, 3.0):
+                    _best = None
+                    for _tf, _fj in cambuf:
+                        if _fj and (_best is None or abs((now - _tf) - _ago) < abs((now - _best[0]) - _ago)):
+                            _best = (_tf, _fj)
+                    if _best and abs((now - _best[0]) - _ago) < 0.7:
+                        rd.save_cam(f"col{ncol}_pre{int(_ago)}s", _best[1])
+
+            # --- ESCAPE inicial (HANDOFF 8.8): si NACE encajonado (B con la nariz en el sofa), retrocede
+            #     ~ESC_DIST en recto ANTES de planificar: asi el primer giro se hace CON sitio, no rozando.
+            #     Va ANTES de RECUPERACION/DESATASCO a proposito: una colision real (recov) sigue mandando.
+            esc_cp = perc_raw.get("carpet_pct") if isinstance(perc_raw.get("carpet_pct"), (int, float)) else None
+            # 'nace encajonado' = pegado a algo SIN haberse movido aun (<0.3m del punto de arranque). El gate
+            # de desplazamiento evita el falso disparo al acercarse a la puerta (142725: carpet 0.46 en t=4.7s
+            # tras andar 1.5m — run perfecta, ahi NO toca retroceder).
+            if (ESCAPE_ON and esc is None and not esc_done and now - t0 < 5.0 and d_goal > 1.5
+                    and trail and math.hypot(x - trail[0][0], y - trail[0][1]) < 0.30
+                    and (c0 < ESC_TRIG or (esc_cp is not None and esc_cp < ESC_CARPET))):
+                esc_src = "laser" if c0 < ESC_TRIG else "vision"
+                esc = {"t0": now, "x0": x, "y0": y, "src": esc_src}
+                print(f"\n  ESCAPE [{esc_src}]: nazco encajonado (c0={c0:.2f}m carpet={esc_cp if esc_cp is not None else '-'})"
+                      f" -> retrocedo {ESC_DIST:.1f}m antes de planificar.")
+                lg.write(f"ESCAPE-START src={esc_src} c0={c0:.2f} carpet={esc_cp} pos=({x:+.2f},{y:+.2f})\n")
+                rd.event("escape_start", now - t0, x, y,
+                         {"src": esc_src, "c0": round(c0, 2), "carpet_pct": esc_cp})
+            if esc is not None:
+                esc_el = now - esc["t0"]; esc_mv = math.hypot(x - esc["x0"], y - esc["y0"])
+                esc_rear = clear_dir(x, y, yaw, 180, op)
+                # 'despejado' exige AMBOS sensores contentos (si hay vision): el sofa es LiDAR-ciego a 40cm,
+                # con c0 solo el escape acabaria en el primer tick con la nariz aun en el cojin.
+                esc_clear = (c0 >= 0.85) and (esc_cp is None or esc_cp >= ESC_CARPET + 0.05)
+                if esc_el < 6.0 and esc_mv < ESC_DIST and esc_rear > 0.50 and not esc_clear:
+                    cmd = (0, -0.35, 0, 0); ph = "ESC-BK"   # -0.35: la deadzone del stick es ~0.3
+                else:
+                    why = ("despejado" if esc_clear else "distancia hecha" if esc_mv >= ESC_DIST
+                           else "timeout" if esc_el >= 6.0 else "sin hueco detras")
+                    print(f"  ESCAPE fin [{why}]: retrocedi {esc_mv:.2f}m, c0={c0:.2f}m "
+                          f"carpet={esc_cp if esc_cp is not None else '-'} -> planifico.")
+                    lg.write(f"ESCAPE-END why={why} moved={esc_mv:.2f} c0={c0:.2f} carpet={esc_cp} rear={esc_rear:.2f}\n")
+                    rd.event("escape_end", now - t0, x, y,
+                             {"why": why, "moved": round(esc_mv, 2), "c0": round(c0, 2), "carpet_pct": esc_cp})
+                    esc = None; esc_done = True; plan_pts = []; dhist = []
 
             # --- RECUPERACION: mini paso atras (si hay hueco detras) + pivota ---
             if recov is not None:
@@ -1319,6 +1658,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 print(f"\n  >>> MODO AGRESIVO ON ({AGGR_AFTER:.0f}s sin acercarse a B): reduzco inflado y holgura "
                       f"(min seguridad {AGGR_ROBOT_R}m) para cruzar la puerta.")
                 lg.write(f"AGGRESSIVE-ON t={now-t0:.0f}s d={d_goal:.2f}\n")
+                rd.event("aggressive_on", now - t0, x, y, {"d": round(d_goal, 2)})
             g.ROBOT_R = AGGR_ROBOT_R if aggressive else ROBOT_R0   # holgura del DWA (min seguridad en agresivo)
 
             # --- PLAN A* + CONTROL LOCAL DWA (hacia el WAYPOINT, no una frontera) ---
@@ -1335,7 +1675,25 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         recent = {c for c, tt in omap.items() if now - tt < 4.0}
                         cm = {c: math.inf for c in (recent | (refmap or set()))}
                     else:
-                        cm = g.build_costmap(oset)         # aproximacion rapida con el laser vivo (con seguridad)
+                        # PLAN GLOBAL sobre mapa ESTABLE (Adrian 2026-07-02, viendo el viewer): antes se
+                        # planificaba sobre el LASER VIVO (oset) -> el ruido intermitente doblaba el plan
+                        # en cada replanificacion (linea verde en zigzag esquivando manchas, 'ddir' de la
+                        # puerta temblando -> thrash del DOOR-AL). Arquitectura correcta (la de Nav2):
+                        # GLOBAL = mapa cargado + persistentes DUROS (saturados/colisiones; no parpadean);
+                        # LOCAL (DWA) = laser vivo. Lo nuevo/no mapeado lo esquiva el DWA y, si de verdad
+                        # bloquea la ruta, el modo agresivo ya replanifica con lo reciente.
+                        if GLOBAL_SRC == "live":               # G1_GLOBALMAP=live: comportamiento antiguo
+                            cm = g.build_costmap(oset)
+                        elif GLOBAL_SRC == "ref":              # G1_GLOBALMAP=ref: SOLO el mapa cargado
+                            cm = g.build_costmap(refmap or set())
+                        elif GLOBAL_SRC == "hard":             # P8 v1 (manana 2026-07-02). OJO medido offline:
+                            # con INFL_HARD=1 la puerta (~4 celdas) queda sellada -> este A* fallaba y TODAS
+                            # las replanificaciones caian al fallback de abajo (solo paredes, sin hard_set).
+                            cm = g.build_costmap(hard_set | (refmap or set()))
+                        else:                                  # "static" (DEFECTO, P8b): paredes duras sin inflar
+                            # + muebles conocidos/persistentes/colisiones en coste BLANDO (ver docstring de
+                            # global_static_costmap). El plan rodea lo conocido pero nunca sella un paso.
+                            cm = global_static_costmap(refmap or set(), staticmap | hard_set)
                     cells_path = g.astar(scell, gcell, cm)
                     if not cells_path and refmap:          # ultimo recurso: solo el mapa limpio (siempre tiene la puerta)
                         cells_path = g.astar(scell, gcell, {c: math.inf for c in refmap})
@@ -1343,12 +1701,84 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     plan_t = now
                     if not plan_pts:
                         lg.write(f"A*-FAIL goal=({wx:+.1f},{wy:+.1f}) d={d_goal:.1f} obs={len(oset)}\n")
+                        rd.event("astar_fail", now - t0, x, y, {"obs": len(oset)})   # jaulas/sellados: visibles en el dataset
                 if plan_pts:
                     carrot = g.path_carrot(plan_pts, x, y)
+                    # --- ENGAGEMENT DE PUERTA (mapa estatico): pre-entrada -> parar -> alinear -> cruzar RECTO ---
+                    engcmd = None
+                    if DOOR_ENGAGE and d_goal > DOOR_MIN_GOAL and now >= eng["cool"]:
+                        ux = math.cos(math.radians(DOOR_AXIS)); uy = math.sin(math.radians(DOOR_AXIS))
+                        sgoal = (wx - DOOR_CX) * ux + (wy - DOOR_CY) * uy     # lado del GOAL respecto al vano
+                        srob = (x - DOOR_CX) * ux + (y - DOOR_CY) * uy        # lado del ROBOT
+                        ddc = math.hypot(x - DOOR_CX, y - DOOR_CY)
+                        if eng["state"] is None and ddc < 1.8 and sgoal * srob < 0:
+                            eng.update(state="GOTO", ok=0, wt=0, ts=now)      # goal al OTRO lado y puerta cerca
+                            lg.write(f"DOOR-ENG start t={now-t0:.0f}s pos=({x:+.2f},{y:+.2f}) sgn={'AB' if sgoal>0 else 'BA'}\n")
+                            rd.event("door_engage", now - t0, x, y, {"dir": "AB" if sgoal > 0 else "BA"})
+                        if eng["state"]:
+                            sgn = 1.0 if sgoal > 0 else -1.0
+                            exp = (DOOR_CX - sgn * DOOR_ENG_D * ux, DOOR_CY - sgn * DOOR_ENG_D * uy)   # pre-entrada
+                            head = DOOR_AXIS if sgn > 0 else ((DOOR_AXIS + 360) % 360 - 180)           # rumbo de cruce
+                            he = (head - yaw + 180) % 360 - 180
+                            if eng["state"] == "GOTO":
+                                de = math.hypot(exp[0] - x, exp[1] - y)
+                                if de <= DOOR_ENG_TOL:
+                                    eng.update(state="ALIGN", ok=0, ts=now)
+                                    lg.write(f"DOOR-ENG at-position t={now-t0:.0f}s err={de:.2f}m\n")
+                                else:
+                                    be = (math.degrees(math.atan2(exp[1] - y, exp[0] - x)) - yaw + 180) % 360 - 180
+                                    if abs(be) > 25:
+                                        engcmd = ((0, 0, -g.AV_TURN if be > 0 else g.AV_TURN, 0), "ENG-T"); eng["wt"] = 0
+                                    elif c0 > 0.35:
+                                        engcmd = ((0, 0.28, 0, 0), "ENG-F"); eng["wt"] = 0
+                                    else:
+                                        engcmd = ((0, 0, 0, 0), "ENG-WT"); eng["wt"] += 1
+                                        if eng["wt"] > 12:                    # ~4s bloqueado hacia la pre-entrada
+                                            eng.update(state=None, cool=now + 8.0)
+                                            lg.write("DOOR-ENG abort (GOTO bloqueado) -> logica normal 8s\n")
+                            if eng["state"] == "ALIGN":
+                                if abs(he) <= DOOR_ALIGN_TOL:
+                                    eng["ok"] += 1; engcmd = ((0, 0, 0, 0), "ENG-AL.")
+                                    if eng["ok"] >= 2:
+                                        eng.update(state="CROSS", ts=now)
+                                        lg.write(f"DOOR-ENG aligned t={now-t0:.0f}s yaw={yaw:+.0f} he={he:+.1f}\n")
+                                elif now - eng["ts"] > 12.0:                  # no consigue alinear: no bloquear la run
+                                    eng.update(state=None, cool=now + 8.0)
+                                    lg.write(f"DOOR-ENG abort (ALIGN timeout, he={he:+.0f})\n")
+                                else:
+                                    eng["ok"] = 0
+                                    # pulso anti-sobregiro (giro real ~15-20 deg/tick por la deadzone)
+                                    if abs(he) < 40 and (int(now * 3.33) % 2 == 0):
+                                        engcmd = ((0, 0, 0, 0), "ENG-AL.")
+                                    else:
+                                        engcmd = ((0, 0, -g.AV_TURN if he > 0 else g.AV_TURN, 0), "ENG-AL")
+                            if eng["state"] == "CROSS":
+                                if srob * sgn > DOOR_EXIT_D:                  # cruzado: control normal otra vez
+                                    eng.update(state=None)
+                                    lg.write(f"DOOR-ENG CROSSED t={now-t0:.0f}s pos=({x:+.2f},{y:+.2f})\n")
+                                    rd.event("door_crossed", now - t0, x, y, None)
+                                elif abs(he) > DOOR_REALIGN:                  # deriva del bipedo: NO avanzar torcido
+                                    eng.update(state="ALIGN", ok=0, ts=now); engcmd = ((0, 0, 0, 0), "ENG-RE")
+                                else:
+                                    latL = (-(x - DOOR_CX) * uy + (y - DOOR_CY) * ux) * sgn   # + = IZQ del eje
+                                    if abs(latL) > 0.14 and abs(srob) > 0.35:  # descentrado ANTES del vano -> strafe al eje
+                                        lx = DOOR_STRAFE_SIGN * (DOOR_STRAFE if latL < 0 else -DOOR_STRAFE)
+                                        engcmd = ((lx, 0, 0, 0), "ENG-C")
+                                    else:
+                                        engcmd = ((0, 0.28, 0, 0), "ENG-GO")
+                                        if "pt" not in eng or now - eng["pt"] > 1.2:   # avance real cada ~1.2s
+                                            if "pt" in eng and math.hypot(x - eng["px"], y - eng["py"]) < 0.06:
+                                                eng["wt"] += 1               # empujando sin moverse (marco)
+                                                if eng["wt"] >= 4:           # ~5s presionando -> no insistir
+                                                    eng.update(state=None, cool=now + 8.0)
+                                                    lg.write("DOOR-ENG abort (CROSS sin avance) -> logica normal 8s\n")
+                                            else:
+                                                eng["wt"] = 0
+                                            eng["px"] = x; eng["py"] = y; eng["pt"] = now
                     # --- MANIOBRA DE PUERTA: SOLO cuando el robot YA esta en zona estrecha (c0 bajo) y hay un
                     #     cuello MUY cerca por delante. Asi NO se activa al inicio (en abierto va con DWA rapido). ---
                     door = None
-                    if op and c0 < 0.9 and d_goal > DOOR_MIN_GOAL:   # cerca de B NO hay puerta: deja el DWA rodear
+                    if engcmd is None and op and c0 < 0.9 and d_goal > DOOR_MIN_GOAL:   # cerca de B NO hay puerta: deja el DWA rodear
                         bc = 9.9; bi = -1
                         for i, p in enumerate(plan_pts):
                             dd = math.hypot(p[0] - x, p[1] - y)
@@ -1359,20 +1789,34 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                 bc = clr; bi = i
                         if bi >= 0 and bc < 0.42:           # vano estrecho justo delante = puerta
                             door = (bi, plan_pts[bi], bc)
-                    if door is not None:
+                    if engcmd is not None:                    # el ENGAGEMENT manda sobre DOOR-*/DWA
+                        cmd, ph = engcmd
+                        nstop = 0
+                    elif door is not None:
                         bi, dp, bc = door
                         a = plan_pts[max(0, bi - 2)]; b = plan_pts[min(len(plan_pts) - 1, bi + 2)]
                         ddir = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))   # eje de la puerta
                         he = (ddir - yaw + 180) % 360 - 180
+                        # rumbo directo al PUNTO del vano: si ya APUNTA al hueco, no hace falta alinear con el
+                        # eje (el ddir del A* tiembla; run 145010: alineado a ge=-1.2 y DOOR-AL siguio girando
+                        # hasta +124 -> huida. "Deberia entrar recto, estaba bien orientado" — Adrian).
+                        bdp = math.degrees(math.atan2(dp[1] - y, dp[0] - x))
+                        hep = (bdp - yaw + 180) % 360 - 180
                         # VISION manda en la puerta (el laser es ruidoso ahi): suelo despejado por delante?
                         vis_ok = (vis_center is not None and vis_center > 0.45 and (vis_nearrun or 0) < 8)
                         bal = m_cl - m_cr                   # >0 = mas libre a la IZQ ; <0 = mas libre a la DCHA
-                        if abs(he) > 25:                    # 1) alinea el rumbo con el eje ANTES de entrar.
+                        if abs(he) > 25 and abs(hep) > 15:  # 1) alinea SOLO si tampoco apunta ya al hueco.
                             # Banda ANCHA (25, no 12): el eje de puerta 'ddir' tiembla porque el A* replanifica
                             # cada tick con el laser ruidoso; con banda estrecha + giro fijo 0.45 (no se puede
                             # bajar: hay deadzone ~0.3) el robot oscilaba sin parar (thrash). 25 lo tolera y deja
                             # de cazar el ruido; el centrado fino lo hace DOOR-CTR (strafe).
-                            cmd = (0, 0, -g.AV_TURN if he > 0 else g.AV_TURN, 0); ph = "DOOR-AL"
+                            # PULSO anti-sobregiro: el giro real es ~15-20 grados/tick (deadzone: rx fijo 0.45);
+                            # cerca de alineado (|he|<45) se gira en ticks ALTERNOS (mitad de ritmo efectivo)
+                            # para no pasarse de largo y entrar en oscilacion (145010/145306).
+                            if abs(he) < 45 and (int(now * 3.33) % 2 == 0):
+                                cmd = (0, 0, 0, 0); ph = "DOOR-AL."
+                            else:
+                                cmd = (0, 0, -g.AV_TURN if he > 0 else g.AV_TURN, 0); ph = "DOOR-AL"
                         elif DOOR_CENTER and abs(bal) > DOOR_BAL_TH and max(cl_left, cl_right) > 0.30:
                             # 2) DESCENTRADO -> strafe hacia el lado MAS LIBRE para entrar centrado (Renxi)
                             lx = DOOR_STRAFE_SIGN * (DOOR_STRAFE if bal > 0 else -DOOR_STRAFE)
@@ -1431,8 +1875,18 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         turncal.append((rxp, yawrate))
                         lg.write(f"  TURN-CAL rx={rxp:+.2f} esperado={exp:+.0f}deg/s medido={yawrate:+.0f}deg/s "
                                  f"{'OK' if ok else '>>> SIGNO INVERTIDO <<<'}\n")
+                    # STRAFE-CAL: paso lateral puro previo -> desplazamiento REAL sobre el eje izquierdo.
+                    # (asi cazamos el signo invertido del strafe EN VIVO, como TURN-CAL con el giro)
+                    lxp = prev_cmd[0]
+                    if abs(lxp) > 0.2 and abs(prev_cmd[1]) < 0.05 and abs(rxp) < 0.05 and prev_xy is not None:
+                        yr0 = math.radians(prev_yaw)
+                        dl = (x - prev_xy[0]) * (-math.sin(yr0)) + (y - prev_xy[1]) * math.cos(yr0)
+                        strafecal.append((lxp, dl))
+                        if abs(dl) > 0.008:
+                            lg.write(f"  STRAFE-CAL lx={lxp:+.2f} medido={dl*100:+.1f}cm/tick "
+                                     f"{'IZQ' if dl > 0 else 'DCHA'}\n")
                     spin_acc += abs(dyaw)
-            prev_yaw = yaw; prev_lt = now; prev_cmd = cmd
+            prev_yaw = yaw; prev_lt = now; prev_cmd = cmd; prev_xy = (x, y)
             # progreso real (desplazamiento): si avanza, resetea el acumulador de giro
             if prog_pos is None or math.hypot(x - prog_pos[0], y - prog_pos[1]) > 0.15:
                 prog_pos = (x, y); prog_t = now; spin_acc = 0.0
@@ -1448,7 +1902,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             line = (f"t={now-t0:5.1f} {ph} pos=({x:+.2f},{y:+.2f}) yaw={yaw:+6.1f} d={d_goal:.2f} "
                     f"goal_err={beg:+.0f} carrot_err={(bce if bce is not None else 0):+4.0f} "
                     f"c0={c0:.2f} clear={m_clear:.2f} prog={m_prog:.2f} rel={m_rel:.2f} bal={m_cl-m_cr:+.2f} "
-                    f"obs={len(oset)} obsc={len(oscore)} yr={yaw_rate:3.0f}{'G' if turning_fast else ' '} "
+                    f"obs={len(oset)} hard={len(hard_set)} obsc={len(oscore)} yr={yaw_rate:3.0f}{'G' if turning_fast else ' '} "
                     f"nz={ss2['laser_noise']:.2f} flt={filt_rej:.2f} dmap=+{tick_add}/-{tick_del} "
                     f"shz={((len(fresh_times)-1)/max(1e-6, fresh_times[-1]-fresh_times[0])) if len(fresh_times) >= 2 else 0.0:.1f} "
                     f"plan={len(plan_pts)} cmd=(lx={cmd[0]:+.2f},ly={cmd[1]:+.2f},rx={cmd[2]:+.2f})")
@@ -1465,6 +1919,22 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 nz = ss2["laser_noise"]; nz_sum += nz; nz_max = max(nz_max, nz); nz_n += 1
             m_rel = ss2["reliability"]
             h = hh.get("h") or {}
+            # --- META2: decision de gobernanza DCE a ~2Hz con las metricas del tick ---
+            if meta2 is not None:
+                try:
+                    _o = meta2.tick(now, m_clear, m_prog, m_rel, ss2.get("laser_noise"), h.get("bat"))
+                except Exception as e:
+                    _o = None
+                    if now - vis_log_t > 10.0:
+                        lg.write(f"[META2] error: {repr(e)}\n")
+                if _o is not None:
+                    if _o.get("changed") or _o["action"] in ("SWITCH", "HELP"):
+                        lg.write(f"[META2] {_o['action']} activo={_o['active']} tens={_o['tension']} "
+                                 f"ful={_o['fulfillment']} cap={_o['cap']} rej={_o['rejections']}\n")
+                    if _o.get("changed") and _o["action"] not in ("KEEP", "WARMUP", "PEND"):
+                        rd.event("meta2_" + _o["action"].lower().rstrip("?"), now - t0, x, y,
+                                 {"active": _o["active"], "tension": _o["tension"], "ful": _o["fulfillment"]})
+                    m2o = _o
             rd.sample(now - t0, x, y, yaw, d_goal, math.hypot(x - prog_pos[0], y - prog_pos[1]) if prog_pos else 0.0,
                       c0, len(oset), cmd=cmd, phase=ph.strip(),
                       extra={"err": hh.get("err"), "bat": h.get("bat"), "cpuT": h.get("cpuT"),
@@ -1477,7 +1947,23 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "filt_rej": round(filt_rej, 3),                  # fraccion del barrido rechazada por persistencia
                              "scan_fresh": bool(scan_fresh),                  # este tick trajo nube nueva?
                              "map_add": tick_add, "map_del": tick_del,        # churn del mapa activo este tick
+                             "color_pts": perc_raw.get("color_pts"),          # puntos que aporto el canal de MOQUETA
+                             "carpet_pct": perc_raw.get("carpet_pct"),        # fraccion del frame clasificada moqueta
+                             "color_near": perc_raw.get("color_near"),        # puntos clampeados (obstaculo encima)
+                             "color_rmin": perc_raw.get("color_rmin"),        # obstaculo de color mas cercano (m)
+                             "door_b": (perc_raw.get("door") or {}).get("bearing_deg"),   # rumbo de puerta por vision
+                             "carrot": ([round(carrot[0], 2), round(carrot[1], 2)] if carrot else None),
+                             "goal_err": round(beg, 1),                       # error de rumbo al objetivo
+                             "carrot_err": (round(bce, 1) if bce is not None else None),   # y al carrot del plan
+                             "plan_n": len(plan_pts),                         # 0 = A* sin ruta ese tick
+                             "c0_hard": round(c0_hard, 2),                    # holgura frontal contra PAREDES/persistentes
+                             "n_hard": len(hard_set),                         # celdas de alta confianza en el mapa
                              "perc_n": len(perc_cells),                       # nº de celdas-obstaculo que aporto la VISION este tick
+                             "perc_age": (round(now - perc_rx_t, 2) if perc_rx_t is not None else None),   # s desde la ultima respuesta REAL del server (P3: ¿flicker=latencia o escena vacia?)
+                             "meta2_act": (m2o or {}).get("action"),           # gobernanza DCE (G1_META2)
+                             "meta2_active": (m2o or {}).get("active"),
+                             "meta2_tens": (m2o or {}).get("tension"),
+                             "meta2_ful": (m2o or {}).get("fulfillment"),
                              "clear_left": round(m_cl, 3), "clear_right": round(m_cr, 3),   # clearance lateral (Renxi: balance)
                              "clearL_m": round(cl_left, 2), "clearR_m": round(cl_right, 2),
                              "balance": round(m_cl - m_cr, 3),                # +izq libre / -dcha libre (0 = centrado)
@@ -1488,8 +1974,19 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 print("  " + line); tprint = now
 
             # --- PLAN GLOBAL origen->destino (para verlo completo en la ventana) ---
+            # OJO (2026-07-02, cazado en la primera run de P8b): esta linea verde usaba SIEMPRE el laser
+            # vivo (oset) via global_plan() "solo para visualizar" -> zigzagueaba entre manchas aunque el
+            # plan de CONTROL ya fuera estatico, y parecia que el fix no funcionaba. Ahora en modo 'static'
+            # pinta el plan sobre el MISMO costmap que el control (paredes inf + muebles blandos).
             if vshare is not None and now - gplan_t > 3.0 and trail:
-                gplan = global_plan(trail[0][0], trail[0][1], wx, wy, oset or refmap)
+                if GLOBAL_SRC == "static":
+                    gcm = global_static_costmap(refmap or set(), staticmap | hard_set)
+                    gcells = g.astar((round(trail[0][0] / g.OCELL), round(trail[0][1] / g.OCELL)),
+                                     (round(wx / g.OCELL), round(wy / g.OCELL)), gcm, margin=25)
+                    gplan = ([(c[0] * g.OCELL, c[1] * g.OCELL) for c in gcells]
+                             if gcells and len(gcells) > 1 else [(trail[0][0], trail[0][1]), (wx, wy)])
+                else:
+                    gplan = global_plan(trail[0][0], trail[0][1], wx, wy, oset or refmap)
                 gplan_t = now
             # --- publica estado para la ventana en vivo ---
             if vshare is not None:
@@ -1508,6 +2005,26 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     vshare["mhist"] = sei.history()                                          # historia (t,clearance,progression)
                     vshare["shist"] = sens.history()                                         # historia (t,reliability,noise,loc_conf)
 
+            # --- MODERADOR por vision (principio RENXI: LiDAR decide, vision APOYA): si el canal de
+            # color clampea muchas columnas ('lo tengo encima'), NO vetamos el paso (eso hacia huir al
+            # robot de puertas pasables) pero SI limitamos la velocidad de avance: acercarse con cuidado.
+            if cmd[1] > 0.24 and isinstance(perc_raw.get("color_near"), (int, float)) and perc_raw["color_near"] >= 8:
+                cmd = (cmd[0], 0.24, cmd[2], 0)
+            # --- HARD-GUARD (G1_HARDGUARD=1): las paredes/persistentes NO se rozan ni en agresivo.
+            # Frena el avance segun la holgura contra lo DURO; lo blando/ruidoso sigue negociable.
+            if HARD_GUARD and cmd[1] > 0.05:
+                if c0_hard < HARD_STOP:
+                    cmd = (cmd[0], 0.0, cmd[2], 0); ph = ph.strip() + "!H"
+                    if now - hg_log_t > 2.0:
+                        lg.write(f"HARD-GUARD STOP c0_hard={c0_hard:.2f} (<{HARD_STOP}) pos=({x:+.2f},{y:+.2f})\n")
+                        hg_log_t = now
+                elif c0_hard < HARD_SLOW and cmd[1] > 0.22:
+                    cmd = (cmd[0], 0.22, cmd[2], 0)            # acercarse a una pared: despacio
+            # --- META2 ACTIVO (G1_META2=2): el perfil de la analogia DCE es un TECHO de avance.
+            # Solo modera cmd[1]>0 (como HARD-GUARD y el moderador Renxi): retroceso/giros de las
+            # recuperaciones y del ESCAPE no se tocan. HELP firme -> avance 0 (el DCE pide parar).
+            if META2_MODE == "2" and m2o is not None and m2o.get("cap") is not None and cmd[1] > m2o["cap"]:
+                cmd = (cmd[0], m2o["cap"], cmd[2], 0); ph = ph.strip() + "!M"
             prev_fwd = (cmd[1] > 0.1)
             cdp.eval(g.set_cmd_js(*cmd))
             time.sleep(0.1)
@@ -1522,6 +2039,17 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     finally:
         cdp.eval(g.STOP_JS); time.sleep(0.2); cdp.eval(g.STOP_JS)
         g.ROBOT_R = locals().get("ROBOT_R0", g.ROBOT_R)    # restaura la holgura normal del DWA
+        try:
+            sc = locals().get("strafecal") or []
+            if sc:
+                izq = [d for l, d in sc if l > 0]; dch = [d for l, d in sc if l < 0]
+                mi = (sum(izq) / len(izq) * 100) if izq else None
+                md = (sum(dch) / len(dch) * 100) if dch else None
+                lg.write(f"STRAFE-CAL-RESUMEN lx>0 -> {mi if mi is not None else '-'}cm/tick ; "
+                         f"lx<0 -> {md if md is not None else '-'}cm/tick "
+                         f"(con el mapeo BIEN, lx>0 debe dar cm POSITIVOS=IZQ)\n"); lg.flush()
+        except Exception:
+            pass
         # resumen de la calibracion de giro: ¿el robot gira en el sentido que el modelo cree?
         tc = locals().get("turncal", [])
         if tc:

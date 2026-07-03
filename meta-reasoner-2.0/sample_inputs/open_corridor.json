@@ -1,0 +1,23 @@
+{
+  "readings": {
+    "battery_consumption": {
+      "reliability": 0.95,
+      "uncertainty": 0.01,
+      "value": 1.0
+    },
+    "fragility": {
+      "value": 1.0
+    },
+    "progression": {
+      "reliability": 0.95,
+      "uncertainty": 0.01,
+      "value": 1.2
+    },
+    "safety": {
+      "reliability": 0.95,
+      "uncertainty": 0.01,
+      "value": 1.2
+    }
+  },
+  "timestamp": 1
+}
