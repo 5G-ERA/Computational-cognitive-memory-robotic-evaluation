@@ -39,9 +39,17 @@ ARMS = {
                 "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
     # brazo PRIOR ERRONEO (5.3.6.2 de la tesis): META2 activo con la config de puerta NO-payload
     # (Efficient preferida) = analogia mal calibrada para la tarea de payload
+    # SIN memoria entre runs = el M2+Wrong-LOCKED de la tesis (Tabla 18)
     "wrong": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1door.json",
               "G1_SIM_ID": "lab_v1_payload_wrongprior",
               "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    # brazo M2+Wrong->DST: mismo prior erroneo + LAYER 2 (creencia DST persistida entre runs,
+    # G1_M2_STATE). Las primeras runs derraman bajo Efficient; la creencia se erosiona y las
+    # siguientes arrancan corregidas en Cautious = la recuperacion de la tesis 5.3.6.3.
+    "wrongdst": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1door.json",
+                 "G1_SIM_ID": "lab_v1_payload_wrongdst",
+                 "G1_M2_STATE": "meta2_state_wrongdst.json",
+                 "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
 }
 # brazos activos de esta invocacion: por env CAMPAIGN_ARMS="base,meta2" (default los 4)
 ACTIVE_ARMS = [a for a in os.environ.get("CAMPAIGN_ARMS", ",".join(ARMS)).split(",") if a in ARMS]

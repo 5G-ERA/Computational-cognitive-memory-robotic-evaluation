@@ -235,6 +235,9 @@ class RunRecorder:
         if extra:
             e.update(extra)
         self.rec["events"].append(e)
+        if kind in ("spill", "spill_human"):       # canal payload -> fragility del bridge META2
+            self.last_spill_t = time.time()
+            self.spill_count = getattr(self, "spill_count", 0) + 1
 
     def maybe_laser(self, t, pts, every=2.0):
         if t - self._laser_t >= every:
@@ -2002,8 +2005,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         if _cmy >= 0.2 and _dtm > 0.5:
                             _v = math.hypot(x - m2trk[0][1], y - m2trk[0][2]) / _dtm
                             _mob = max(0.0, min(1.0, _v / max(0.05, 0.75 * _cmy)))
+                    _sp_dt = ((time.time() - rd.last_spill_t)
+                              if getattr(rd, "last_spill_t", None) else None)
                     _o = meta2.tick(now, m_clear, m_prog, m_rel, ss2.get("laser_noise"), h.get("bat"),
-                                    hold_progression=_hold, mobility=_mob)
+                                    hold_progression=_hold, mobility=_mob,
+                                    spill_dt=_sp_dt, spill_count=getattr(rd, "spill_count", 0))
                 except Exception as e:
                     _o = None
                     if now - vis_log_t > 10.0:

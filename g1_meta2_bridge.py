@@ -79,8 +79,22 @@ class Meta2Bridge:
     PERSIST_ACTION = 2
     WARMUP = 4          # primeras decisiones: solo observar (arranque con métricas a 0)
 
+    # --- LAYER 2 de la tesis (Cap.5, 5.2.6.1): creencia DST por analogia PERSISTIDA entre runs.
+    # G1_M2_STATE=<fichero.json> la activa (vacio = sin memoria entre runs, comportamiento previo).
+    # Evidencia al final de cada run: derrame bajo la analogia A -> masa a 'mismatch' de A;
+    # run limpia -> masa a 'match' de la analogia mayoritaria. Combinacion por regla de Dempster.
+    # La plausibilidad Pl(match)=m_match+m_theta gobierna (bridge-side, reasoner intacto):
+    #   Pl < PL_MIN   -> la analogia NO se despliega (se fuerza la mas conservadora desplegable)
+    #   Pl < BLEND_PL -> su techo de velocidad se FUNDE hacia el conservador (blend tesis 5.3.4)
+    STATE_FILE = os.environ.get("G1_M2_STATE", "")
+    PL_MIN = float(os.environ.get("G1_M2_PL_MIN", "0.45"))
+    BLEND_PL = 0.70
+    CONSERVATIVE = "Cautious_Nav"          # analogia refugio (el M1 del blend)
+    CONSERVATIVE_CAP = 0.28
+
     def __init__(self, config_path=None, period=0.5):
-        self.reasoner = MetaReasoner20(config_path or DEFAULT_CONFIG)
+        self.config_path = config_path or DEFAULT_CONFIG
+        self.reasoner = MetaReasoner20(self.config_path)
         self.period = float(period)
         self.last_t = -1e9
         self.last = None          # última salida completa (dict)
@@ -90,6 +104,95 @@ class Meta2Bridge:
         self.applied = self.reasoner.active         # analogía CONFIRMADA (la que gobierna el cap)
         self.pend = None; self.pend_n = 0            # candidato a switch pendiente
         self.act_run = ("", 0)                       # racha de la misma acción cruda
+        # --- canal FRAGILITY (payload): solo si la config declara el meta-parametro ---
+        try:
+            _cfg = json.load(open(self.config_path))
+        except Exception:
+            _cfg = {}
+        self._has_frag = "fragility" in (_cfg.get("overall_meta_parameters") or [])
+        self._task_id = ((_cfg.get("task_information") or {}).get("task_id")) or "task"
+        self._analogies = list((_cfg.get("analogies") or {}).keys())
+        self.hist["fragility"] = []
+        self._last_spill_n = 0
+        # --- estado Layer 2 (cross-run) ---
+        self._l2 = None
+        self._run_spills = {}      # analogia -> derrames atribuidos en ESTA run
+        self._run_time = {}        # analogia -> segundos gobernando en ESTA run
+        if self.STATE_FILE:
+            self._l2 = self._l2_load()
+            # arranque ZERO-SHOT corregido: si la analogia inicial esta desacreditada
+            # (Pl<PL_MIN) y hay otra con mas plausibilidad, EMPEZAR en la mejor (la firma
+            # M2+Wrong->DST de la tesis: tras k runs malas, la k+1 arranca ya corregida).
+            pl0 = self._l2_pl(self.applied)
+            best = max(self._analogies, key=lambda a: self._l2_pl(a)) if self._analogies else None
+            if best and pl0 < self.PL_MIN and self._l2_pl(best) > pl0:
+                print(f"  [META2-L2] analogia inicial '{self.applied}' desacreditada "
+                      f"(Pl={pl0:.2f}); arrancando en '{best}' (Pl={self._l2_pl(best):.2f})")
+                self.applied = best
+            import atexit
+            atexit.register(self.end_run)
+
+    # ---------- Layer 2: persistencia DST ----------
+    def _l2_load(self):
+        try:
+            st = json.load(open(self.STATE_FILE))
+        except Exception:
+            st = {}
+        st.setdefault(self._task_id, {})
+        for a in self._analogies:
+            st[self._task_id].setdefault(a, {"m_match": 0.5, "m_mismatch": 0.0,
+                                             "m_theta": 0.5, "runs": 0, "spills": 0})
+        return st
+
+    def _l2_pl(self, analogy):
+        # plausibilidad de 'la analogia sigue siendo valida' = m_match + m_theta
+        if not self._l2:
+            return 1.0
+        m = self._l2.get(self._task_id, {}).get(analogy)
+        return (m["m_match"] + m["m_theta"]) if m else 1.0
+
+    @staticmethod
+    def _dempster(m, ev):
+        # combinacion de Dempster sobre {match, mismatch, theta}; ev = masas de la evidencia
+        k = m["m_match"] * ev.get("mismatch", 0.0) + m["m_mismatch"] * ev.get("match", 0.0)
+        if k >= 0.999:
+            return m
+        n = 1.0 / (1.0 - k)
+        th_e = 1.0 - ev.get("match", 0.0) - ev.get("mismatch", 0.0)
+        return {"m_match": n * (m["m_match"] * ev.get("match", 0.0) + m["m_match"] * th_e
+                                + m["m_theta"] * ev.get("match", 0.0)),
+                "m_mismatch": n * (m["m_mismatch"] * ev.get("mismatch", 0.0) + m["m_mismatch"] * th_e
+                                   + m["m_theta"] * ev.get("mismatch", 0.0)),
+                "m_theta": n * (m["m_theta"] * th_e)}
+
+    def end_run(self):
+        # cierre de run (atexit con G1_M2_STATE): convertir el resultado en evidencia DST.
+        # Derrames bajo A -> mismatch de A; run totalmente limpia -> match de la mayoritaria.
+        if not self._l2 or self._l2.get("_closed"):
+            return
+        st = self._l2[self._task_id]
+        total_spills = sum(self._run_spills.values())
+        for a, s in self._run_spills.items():
+            if s > 0 and a in st:
+                ev = {"mismatch": min(0.5, 0.30 + 0.10 * (s - 1))}
+                st[a].update(self._dempster(st[a], ev))
+                st[a]["spills"] = st[a].get("spills", 0) + s
+        if total_spills == 0 and self._run_time:
+            maj = max(self._run_time, key=self._run_time.get)
+            if maj in st and self._run_time[maj] >= 10.0:
+                st[maj].update(self._dempster(st[maj], {"match": 0.25}))
+        for a in self._run_time:
+            if a in st:
+                st[a]["runs"] = st[a].get("runs", 0) + 1
+        self._l2["_closed"] = True
+        try:
+            out = {k: v for k, v in self._l2.items() if k != "_closed"}
+            json.dump(out, open(self.STATE_FILE, "w"), indent=1)
+            pls = {a: round(self._l2_pl(a), 2) for a in self._analogies}
+            print(f"  [META2-L2] estado guardado ({self.STATE_FILE}): Pl={pls} "
+                  f"derrames_run={total_spills}")
+        except Exception as e:
+            print("  [META2-L2] no se pudo guardar estado:", repr(e))
 
     # peso de la CONFIANZA HISTORICA en la incertidumbre DST (Renxi 2026-07-03: "the robot might
     # feel the analogy is highly plausible but still not good enough in reality... add historical
@@ -123,7 +226,7 @@ class Meta2Bridge:
         return self._med(h)
 
     def tick(self, now, clearance, progression, reliability, laser_noise=None, bat=None,
-             hold_progression=False, mobility=None):
+             hold_progression=False, mobility=None, spill_dt=None, spill_count=0):
         """Devuelve dict de decisión a ~1/period Hz, o None si toca esperar (throttle).
         hold_progression=True cuando el robot esta PARADO A PROPOSITO (alineando en el
         engagement, girando en el sitio): la progression=0 de ese momento es comandada, no
@@ -168,6 +271,33 @@ class Meta2Bridge:
                                                    "uncertainty": 0.01}
             except Exception:
                 pass
+        # --- canal FRAGILITY (payload, tesis Cap.5): el derrame ES el observable de fragilidad.
+        # 1.0 = carga intacta; cada derrame hunde la lectura (recupera con tau~25s); derrames
+        # repetidos la hunden mas (3+ recientes -> region dangerous -> hard veto -> HELP).
+        # Solo si la config declara 'fragility' (si no, ni se envia: grounding limpio).
+        if self._has_frag:
+            frag = 1.0
+            if spill_dt is not None:
+                dt_ = max(0.0, spill_dt)
+                extra = max(0, int(spill_count) - 1)
+                # dip del ultimo derrame (tau=25s) + carga acumulada por reincidencia (tau=50s):
+                # 1 derrame -> ~0.51 (precaucion), 2 -> ~0.31 (FALLBACK), 3+ -> <0.12 (HELP)
+                frag -= 0.50 * math.exp(-dt_ / 25.0)
+                frag -= 0.20 * min(extra, 3) * math.exp(-dt_ / 50.0)
+            frag = max(0.05, frag)
+            # SIN mediana: el derrame es un EVENTO cierto (ground truth), no ruido de sensor.
+            # La historia se guarda solo para el margen few-shot (std) del intervalo DST.
+            self._push("fragility", frag)
+            readings["fragility"] = {"value": frag, "reliability": 0.98,
+                                     "uncertainty": min(self.UNC_CAP,
+                                                        0.02 + self.HIST_K * self._std(self.hist["fragility"]))}
+        # --- Layer 2: atribuir derrames NUEVOS a la analogia que gobierna ahora ---
+        if self._l2 is not None:
+            new_sp = max(0, int(spill_count) - self._last_spill_n)
+            if new_sp:
+                self._run_spills[self.applied] = self._run_spills.get(self.applied, 0) + new_sp
+            self._last_spill_n = int(spill_count)
+            self._run_time[self.applied] = self._run_time.get(self.applied, 0.0) + self.period
         out = self.reasoner.decide({"timestamp": now, "readings": readings})
         self.n_calls += 1
         raw_active = out.active_after
@@ -176,6 +306,17 @@ class Meta2Bridge:
         ful = round(getattr(s, "task_stable_fulfillment", 0.0), 3) if s else None
         rej = {a: sc.rejection_reason for a, sc in out.candidate_scores.items()
                if sc.rejection_reason}
+        # --- Layer 2: veto por plausibilidad cross-run (la analogia desacreditada no se
+        # despliega aunque el reasoner instantaneo la prefiera; se redirige a la desplegable
+        # con mas Pl — normalmente la conservadora). Bridge-side: el reasoner no se toca.
+        if self._l2 is not None and out.action in ("KEEP", "SWITCH"):
+            if self._l2_pl(raw_active) < self.PL_MIN:
+                cands = [a for a, sc in out.candidate_scores.items()
+                         if sc.deployable and self._l2_pl(a) >= self.PL_MIN]
+                if cands:
+                    alt = max(cands, key=lambda a: self._l2_pl(a))
+                    rej = dict(rej); rej[raw_active] = "layer2_trust"
+                    raw_active = alt
         # --- persistencia de accion (FALLBACK/HELP) ---
         act = out.action
         self.act_run = (act, self.act_run[1] + 1) if act == self.act_run[0] else (act, 1)
@@ -225,12 +366,23 @@ class Meta2Bridge:
         else:
             cap = PROFILE_CAP.get(self.applied)
             act_eff = "SWITCH" if confirmed_switch else ("KEEP" if raw_active == self.applied else "PEND")
+        # --- Layer 2: BLEND del techo hacia el conservador segun plausibilidad (tesis 5.3.4:
+        # politica = interpolacion continua analogia<->M1 pesada por la confianza en la analogia).
+        pl_a = self._l2_pl(self.applied) if self._l2 is not None else None
+        if (pl_a is not None and pl_a < self.BLEND_PL and act_eff not in ("WARMUP",)
+                and self.applied != self.CONSERVATIVE):
+            a_cap = cap if cap is not None else 0.40          # sin techo ~ stick 0.40
+            w = max(0.0, (pl_a - self.PL_MIN) / (self.BLEND_PL - self.PL_MIN))
+            blended = self.CONSERVATIVE_CAP + w * (a_cap - self.CONSERVATIVE_CAP)
+            cap = min(a_cap, blended)
         changed = (self.last is None or act_eff != self.last["action"]
                    or self.applied != self.last["active"])
         self.last = {"action": act_eff, "raw_action": act, "active": self.applied,
                      "raw_active": raw_active, "switch_to": out.switch_to,
                      "tension": tens, "fulfillment": ful, "cap": cap,
-                     "rejections": rej, "changed": changed}
+                     "rejections": rej, "changed": changed,
+                     "pl": round(pl_a, 3) if pl_a is not None else None,
+                     "frag": readings.get("fragility", {}).get("value") if self._has_frag else None}
         return self.last
 
     def summary(self):

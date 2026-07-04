@@ -11,7 +11,8 @@
     "progression",
     "safety",
     "mobility",
-    "battery_consumption"
+    "battery_consumption",
+    "fragility"
   ],
   "runtime_config": {
     "frequency_hz": 2.0,
@@ -50,6 +51,11 @@
       "default_reliability": 0.95,
       "reliability_sensitivity": 0.1,
       "default_uncertainty": 0.03
+    },
+    "fragility": {
+      "default_reliability": 0.98,
+      "reliability_sensitivity": 0.05,
+      "default_uncertainty": 0.02
     }
   },
   "analogies": {
@@ -59,7 +65,8 @@
         "progression": 0.6,
         "safety": 0.4,
         "battery_consumption": 0.0,
-        "mobility": 0.15
+        "mobility": 0.15,
+        "fragility": 0.2
       },
       "qoe": {
         "progression": {
@@ -81,13 +88,19 @@
           "expected": 0.55,
           "adaptive": 0.3,
           "dangerous": 0.12
+        },
+        "fragility": {
+          "expected": 0.85,
+          "adaptive": 0.55,
+          "dangerous": 0.18
         }
       },
       "hard_veto": {
         "safety": true,
         "progression": false,
         "battery_consumption": false,
-        "mobility": true
+        "mobility": true,
+        "fragility": true
       },
       "sensor_reliability_override": {}
     },
@@ -97,7 +110,8 @@
         "progression": 0.35,
         "safety": 0.65,
         "battery_consumption": 0.0,
-        "mobility": 0.25
+        "mobility": 0.25,
+        "fragility": 0.3
       },
       "qoe": {
         "progression": {
@@ -119,13 +133,19 @@
           "expected": 0.45,
           "adaptive": 0.22,
           "dangerous": 0.08
+        },
+        "fragility": {
+          "expected": 0.65,
+          "adaptive": 0.4,
+          "dangerous": 0.12
         }
       },
       "hard_veto": {
         "safety": true,
         "progression": false,
         "battery_consumption": false,
-        "mobility": true
+        "mobility": true,
+        "fragility": true
       },
       "sensor_reliability_override": {}
     }
@@ -135,16 +155,18 @@
     "task_id": "g1_door_crossing_A_B_payload_water",
     "preferred_analogy": "Cautious_Nav",
     "task_meta_attentions": {
-      "progression": 0.3,
-      "safety": 0.7,
+      "progression": 0.25,
+      "safety": 0.55,
       "battery_consumption": 0.0,
-      "mobility": 0.0
+      "mobility": 0.0,
+      "fragility": 0.2
     },
     "task_meta_attentions_flexibility": {
       "progression": 0.15,
       "safety": 0.15,
       "battery_consumption": 0.0,
-      "mobility": 0.0
+      "mobility": 0.0,
+      "fragility": 0.1
     },
     "task_tension_threshold": 0.7,
     "task_fulfillment_threshold": 0.35,
