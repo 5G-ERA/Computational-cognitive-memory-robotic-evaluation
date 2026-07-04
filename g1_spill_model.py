@@ -55,6 +55,8 @@ A_COLL = float(os.environ.get("G1_SPILL_ACOLL", "4.0"))      # umbral de IMPACTO
 V_SANE = 0.6                                                  # v > esto = glitch de pose (el G1 no corre)
 WARMUP_S = 1.5                                                # ignorar el arranque del run (spawn/aligns)
 LAM0 = float(os.environ.get("G1_SPILL_LAM0", "40.0"))         # tasa base de derrame (1/s) al doblar h_f
+LID = os.environ.get("G1_SPILL_LID", "open").strip().lower()  # open | closed (travel mug sellada)
+LID_FACTOR = 0.25 if LID.startswith("c") else 1.0             # tapa cerrada: riesgo x0.25 (tesis 5.3.6.4)
 FB_LOSS = 0.004                                               # agua perdida por derrame (m de francobordo)
 
 
@@ -158,7 +160,7 @@ class SpillModel:
             self.t_total += dt
             if ratio > 0.7:
                 self.t_risk += dt
-            lam = LAM0 * max(0.0, ratio - 1.0) ** 2
+            lam = LID_FACTOR * LAM0 * max(0.0, ratio - 1.0) ** 2
             self.expected += lam * dt
             if lam > 0 and self.rng.random() < 1.0 - math.exp(-lam * dt):
                 spill = {"t": round(t, 2), "eta_ratio": round(ratio, 2),
@@ -175,6 +177,7 @@ class SpillModel:
                 "spill_expected": round(self.expected, 3),
                 "spill_eta_max": round(self.eta_max_ratio, 2),
                 "spill_risk_pct": round(100.0 * self.t_risk / self.t_total, 1) if self.t_total else 0.0,
+                "spill_lid": LID,
                 "spill_params": {"R": R_CUP, "h_fill": H_FILL, "fb": FREEBOARD, "zeta": ZETA,
                                  "arm": ARM_R, "tau_a": TAU_A, "k_gait": K_GAIT,
                                  "k_coll": K_COLL, "lam0": LAM0}}

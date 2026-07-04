@@ -33,7 +33,18 @@ ARMS = {
               # escalada P9 escalada al RTF~0.5 de la sim (ventanas pensadas para 0.3 m/s reales;
               # el brazo gobernado va a 0.18 sim = ~0.09 m/s de pared): x2 tiempo, progreso /2
               "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    # brazo M1 de la tesis (Cap.5): politica conservadora FIJA (solo Cautious, sin adaptacion)
+    "conserv": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1conservative.json",
+                "G1_SIM_ID": "lab_v1_payload_conserv",
+                "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    # brazo PRIOR ERRONEO (5.3.6.2 de la tesis): META2 activo con la config de puerta NO-payload
+    # (Efficient preferida) = analogia mal calibrada para la tarea de payload
+    "wrong": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1door.json",
+              "G1_SIM_ID": "lab_v1_payload_wrongprior",
+              "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
 }
+# brazos activos de esta invocacion: por env CAMPAIGN_ARMS="base,meta2" (default los 4)
+ACTIVE_ARMS = [a for a in os.environ.get("CAMPAIGN_ARMS", ",".join(ARMS)).split(",") if a in ARMS]
 
 
 def sh(cmd, timeout=60):
@@ -107,7 +118,7 @@ def main():
     out = os.path.join(HERE, "campaign_results.json")
     rows = json.load(open(out)) if os.path.exists(out) else []
     for i in range(n):
-        for arm in ("base", "meta2"):
+        for arm in ACTIVE_ARMS:
             print(f"== run {i + 1}/{n} brazo={arm} ({time.strftime('%H:%M:%S')})", flush=True)
             if not reset_sim() and not reset_sim():
                 print("SIM NO ARRANCA: abortando campana", flush=True)

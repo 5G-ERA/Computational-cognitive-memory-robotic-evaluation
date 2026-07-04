@@ -90,7 +90,8 @@ class RosBridge:
         self.ws = self._ws_mod.create_connection(self.url, timeout=5)
         self.connected = True
         for topic, mtype, throttle in (("/odom", "nav_msgs/Odometry", 100),
-                                       ("/scan", "sensor_msgs/LaserScan", 250)):
+                                       ("/scan", "sensor_msgs/LaserScan", 250),
+                                       ("/spill_event", "std_msgs/Empty", 0)):
             self.ws.send(json.dumps({"op": "subscribe", "topic": topic, "type": mtype,
                                      "throttle_rate": throttle, "queue_length": 1}))
         self.ws.send(json.dumps({"op": "advertise", "topic": "/cmd_vel",
@@ -116,6 +117,16 @@ class RosBridge:
                 elif m["topic"] == "/scan":
                     self.scan = m["msg"]
                     self.scan_t = time.time()
+                elif m["topic"] == "/spill_event":
+                    # derrame marcado a mano (ros2 topic pub /spill_event std_msgs/msg/Empty)
+                    # -> reenviar al listener UDP de g1_goto (mismo canal que el robot real)
+                    try:
+                        import socket as _sk
+                        _p = int(os.environ.get("G1_SPILL_GT_PORT", "7777") or 0)
+                        if _p:
+                            _sk.socket(_sk.AF_INET, _sk.SOCK_DGRAM).sendto(b"spill", ("127.0.0.1", _p))
+                    except Exception:
+                        pass
 
     def _deadman(self):
         """Como el driver real (600ms): si el control muere, la sim se para sola."""

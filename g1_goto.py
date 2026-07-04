@@ -191,6 +191,35 @@ class RunRecorder:
                     "samples": [], "events": [], "laser_snapshots": [], "telemetry": [], "summary": {}}
         self._laser_t = 0.0
         self._telem_t = -9.0
+        # --- GROUND TRUTH de derrames (condicion payload): un humano marca cada derrame.
+        # Canal UDP (sin dependencias): cualquier datagrama al puerto = 1 derrame.
+        #   robot real:  python spill_mark.py   (o: echo x | nc -u 127.0.0.1 7777)
+        #   sim:         ros2 topic pub --once /spill_event std_msgs/msg/Empty
+        #                (el adaptador reenvia /spill_event a este mismo puerto)
+        # G1_SPILL_GT_PORT=0 lo desactiva.
+        self._gt_spills = 0
+        _port = int(os.environ.get("G1_SPILL_GT_PORT", "7777") or 0)
+        if _port:
+            def _gt_listener():
+                import socket
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    s.bind(("0.0.0.0", _port))
+                except Exception:
+                    return
+                while True:
+                    try:
+                        s.recvfrom(64)
+                    except Exception:
+                        return
+                    t = time.time() - self.t0
+                    last = self.rec["samples"][-1] if self.rec["samples"] else None
+                    self.event("spill_human", t, last["x"] if last else 0.0,
+                               last["y"] if last else 0.0, extra={"src": "manual"})
+                    self._gt_spills += 1
+                    print(f"  [spill-GT] DERRAME humano #{self._gt_spills} t={t:.1f}s")
+            threading.Thread(target=_gt_listener, daemon=True).start()
 
     def sample(self, t, x, y, yaw, d, spd, c0, nobs, cmd=None, phase="", extra=None):
         rec = {"t": round(t, 2), "x": round(x, 3), "y": round(y, 3),
@@ -249,6 +278,9 @@ class RunRecorder:
             return None
 
     def finish(self, result, summary):
+        summary = dict(summary or {})
+        if getattr(self, "_gt_spills", 0):
+            summary["spills_human"] = self._gt_spills
         self.rec["result"] = result
         self.rec["summary"] = summary
         self.rec["duration_s"] = round(time.time() - self.t0, 2)
