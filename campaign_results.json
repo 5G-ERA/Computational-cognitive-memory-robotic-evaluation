@@ -995,5 +995,53 @@
   "spill_risk_pct": 1.1,
   "eta_max": 1.7,
   "meta2_mode": "2"
+ },
+ {
+  "file": "20260704_194912_ours_B.json",
+  "arm": "prereal",
+  "result": "reached",
+  "time_s": 92.7,
+  "collisions": 0,
+  "spills": 0,
+  "spill_expected": 0.0,
+  "spill_risk_pct": 0.5,
+  "eta_max": 0.72,
+  "meta2_mode": "2"
+ },
+ {
+  "file": "20260704_195059_ours_B.json",
+  "arm": "prereal",
+  "result": "reached",
+  "time_s": 93.97,
+  "collisions": 0,
+  "spills": 0,
+  "spill_expected": 0.0,
+  "spill_risk_pct": 1.6,
+  "eta_max": 0.85,
+  "meta2_mode": "2"
+ },
+ {
+  "file": "20260704_195246_ours_B.json",
+  "arm": "prereal",
+  "result": "reached",
+  "time_s": 97.68,
+  "collisions": 0,
+  "spills": 0,
+  "spill_expected": 0.0,
+  "spill_risk_pct": 1.8,
+  "eta_max": 0.99,
+  "meta2_mode": "2"
+ },
+ {
+  "file": "20260704_195437_ours_B.json",
+  "arm": "prereal",
+  "result": "reached",
+  "time_s": 105.4,
+  "collisions": 0,
+  "spills": 0,
+  "spill_expected": 0.0,
+  "spill_risk_pct": 2.2,
+  "eta_max": 0.95,
+  "meta2_mode": "2"
  }
 ]

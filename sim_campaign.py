@@ -75,6 +75,14 @@ ARMS = {
     "m2closedsim": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1door_sim.json",
                     "G1_SPILL_LID": "closed", "G1_SIM_ID": "lab_v1_lidclosed_meta2sim",
                     "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    # tanda PRE-REAL: la configuracion EXACTA recomendada para la campana fisica de Adrian
+    # (4 capas activas + estado persistido + rho logueado) — validacion en el bucle antes
+    # de tocar el robot. No entra en la tabla del paper.
+    "prereal": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
+                "G1_SIM_ID": "lab_v1_prereal_4capas",
+                "G1_M2_STATE": "meta2_state_prereal.json",
+                "G1_M2_L3": "1", "G1_M2_L4": "1",
+                "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
 }
 # brazos activos de esta invocacion: por env CAMPAIGN_ARMS="base,meta2" (default los 4)
 ACTIVE_ARMS = [a for a in os.environ.get("CAMPAIGN_ARMS", ",".join(ARMS)).split(",") if a in ARMS]

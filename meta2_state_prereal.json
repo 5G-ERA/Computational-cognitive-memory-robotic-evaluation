@@ -1,0 +1,44 @@
+{
+ "g1_door_crossing_A_B_payload_water": {
+  "Efficient_Nav": {
+   "m_match": 0.5,
+   "m_mismatch": 0.0,
+   "m_theta": 0.5,
+   "runs": 1,
+   "spills": 0
+  },
+  "Cautious_Nav": {
+   "m_match": 0.841796875,
+   "m_mismatch": 0.0,
+   "m_theta": 0.158203125,
+   "runs": 4,
+   "spills": 0
+  },
+  "_ful_hist": [
+   {
+    "ful": 0.77,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.742,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.764,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.722,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   }
+  ]
+ }
+}
