@@ -29,6 +29,7 @@ try:
 except Exception:
     Meta2Bridge = None
 META2_MODE = os.environ.get("G1_META2", "0") # 0=off | 1=SHADOW (decide+loguea, no toca control) | 2=ACTIVO (techo de velocidad por analogia)
+VCAP = (float(os.environ["G1_VCAP"]) if os.environ.get("G1_VCAP") else None)   # techo fijo M1 (sin gobernanza)
 # --- ENTORNO de la prueba (pedido del tutor 2026-07-03, campaña de simulacion): separa las runs de
 # SIMULACION de las de robot REAL en dataset/log/CSV para que jamas se mezclen en el analisis.
 #   G1_ENV=real (defecto) | sim      ·  G1_SIM_ID=<etiqueta libre del contenedor/escenario> (opcional)
@@ -2160,6 +2161,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     rd.event("meta2_cap_on", now - t0, x, y, {"cap": m2o["cap"], "active": m2o["active"]})
             else:
                 m2_cap_on = False
+            # --- G1_VCAP: techo de avance FIJO sin gobernanza (el M1 'simbolico' de la tesis
+            # Cap.5: politica conservadora rigida, sin reasoner, sin vetos, sin abortos).
+            # Para el brazo M1 de la campana payload: G1_META2=0 G1_VCAP=0.28.
+            if VCAP is not None and cmd[1] > VCAP:
+                cmd = (cmd[0], VCAP, cmd[2], 0)
             prev_fwd = (cmd[1] > 0.1)
             cdp.eval(g.set_cmd_js(*cmd))
             time.sleep(0.1)

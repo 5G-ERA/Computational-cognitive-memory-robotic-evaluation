@@ -50,6 +50,19 @@ ARMS = {
                  "G1_SIM_ID": "lab_v1_payload_wrongdst",
                  "G1_M2_STATE": "meta2_state_wrongdst.json",
                  "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    # M1 FIEL a la tesis: techo fijo SIN gobernanza (sin reasoner, sin vetos, sin abortos).
+    # El brazo 'conserv' (config solo-Cautious) resulto NO ser M1: un veto de mobility sin
+    # analogia alternativa -> HELP sostenido -> aborto P9 (3/8 runs). Se mantiene como dato
+    # (rigidez CON gobernanza de un solo candidato) pero el M1 comparable es este.
+    "conservfix": {"G1_META2": "0", "G1_VCAP": "0.28",
+                   "G1_SIM_ID": "lab_v1_payload_conservfix"},
+    # condicion TAPA CERRADA (tesis 5.3.6.4): riesgo x0.25; el M2 'informado por la tarea'
+    # usa la config de puerta (Efficient preferida = el covered_delivery del G1).
+    "baseclosed": {"G1_META2": "0", "G1_SPILL_LID": "closed",
+                   "G1_SIM_ID": "lab_v1_lidclosed_base"},
+    "m2closed": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1door.json",
+                 "G1_SPILL_LID": "closed", "G1_SIM_ID": "lab_v1_lidclosed_meta2",
+                 "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
 }
 # brazos activos de esta invocacion: por env CAMPAIGN_ARMS="base,meta2" (default los 4)
 ACTIVE_ARMS = [a for a in os.environ.get("CAMPAIGN_ARMS", ",".join(ARMS)).split(",") if a in ARMS]
