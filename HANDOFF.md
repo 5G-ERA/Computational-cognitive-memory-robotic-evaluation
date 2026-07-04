@@ -460,6 +460,27 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   consistencia entre varios shots. A/B offline (7 runs): limpias +9pp de FALLBACK (moderado),
   la run mala separada (72%), y con la escalada P9: 0 abortos falsos, la mala aborta a t=93 s.
 
+### 8.18 Arquitectura de 4 CAPAS completa + rho_DCA runtime (2026-07-04 tarde)
+
+- Pregunta de Adrian: "¿mi Cap.5 no tenía 3 capas DST? ¿el experimento usa solo 2?" — Correcto:
+  faltaban la L3 (Pl_env) online y la L4 (Meta-Attention re-selección). CERRADO (commit 73f366a),
+  todo bridge-side, reasoner de Renxi intacto, 11 tests + batería completa en verde:
+  - **rho_DCA por decisión** (paper Secc. VI-VII): margen de arbitraje / presupuesto de
+    perturbación (uncertainty_gap + 0.5·theta_mismatch de config). Medido: 1.50 corredor
+    limpio vs 0.58 degradado = los regímenes de la Tabla IV. En samples como `meta2_rho`.
+  - **L1** ya estaba cubierta por el DST por tick del reasoner (safety + veto; corrige prior
+    erróneo en ~4 s, medido). **L2** implementada el 07-04 por la mañana (G1_M2_STATE).
+  - **L3 online** (`G1_M2_L3=1`, default 0): EMA del clearance mediano vs 'expected' del
+    activo, clamp [0.85,1.15], escala SOLO techos de perfil (0.22-0.40). Validado 0.28→0.32
+    abierto / →0.26 angosto.
+  - **L4** (`G1_M2_L4=1`, default 0, requiere G1_M2_STATE): historial de fulfillment medio
+    por run en el estado; ful<0.45 x3 runs con Pl alta bajo el mismo perfil → arranque
+    re-seleccionado en la alternativa. Validado con estado sembrado.
+  - Defaults intactos: las campañas publicadas siguen reproduciéndose igual. Para las 20 runs
+    REALES de Adrian: recomendado `G1_M2_STATE=meta2_state_lab.json G1_M2_L4=1` (L3 a criterio).
+- Documento de soporte del paper regenerado (rev.2): tabla de mapeo tesis↔G1 de las 4 capas
+  + sección 3.2 de rho_DCA (`docs/G1_Empirical_Validation_VIIH_draft.docx/.pdf`).
+
 ### 8.4 Próximos pasos (en orden)
 
 1. **Prueba goto B** en el Ubuntu (percepción ON; el gate ya lo exige). Mirar en el log, en este orden:
