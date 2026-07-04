@@ -297,6 +297,69 @@ def main():
     import g1_goto
     g.get_cdp = lambda: cdp                                    # todo el stack usa el SimCDP
     g1_goto.get_live_cdp = lambda *a, **k: cdp
+
+    # --- MODELO DE DERRAME (condicion payload; G1_SPILL=0 lo apaga) --------------------------
+    # Fisica del sloshing de la taza sobre /odom (ver g1_spill_model.py). Solo OBSERVA: no toca
+    # la fisica ni el control. Eventos kind='spill' al RunRecorder + spills_sim/... en summary.
+    if os.environ.get("G1_SPILL", "1") == "1":
+        import g1_spill_model as _sp
+        _active = {"rec": None, "model": None}
+
+        _orig_init = g1_goto.RunRecorder.__init__
+        def _sp_init(self, *a, **k):
+            _orig_init(self, *a, **k)
+            seed = os.environ.get("G1_SPILL_SEED") or os.path.basename(self.fname)
+            _active["rec"], _active["model"] = self, _sp.SpillModel(seed=seed)
+            print(f"  [spill] payload de agua simulado (semilla={seed})")
+        g1_goto.RunRecorder.__init__ = _sp_init
+
+        _orig_pub = bridge.publish_cmd
+        def _sp_pub(vx, vy, wz):
+            m = _active.get("model")
+            if m is not None:
+                m.set_cmd(vx, vy, wz)
+            return _orig_pub(vx, vy, wz)
+        bridge.publish_cmd = _sp_pub
+
+        _orig_finish = g1_goto.RunRecorder.finish
+        def _sp_finish(self, result, summary):
+            m = _active.get("model")
+            if m is not None and _active.get("rec") is self:
+                summary = dict(summary or {})
+                summary.update(m.summary())
+                print(f"  [spill] derrames={len(m.spills)} E[N]={m.expected:.2f} "
+                      f"eta_max={m.eta_max_ratio:.2f} riesgo={summary['spill_risk_pct']}%")
+            return _orig_finish(self, result, summary)
+        g1_goto.RunRecorder.finish = _sp_finish
+
+        def _sp_thread():
+            last = None
+            while True:
+                time.sleep(0.03)
+                m, rec = _active.get("model"), _active.get("rec")
+                od = bridge.odom
+                if m is None or od is None:
+                    continue
+                st = od.get("header", {}).get("stamp", {})
+                key = (st.get("sec", 0), st.get("nanosec", st.get("nsec", 0)))
+                if key == last:
+                    continue
+                last = key
+                t = key[0] + key[1] * 1e-9
+                p = od["pose"]["pose"]["position"]; q = od["pose"]["pose"]["orientation"]
+                yaw = math.atan2(2 * (q["w"] * q["z"] + q["x"] * q["y"]),
+                                 1 - 2 * (q["y"] ** 2 + q["z"] ** 2))
+                ev = m.step(t, p["x"], p["y"], yaw)
+                if ev and rec is not None:
+                    try:
+                        rec.event("spill", time.time() - rec.t0, p["x"], p["y"],
+                                  extra={"src": "sim_model", "eta_ratio": ev["eta_ratio"],
+                                         "v": ev["v"], "a": ev["a"]})
+                        print(f"  [spill] DERRAME t={ev['t']} eta={ev['eta_ratio']} v={ev['v']}")
+                    except Exception:
+                        pass
+        threading.Thread(target=_sp_thread, daemon=True).start()
+    # ------------------------------------------------------------------------------------------
     if scenario == "lab":
         # escenario LAB: ficheros REALES (waypoints.json, refmap summit, nav_map) y engagement ON —
         # el mundo lab.world esta en el MISMO frame G1, asi que no hay nada que parchear salvo

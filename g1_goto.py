@@ -1246,10 +1246,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             print("  META2 pedido pero g1_meta2_bridge/meta-reasoner-2.0 no importable -> OFF")
         else:
             try:
-                meta2 = Meta2Bridge()
+                m2cfg = os.environ.get("G1_M2_CFG") or None      # config alternativa (p.ej. payload agua)
+                meta2 = Meta2Bridge(m2cfg)
                 print(f"  META2 {'ACTIVO (techo por analogia)' if META2_MODE == '2' else 'SHADOW (solo log)'}: "
                       f"Meta-Reasoner 2.0, analogia inicial {meta2.applied}")
-                lg.write(f"META2 mode={META2_MODE} cfg=config_meta2_g1door.json init={meta2.applied}\n"); lg.flush()
+                lg.write(f"META2 mode={META2_MODE} cfg={m2cfg or 'config_meta2_g1door.json'} init={meta2.applied}\n"); lg.flush()
             except Exception as e:
                 print("  META2 no disponible:", repr(e))
     m2win = deque(); m2_help_t0 = None; m2_warn_t = 0.0; m2_mode_logged = False   # escalada de experiencia

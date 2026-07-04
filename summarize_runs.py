@@ -49,6 +49,9 @@ def main():
             "collisions": sm.get("collisions", sum(1 for e in ev if e.get("kind") == "collision")),
             "c0min": sm.get("c0min", ""),
             "spills_human": sm.get("spills_human", ""),
+            "spills_sim": sm.get("spills_sim", sum(1 for e in ev if e.get("kind") == "spill")),
+            "spill_expected": sm.get("spill_expected", ""),
+            "spill_risk_pct": sm.get("spill_risk_pct", ""),
             "perc_queries": sm.get("perc_queries", ""),
             "meta_switches": sum(1 for e in ev if e.get("kind") == "meta_switch"),
             "fsm_interventions": sum(1 for e in ev if e.get("kind") == "fsm_intervention"),
@@ -83,7 +86,8 @@ def main():
             "notes": "",                                   # <-- FILL: appropriate switch? anything odd?
         })
     cols = ["file", "governance", "env", "sim_id", "mode", "condition", "result", "time_s", "path_m", "efficiency",
-            "collisions", "c0min", "spills_human", "perc_queries", "meta_switches", "fsm_interventions",
+            "collisions", "c0min", "spills_human", "spills_sim", "spill_expected", "spill_risk_pct",
+            "perc_queries", "meta_switches", "fsm_interventions",
             "meta2_mode", "meta2_capped_ticks",
             "meta2_on", "meta2_switches", "meta2_helps", "meta2_fallbacks", "meta2_fallback_pct",
             "meta2_help_pct", "meta2_cautious_pct", "meta2_mean_tension", "meta2_mean_fulfillment",
