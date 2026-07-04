@@ -1,0 +1,167 @@
+{
+  "_comment": "Config Meta-Reasoner 2.0 CALIBRADA PARA EL GEMELO SIM (lab.world). Igual que config_meta2_g1door.json pero con las fronteras QoE de safety medidas en las distribuciones de la campana sim 2026-07-04 (crucero clearance p25=0.65 p50=0.76; corredor p25=0.45 p50=0.56; el mundo sim es mas angosto que el lab real): Efficient certifica en crucero y muere en el corredor. Procedimiento de calibracion de la guia MR2 (seccion 20). La config del lab real NO se toca.",
+  "initial_active_analogy": "Efficient_Nav",
+  "semantic_memory_regions": [
+    "expected",
+    "adaptive",
+    "high_concern",
+    "dangerous"
+  ],
+  "overall_meta_parameters": [
+    "progression",
+    "safety",
+    "mobility",
+    "battery_consumption"
+  ],
+  "runtime_config": {
+    "frequency_hz": 2.0,
+    "semantic_memory_window_seconds": 5.0,
+    "semantic_memory_window_ticks": null,
+    "direction_deadband": 0.03,
+    "direction_reference": "median_window",
+    "first_tick_direction": "stable"
+  },
+  "evaluation_controls": {
+    "analogy_level_dst": {
+      "enabled": true
+    },
+    "task_level_dst": {
+      "enabled": true
+    },
+    "record_disabled_layer_outputs": true
+  },
+  "global_sensor_reliability": {
+    "progression": {
+      "default_reliability": 0.95,
+      "reliability_sensitivity": 0.15,
+      "default_uncertainty": 0.02
+    },
+    "safety": {
+      "default_reliability": 0.9,
+      "reliability_sensitivity": 0.2,
+      "default_uncertainty": 0.03
+    },
+    "battery_consumption": {
+      "default_reliability": 0.99,
+      "reliability_sensitivity": 0.05,
+      "default_uncertainty": 0.01
+    },
+    "mobility": {
+      "default_reliability": 0.95,
+      "reliability_sensitivity": 0.1,
+      "default_uncertainty": 0.03
+    }
+  },
+  "analogies": {
+    "Efficient_Nav": {
+      "_comment": "crucero en abierto: exige condiciones buenas; se tensa pronto en la puerta",
+      "meta_attentions": {
+        "progression": 0.6,
+        "safety": 0.4,
+        "battery_consumption": 0.0,
+        "mobility": 0.15
+      },
+      "qoe": {
+        "progression": {
+          "expected": 0.35,
+          "adaptive": 0.12,
+          "dangerous": 0.02
+        },
+        "safety": {
+          "expected": 0.6,
+          "adaptive": 0.42,
+          "dangerous": 0.15
+        },
+        "battery_consumption": {
+          "expected": 0.5,
+          "adaptive": 0.25,
+          "dangerous": 0.1
+        },
+        "mobility": {
+          "expected": 0.55,
+          "adaptive": 0.3,
+          "dangerous": 0.12
+        }
+      },
+      "hard_veto": {
+        "safety": true,
+        "progression": false,
+        "battery_consumption": false,
+        "mobility": true
+      },
+      "sensor_reliability_override": {}
+    },
+    "Cautious_Nav": {
+      "_comment": "puerta/clutter: tolera avance lento y holguras de vano; techo de velocidad 0.28 via bridge",
+      "meta_attentions": {
+        "progression": 0.35,
+        "safety": 0.65,
+        "battery_consumption": 0.0,
+        "mobility": 0.25
+      },
+      "qoe": {
+        "progression": {
+          "expected": 0.15,
+          "adaptive": 0.04,
+          "dangerous": -0.01
+        },
+        "safety": {
+          "expected": 0.45,
+          "adaptive": 0.28,
+          "dangerous": 0.12
+        },
+        "battery_consumption": {
+          "expected": 0.5,
+          "adaptive": 0.25,
+          "dangerous": 0.1
+        },
+        "mobility": {
+          "expected": 0.45,
+          "adaptive": 0.22,
+          "dangerous": 0.08
+        }
+      },
+      "hard_veto": {
+        "safety": true,
+        "progression": false,
+        "battery_consumption": false,
+        "mobility": true
+      },
+      "sensor_reliability_override": {}
+    }
+  },
+  "analogy_tension_model": {},
+  "task_information": {
+    "task_id": "g1_door_crossing_A_B_sim",
+    "preferred_analogy": "Efficient_Nav",
+    "task_meta_attentions": {
+      "progression": 0.45,
+      "safety": 0.55,
+      "battery_consumption": 0.0,
+      "mobility": 0.0
+    },
+    "task_meta_attentions_flexibility": {
+      "progression": 0.15,
+      "safety": 0.15,
+      "battery_consumption": 0.0,
+      "mobility": 0.0
+    },
+    "task_tension_threshold": 0.7,
+    "task_fulfillment_threshold": 0.35,
+    "task_fulfillment_flexibility": {
+      "enabled": true,
+      "band": 0.05,
+      "borderline_policy": "use_switch_persistence"
+    },
+    "task_required_meta_thresholds": {},
+    "missing_meta_parameter_policy": {
+      "negligible_task_weight": 0.01,
+      "non_negligible_missing_grounding": "INSUFFICIENT"
+    },
+    "task_dst": {
+      "enabled": true,
+      "uncertainty_penalty": 0.8,
+      "maximum_uncertainty_gap": 0.45
+    }
+  }
+}

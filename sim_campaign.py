@@ -63,6 +63,18 @@ ARMS = {
     "m2closed": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1door.json",
                  "G1_SPILL_LID": "closed", "G1_SIM_ID": "lab_v1_lidclosed_meta2",
                  "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    # ---- FASE 4: config CALIBRADA AL SIM (la de puerta real dejaba a Efficient sin certificar
+    # nunca en el gemelo -> el prior erroneo moria a t~4s y ni wrongdst ni la tapa median nada) ----
+    "wrongsim": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1door_sim.json",
+                 "G1_SIM_ID": "lab_v1_payload_wrongsim",
+                 "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    "wrongdstsim": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1door_sim.json",
+                    "G1_SIM_ID": "lab_v1_payload_wrongdstsim",
+                    "G1_M2_STATE": "meta2_state_wrongdstsim.json",
+                    "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    "m2closedsim": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1door_sim.json",
+                    "G1_SPILL_LID": "closed", "G1_SIM_ID": "lab_v1_lidclosed_meta2sim",
+                    "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
 }
 # brazos activos de esta invocacion: por env CAMPAIGN_ARMS="base,meta2" (default los 4)
 ACTIVE_ARMS = [a for a in os.environ.get("CAMPAIGN_ARMS", ",".join(ARMS)).split(",") if a in ARMS]
