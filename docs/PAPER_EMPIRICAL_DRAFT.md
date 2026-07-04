@@ -91,14 +91,17 @@ shared results table.
 
 ---
 
-## Notas para Adrian (no van al paper)
+## Internal notes (not for the paper)
 
-- Los brazos `wrong`/`wrongdst`/`wrongdstsim` con 0 derrames NO son fallo del experimento: son
-  el hallazgo (5). Si Renxi quiere la curva de recuperación cross-run EN SIM, la forma fiel a
-  la tesis es forzar la analogía (lock) durante las primeras K runs — se puede añadir
-  (G1_M2_LOCK) pero la señal aparecería solo en la fase bloqueada; lo natural es capturarla en
-  el robot real, donde el crucero certifica a Efficient de verdad.
-- La tabla omite los brazos redundantes (wrongsim/wrongdst*) por espacio; están en
-  analyze_campaign.py si los quiere Renxi.
-- Números de la tesis para el contraste sim-2D vs gemelo-3D si hacen falta: M0 13.0 SE / 2.12
-  spills; M2 37.6 / 0.28 (warehouse-cluttered).
+- The zero-spill outcome of the wrong/wrongdst/wrongdstsim arms is NOT an experimental
+  failure: it is finding (5). If the cross-run recovery curve is wanted IN SIMULATION, the
+  protocol faithful to the thesis (Ch. 5, 5.3.6.3) is to force the wrong analogy (lock) for
+  the first K runs (implementable as G1_M2_LOCK) — but the natural place to capture it is the
+  physical robot, where open-floor cruising genuinely certifies the Efficient capability.
+- The table omits the redundant arms (wrongsim / wrongdst / wrongdstsim); they are available
+  via analyze_campaign.py and in runs_summary.csv (filter env=sim, sim_id lab_v1_payload_*).
+- Contrast with the thesis 2-D simulation (warehouse-cluttered): M0 SE=13.0 / 2.12 spills-run;
+  M2 SE=37.6 / 0.28. The 3-D twin reproduces the same safety ordering M0 < M1 = M2 with
+  physically grounded sloshing.
+- Reproduction: python3 sim_campaign.py (arms via CAMPAIGN_ARMS) - python3 analyze_campaign.py
+  - commits up to 0b6ea24 on main.
