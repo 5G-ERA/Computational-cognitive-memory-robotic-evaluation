@@ -2089,6 +2089,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "perc_age": (round(now - perc_rx_t, 2) if perc_rx_t is not None else None),   # s desde la ultima respuesta REAL del server (P3: ¿flicker=latencia o escena vacia?)
                              "meta2_act": (m2o or {}).get("action"),           # gobernanza DCE (G1_META2)
                              "meta2_cap": (m2o or {}).get("cap"),              # techo vigente (None=sin techo); en modo 2 se aplica
+                             "meta2_rho": (m2o or {}).get("rho"),              # rho_DCA runtime: margen de arbitraje / presupuesto de perturbacion
+                             "meta2_env": (m2o or {}).get("env"),              # Layer 3: escala de relevancia de entorno (G1_M2_L3)
                              "meta2_active": (m2o or {}).get("active"),
                              "meta2_tens": (m2o or {}).get("tension"),
                              "meta2_ful": (m2o or {}).get("fulfillment"),

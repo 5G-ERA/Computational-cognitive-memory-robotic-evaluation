@@ -114,6 +114,43 @@ class Meta2Bridge:
         self._analogies = list((_cfg.get("analogies") or {}).keys())
         self.hist["fragility"] = []
         self._last_spill_n = 0
+        # --- rho_DCA runtime (paper Secc. VI-VII): margen de arbitraje / presupuesto de
+        # perturbacion, instanciacion runtime DOCUMENTADA: margen = stable_ful(mejor desplegable)
+        # - stable_ful(2o desplegable) (o distancia al umbral si solo hay uno); presupuesto =
+        # task_uncertainty_gap del ganador (proxy de theta_QoE) + 0.5*theta_mismatch (norma L2
+        # entre atenciones de tarea y de la analogia, estatico de config; B=1, xi_rep=0 declarado
+        # no medible en runtime). rho>=1 estable, ~1 frontera, <1 no certificable.
+        _ti = (_cfg.get("task_information") or {})
+        _ta = dict(_ti.get("task_meta_attentions") or {})
+        self._theta_mm = {}
+        self._safety_exp = {}
+        for _a, _ad in (_cfg.get("analogies") or {}).items():
+            _aa = dict(_ad.get("meta_attentions") or {})
+            keys = set(_ta) | set(_aa)
+            st_ = sum(abs(_ta.get(k, 0.0)) for k in keys) or 1.0
+            sa_ = sum(abs(_aa.get(k, 0.0)) for k in keys) or 1.0
+            self._theta_mm[_a] = sum((_ta.get(k, 0.0) / st_ - _aa.get(k, 0.0) / sa_) ** 2
+                                     for k in keys) ** 0.5
+            try:
+                self._safety_exp[_a] = float(_ad["qoe"]["safety"]["expected"])
+            except Exception:
+                self._safety_exp[_a] = 0.6
+        # --- LAYER 3 (tesis 5.2.6.1, Pl_env online): escala de entorno de la media movil del
+        # clearance RELATIVA al 'expected' de la analogia activa; modula el techo de velocidad
+        # (relaja si el entorno es mas abierto de lo que la analogia asume; aprieta si mas
+        # angosto), CLAMPEADA [0.85, 1.15] y solo sobre techos de PERFIL (no FALLBACK/HELP).
+        # Opt-in: G1_M2_L3=1 (default 0: no altera las campanas ya publicadas).
+        self.L3 = os.environ.get("G1_M2_L3", "0") == "1"
+        self._env = 1.0
+        # --- LAYER 4 (tesis 5.2.6.1, Meta-Attention): si en las ultimas L4_WIN runs el
+        # fulfillment medio fue bajo PESE a plausibilidad L2 alta -> el PERFIL de tarea esta
+        # mal elegido (mismatch de perfil, no de analogia) -> arrancar en la alternativa.
+        # Requiere memoria entre runs (G1_M2_STATE). Opt-in: G1_M2_L4=1.
+        self.L4 = os.environ.get("G1_M2_L4", "0") == "1"
+        self.L4_WIN = int(os.environ.get("G1_M2_L4_WIN", "3"))
+        self.L4_FUL = float(os.environ.get("G1_M2_L4_FUL", "0.45"))
+        self._ful_sum = 0.0
+        self._ful_n = 0
         # --- estado Layer 2 (cross-run) ---
         self._l2 = None
         self._run_spills = {}      # analogia -> derrames atribuidos en ESTA run
@@ -129,6 +166,23 @@ class Meta2Bridge:
                 print(f"  [META2-L2] analogia inicial '{self.applied}' desacreditada "
                       f"(Pl={pl0:.2f}); arrancando en '{best}' (Pl={self._l2_pl(best):.2f})")
                 self.applied = best
+            # LAYER 4: mismatch de PERFIL — fulfillment cronicamente bajo con confianza alta
+            if self.L4:
+                hist = self._l2.get(self._task_id, {}).get("_ful_hist", [])
+                if len(hist) >= self.L4_WIN:
+                    w = hist[-self.L4_WIN:]
+                    low_ful = all(h.get("ful", 1.0) < self.L4_FUL for h in w)
+                    pl_ok = all(self._l2_pl(h.get("applied", "")) >= self.PL_MIN for h in w)
+                    same = {h.get("applied") for h in w}
+                    if low_ful and pl_ok and len(same) == 1:
+                        cur = w[-1].get("applied")
+                        alts = [x for x in self._analogies if x != cur]
+                        if alts:
+                            alt = max(alts, key=lambda x: self._l2_pl(x))
+                            print(f"  [META2-L4] PERFIL equivocado: ful medio <{self.L4_FUL} "
+                                  f"en {self.L4_WIN} runs con Pl alta bajo '{cur}' -> "
+                                  f"re-seleccion: arrancando en '{alt}'")
+                            self.applied = alt
             import atexit
             atexit.register(self.end_run)
 
@@ -184,6 +238,13 @@ class Meta2Bridge:
         for a in self._run_time:
             if a in st:
                 st[a]["runs"] = st[a].get("runs", 0) + 1
+        if self._ful_n:
+            maj = max(self._run_time, key=self._run_time.get) if self._run_time else None
+            h = st.setdefault("_ful_hist", [])
+            h.append({"ful": round(self._ful_sum / self._ful_n, 3),
+                      "applied": maj, "pl": round(self._l2_pl(maj), 3) if maj else None,
+                      "spills": total_spills})
+            del h[:-10]
         self._l2["_closed"] = True
         try:
             out = {k: v for k, v in self._l2.items() if k != "_closed"}
@@ -306,6 +367,29 @@ class Meta2Bridge:
         ful = round(getattr(s, "task_stable_fulfillment", 0.0), 3) if s else None
         rej = {a: sc.rejection_reason for a, sc in out.candidate_scores.items()
                if sc.rejection_reason}
+        # --- rho_DCA runtime (ver __init__): margen de arbitraje / presupuesto de perturbacion
+        rho = None
+        try:
+            dep = sorted(((a, sc.task_stable_fulfillment) for a, sc in out.candidate_scores.items()
+                          if sc.deployable), key=lambda x: -x[1])
+            thr_ = float(self.reasoner.task.get("task_fulfillment_threshold", 0.35))
+            if len(dep) >= 2:
+                margin = dep[0][1] - dep[1][1]
+            elif len(dep) == 1:
+                margin = dep[0][1] - thr_
+            else:
+                margin = 0.0
+            win_ = dep[0][0] if dep else raw_active
+            gap_ = float(getattr(out.candidate_scores.get(win_), "task_uncertainty_gap", 0.0) or 0.0)
+            budget = gap_ + 0.5 * self._theta_mm.get(win_, 0.0) + 0.02
+            rho = round(max(0.0, margin) / budget, 2)
+        except Exception:
+            pass
+        # acumulador de fulfillment de la analogia APLICADA (Layer 4, media por run)
+        _sap = out.candidate_scores.get(self.applied)
+        if _sap is not None:
+            self._ful_sum += float(_sap.task_stable_fulfillment or 0.0)
+            self._ful_n += 1
         # --- Layer 2: veto por plausibilidad cross-run (la analogia desacreditada no se
         # despliega aunque el reasoner instantaneo la prefiera; se redirige a la desplegable
         # con mas Pl — normalmente la conservadora). Bridge-side: el reasoner no se toca.
@@ -375,6 +459,18 @@ class Meta2Bridge:
             w = max(0.0, (pl_a - self.PL_MIN) / (self.BLEND_PL - self.PL_MIN))
             blended = self.CONSERVATIVE_CAP + w * (a_cap - self.CONSERVATIVE_CAP)
             cap = min(a_cap, blended)
+        # --- LAYER 3: relevancia de entorno (tesis Pl_env). EMA del clearance mediano relativo
+        # al 'expected' de la analogia activa; entorno abierto (>1) relaja el techo de perfil,
+        # angosto (<1) lo aprieta. Clamp [0.85, 1.15]; nunca toca FALLBACK/HELP ni supera 0.40.
+        env_scale = None
+        if self.L3:
+            med_c = self._med(self.hist["safety"]) if self.hist["safety"] else 1.0
+            exp_b = self._safety_exp.get(self.applied, 0.6) or 0.6
+            self._env += 0.10 * (med_c / exp_b - self._env)
+            env_scale = max(0.85, min(1.15, self._env))
+            if (cap is not None and cap > 0.0
+                    and act_eff not in ("WARMUP",) and act not in ("FALLBACK", "HELP", "INSUFFICIENT")):
+                cap = min(0.40, max(0.22, round(cap * env_scale, 3)))
         changed = (self.last is None or act_eff != self.last["action"]
                    or self.applied != self.last["active"])
         self.last = {"action": act_eff, "raw_action": act, "active": self.applied,
@@ -382,7 +478,9 @@ class Meta2Bridge:
                      "tension": tens, "fulfillment": ful, "cap": cap,
                      "rejections": rej, "changed": changed,
                      "pl": round(pl_a, 3) if pl_a is not None else None,
-                     "frag": readings.get("fragility", {}).get("value") if self._has_frag else None}
+                     "frag": readings.get("fragility", {}).get("value") if self._has_frag else None,
+                     "rho": rho,
+                     "env": round(env_scale, 3) if env_scale is not None else None}
         return self.last
 
     def summary(self):
