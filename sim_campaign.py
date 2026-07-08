@@ -90,6 +90,30 @@ ARMS = {
                 "G1_M2_STATE": "meta2_state_prereal.json",
                 "G1_M2_L3": "1", "G1_M2_L4": "1",
                 "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    # ---- A/B FORMAL PRE-MERGE (rama analogy-profiles): factorial ligero, estado fresco
+    # por brazo (zero-shot en igualdad). Objetivo: watch-item (tasa de abortos HELP cerca
+    # de B con robot_r gobernado 0.28-0.30 vs 0.22 fijo de main) + biblioteca on/off ----
+    "abctrl": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
+               "G1_SIM_ID": "lab_v1_ab_ctrl",
+               "G1_M2_STATE": "meta2_state_abctrl.json",
+               "G1_M2_L3": "1", "G1_M2_L4": "1",
+               "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    "abprof": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
+               "G1_SIM_ID": "lab_v1_ab_prof",
+               "G1_M2_STATE": "meta2_state_abprof.json",
+               "G1_M2_L3": "1", "G1_M2_L4": "1", "G1_M2_PROFILES": "1",
+               "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    "abdoor": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
+               "G1_SIM_ID": "lab_v1_ab_door",
+               "G1_M2_STATE": "meta2_state_abdoor.json",
+               "G1_M2_L3": "1", "G1_M2_L4": "1", "G1_M2_DOORLIB": "1",
+               "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    "abfull": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
+               "G1_SIM_ID": "lab_v1_ab_full",
+               "G1_M2_STATE": "meta2_state_abfull.json",
+               "G1_M2_L3": "1", "G1_M2_L4": "1",
+               "G1_M2_PROFILES": "1", "G1_M2_DOORLIB": "1", "G1_M2_FRAGSPEED": "1",
+               "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
 }
 # brazos activos de esta invocacion: por env CAMPAIGN_ARMS="base,meta2" (default los 4)
 ACTIVE_ARMS = [a for a in os.environ.get("CAMPAIGN_ARMS", ",".join(ARMS)).split(",") if a in ARMS]
