@@ -1777,7 +1777,12 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     carrot = g.path_carrot(plan_pts, x, y)
                     # --- ENGAGEMENT DE PUERTA (mapa estatico): pre-entrada -> parar -> alinear -> cruzar RECTO ---
                     engcmd = None
-                    if DOOR_ENGAGE and d_goal > DOOR_MIN_GOAL and now >= eng["cool"]:
+                    if DOOR_ENGAGE and (d_goal > DOOR_MIN_GOAL or eng["state"] == "CROSS") and now >= eng["cool"]:
+                        # (rama analogy-profiles) un cruce EN CURSO se completa aunque d_goal baje de
+                        # DOOR_MIN_GOAL: en el gemelo A->B el goal esta a 1.97m del centro y el gate
+                        # cortaba el bloque ANTES del umbral de salida (0.75m) -> door_crossed nunca
+                        # se emitia (hueco latente pre-existente; solo B->A lo emitia). Las fases de
+                        # aproximacion (GOTO/ALIGN) siguen suprimidas cerca del goal (fix 1858520).
                         ux = math.cos(math.radians(DOOR_AXIS)); uy = math.sin(math.radians(DOOR_AXIS))
                         sgoal = (wx - DOOR_CX) * ux + (wy - DOOR_CY) * uy     # lado del GOAL respecto al vano
                         srob = (x - DOOR_CX) * ux + (y - DOOR_CY) * uy        # lado del ROBOT

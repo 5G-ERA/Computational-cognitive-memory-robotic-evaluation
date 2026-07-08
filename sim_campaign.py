@@ -78,6 +78,13 @@ ARMS = {
     # tanda PRE-REAL: la configuracion EXACTA recomendada para la campana fisica de Adrian
     # (4 capas activas + estado persistido + rho logueado) — validacion en el bucle antes
     # de tocar el robot. No entra en la tabla del paper.
+    # tanda de humo de la RAMA analogy-profiles: las 4 extensiones activas in-loop
+    "extsmoke": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
+                 "G1_SIM_ID": "lab_v1_extsmoke",
+                 "G1_M2_STATE": "meta2_state_extsmoke.json",
+                 "G1_M2_L3": "1", "G1_M2_L4": "1",
+                 "G1_M2_PROFILES": "1", "G1_M2_DOORLIB": "1", "G1_M2_FRAGSPEED": "1",
+                 "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
     "prereal": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
                 "G1_SIM_ID": "lab_v1_prereal_4capas",
                 "G1_M2_STATE": "meta2_state_prereal.json",
