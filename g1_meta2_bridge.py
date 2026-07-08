@@ -128,6 +128,13 @@ class Meta2Bridge:
     #   Pl < PL_MIN   -> la analogia NO se despliega (se fuerza la mas conservadora desplegable)
     #   Pl < BLEND_PL -> su techo de velocidad se FUNDE hacia el conservador (blend tesis 5.3.4)
     STATE_FILE = os.environ.get("G1_M2_STATE", "")
+    # EXTENSION C (rama analogy-profiles): TRANSFERENCIA SIM->REAL del trust analogico.
+    # G1_M2_STATE_INIT=<estado_aprendido_en_el_gemelo.json>: si el STATE_FILE del robot aun
+    # no tiene evidencia para esta tarea, se SIEMBRA desde el estado del gemelo, remapeando
+    # su task_id al de la config actual (p.ej. g1_door_crossing_A_B_sim -> ..._A_B) y
+    # trayendo tambien las confianzas de variantes de puerta (_door). El robot real arranca
+    # con los priors aprendidos en simulacion = zero-shot con experiencia transferida.
+    STATE_INIT = os.environ.get("G1_M2_STATE_INIT", "")
     PL_MIN = float(os.environ.get("G1_M2_PL_MIN", "0.45"))
     BLEND_PL = 0.70
     CONSERVATIVE = "Cautious_Nav"          # analogia refugio (el M1 del blend)
@@ -248,6 +255,23 @@ class Meta2Bridge:
             st = json.load(open(self.STATE_FILE))
         except Exception:
             st = {}
+        # EXTENSION C: sembrar desde el estado del gemelo si esta tarea aun no tiene evidencia
+        if self.STATE_INIT and not st.get(self._task_id):
+            try:
+                ini = json.load(open(self.STATE_INIT))
+                src_tasks = [k for k in ini if not k.startswith("_")]
+                if src_tasks:
+                    st[self._task_id] = ini[src_tasks[0]]        # remapeo de task_id
+                if "_door" in ini and "_door" not in st:
+                    st["_door"] = ini["_door"]
+                pls = {a_: round(v.get("m_match", 0) + v.get("m_theta", 0), 2)
+                       for a_, v in st.get(self._task_id, {}).items()
+                       if isinstance(v, dict) and "m_match" in v}
+                print(f"  [META2-C] trust TRANSFERIDO del gemelo ({self.STATE_INIT}): "
+                      f"{src_tasks[0] if src_tasks else '?'} -> {self._task_id}, Pl={pls}"
+                      + (", _door incluido" if "_door" in ini else ""))
+            except Exception as e:
+                print("  [META2-C] transferencia fallida:", repr(e))
         st.setdefault(self._task_id, {})
         for a in self._analogies:
             st[self._task_id].setdefault(a, {"m_match": 0.5, "m_mismatch": 0.0,
