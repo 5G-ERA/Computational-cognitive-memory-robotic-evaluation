@@ -108,6 +108,13 @@ ARMS = {
                "G1_M2_STATE": "meta2_state_abdoor.json",
                "G1_M2_L3": "1", "G1_M2_L4": "1", "G1_M2_DOORLIB": "1",
                "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    # verificacion del gate guardado: main-equivalente con el fix DESACTIVADO (DOORLIB off
+    # -> gate main exacto). Si los abortos de bolsillo vuelven a ~0 -> causa confirmada.
+    "abgate": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
+               "G1_SIM_ID": "lab_v1_ab_gate",
+               "G1_M2_STATE": "meta2_state_abgate.json",
+               "G1_M2_L3": "1", "G1_M2_L4": "1",
+               "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
     "abfull": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
                "G1_SIM_ID": "lab_v1_ab_full",
                "G1_M2_STATE": "meta2_state_abfull.json",

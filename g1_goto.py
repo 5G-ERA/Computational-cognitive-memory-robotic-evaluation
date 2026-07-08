@@ -88,6 +88,7 @@ DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "-1"))  # DEFAULT -1 (20
                                  # contra lo ordenado): el mapeo fisico de lx esta INVERTIDO. DOOR-CTR centraba
                                  # HACIA el obstaculo. Verificar con STRAFE-CAL en el log; G1_STRAFE_SIGN=1 lo revierte.
 DOOR_MIN_GOAL = 1.3              # m: por debajo de esta distancia a B NO hay puerta (es el goal con un mueble):
+_DOOR_GATEFIX = os.environ.get("G1_DOOR_GATEFIX", "") == "1" or os.environ.get("G1_M2_DOORLIB", "") == "1"
                                  # desactiva la maniobra de puerta y deja que el DWA rodee el obstaculo (si no, empujaba recto)
 # --- ENGAGEMENT de puerta ANCLADO AL MAPA ESTATICO (Renxi/Adrian 2026-07-02 tarde) ---
 # Runs 171431/172840/173422: TODAS las colisiones en (-3.75,1.22) con yaw 101-119 cuando el eje del vano
@@ -1777,7 +1778,14 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     carrot = g.path_carrot(plan_pts, x, y)
                     # --- ENGAGEMENT DE PUERTA (mapa estatico): pre-entrada -> parar -> alinear -> cruzar RECTO ---
                     engcmd = None
-                    if DOOR_ENGAGE and (d_goal > DOOR_MIN_GOAL or eng["state"] == "CROSS") and now >= eng["cool"]:
+                    # fix del gate (rama): el CROSS sobrevive al gate de d_goal para poder emitir
+                    # door_crossed (en el gemelo A->B el goal esta a 1.97m de la puerta y el gate lo
+                    # cortaba antes). GUARDADO tras DOORLIB: el A/B formal mostro que con robot_r fijo
+                    # 0.22 la liberacion tardia del CROSS cambia la entrada al bolsillo de B (6/16
+                    # abortos vs 0/12 del main historico, p=0.024); con perfiles (robot_r 0.28) es
+                    # seguro (1/16). Sin flags = comportamiento main exacto.
+                    _gatefix = _DOOR_GATEFIX and eng["state"] == "CROSS"
+                    if DOOR_ENGAGE and (d_goal > DOOR_MIN_GOAL or _gatefix) and now >= eng["cool"]:
                         # (rama analogy-profiles) un cruce EN CURSO se completa aunque d_goal baje de
                         # DOOR_MIN_GOAL: en el gemelo A->B el goal esta a 1.97m del centro y el gate
                         # cortaba el bloque ANTES del umbral de salida (0.75m) -> door_crossed nunca
