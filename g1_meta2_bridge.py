@@ -85,6 +85,16 @@ ACTION_FULL = {
 # cruce limpio -> match; colision en fase puerta o aborto de engagement -> mismatch.
 # Seleccion al arranque: mayor Pl (empate -> Door_Direct). Opt-in: G1_M2_DOORLIB=1.
 DOORLIB_ON = os.environ.get("G1_M2_DOORLIB", "0") == "1"
+
+# ===== EXTENSION D (rama analogy-profiles): ACOPLAMIENTO GRADUAL fragility -> velocidad =====
+# Propuesta de Adrian (2026-07-08): "un algoritmo inteligente deberia reducir la velocidad si
+# hay spills". Hoy la respuesta es ESCALONADA (region QoE -> FALLBACK 0.24 -> HELP 0): este
+# acoplamiento la hace PROPORCIONAL — un derrame frena ya (escala continua sobre techo de
+# avance Y de giro), y se recupera con la fragility (tau ~25s). Los gates/vetos siguen encima
+# (3+ derrames -> HELP igual). Tambien frena a Efficient (sin techo -> base 0.40).
+# frag>=0.80 -> escala 1.0; frag=0.12 (frontera dangerous) -> escala 0.55. Suelos: avance
+# 0.18 (sigue avanzando ~0.08 m/s), giro 0.35 (deadzone). Opt-in: G1_M2_FRAGSPEED=1.
+FRAGSPEED_ON = os.environ.get("G1_M2_FRAGSPEED", "0") == "1"
 DOOR_VARIANTS = {
     "Door_Direct": {"eng_d": 0.85, "align_tol": 8.0, "lat_bias": 0.0},
     "Door_Far": {"eng_d": 1.20, "align_tol": 6.0, "lat_bias": 0.0},
@@ -549,6 +559,16 @@ class Meta2Bridge:
             if _rr is not None and env_scale is not None:
                 # entorno abierto (env>1) -> holgura mas fina (rutas mas directas); angosto -> mas ancha
                 _rr = max(0.22, min(0.30, round(_rr / env_scale, 3)))
+        # EXTENSION D: escala gradual por fragility sobre avance y giro
+        if FRAGSPEED_ON and self._has_frag:
+            _fr = readings.get("fragility", {}).get("value", 1.0)
+            if _fr < 0.80:
+                _sc = max(0.55, 0.55 + 0.45 * (_fr - 0.12) / (0.80 - 0.12))
+                _base = cap if cap is not None else 0.40
+                if _base > 0.0:
+                    cap = max(0.18, round(_base * _sc, 3))
+                if _turn is not None:
+                    _turn = max(0.35, round(_turn * _sc, 3))
         changed = (self.last is None or act_eff != self.last["action"]
                    or self.applied != self.last["active"])
         self.last = {"action": act_eff, "raw_action": act, "active": self.applied,
