@@ -1727,7 +1727,10 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                       f"(min seguridad {AGGR_ROBOT_R}m) para cruzar la puerta.")
                 lg.write(f"AGGRESSIVE-ON t={now-t0:.0f}s d={d_goal:.2f}\n")
                 rd.event("aggressive_on", now - t0, x, y, {"d": round(d_goal, 2)})
-            g.ROBOT_R = AGGR_ROBOT_R if aggressive else ROBOT_R0   # holgura del DWA (min seguridad en agresivo)
+            # EXTENSION B: holgura del DWA gobernada por el perfil (la 'inflacion' local de la
+            # tesis, L3/Pl_env modulando). El agresivo conserva su minimo validado.
+            _prr = (m2o or {}).get("robot_r") if META2_MODE == "2" else None
+            g.ROBOT_R = AGGR_ROBOT_R if aggressive else (_prr if _prr else ROBOT_R0)
 
             # --- PLAN A* + CONTROL LOCAL DWA (hacia el WAYPOINT, no una frontera) ---
             if cmd is None:
@@ -1780,12 +1783,19 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         srob = (x - DOOR_CX) * ux + (y - DOOR_CY) * uy        # lado del ROBOT
                         ddc = math.hypot(x - DOOR_CX, y - DOOR_CY)
                         if eng["state"] is None and ddc < 1.8 and sgoal * srob < 0:
-                            eng.update(state="GOTO", ok=0, wt=0, ts=now)      # goal al OTRO lado y puerta cerca
+                            eng.update(state="GOTO", ok=0, wt=0, ts=now, c0n=ncol)   # goal al OTRO lado y puerta cerca
                             lg.write(f"DOOR-ENG start t={now-t0:.0f}s pos=({x:+.2f},{y:+.2f}) sgn={'AB' if sgoal>0 else 'BA'}\n")
                             rd.event("door_engage", now - t0, x, y, {"dir": "AB" if sgoal > 0 else "BA"})
                         if eng["state"]:
                             sgn = 1.0 if sgoal > 0 else -1.0
-                            exp = (DOOR_CX - sgn * DOOR_ENG_D * ux, DOOR_CY - sgn * DOOR_ENG_D * uy)   # pre-entrada
+                            # EXTENSION A (rama analogy-profiles): la variante de puerta del bridge
+                            # parametriza el engagement (pre-entrada, tolerancia, bias en eje FIJO).
+                            _dv = (m2o or {}).get("door") if META2_MODE == "2" else None
+                            _engd = (_dv or {}).get("eng_d", DOOR_ENG_D)
+                            _atol = (_dv or {}).get("align_tol", DOOR_ALIGN_TOL)
+                            _bias = (_dv or {}).get("lat_bias", 0.0)
+                            exp = (DOOR_CX - sgn * _engd * ux - _bias * uy,
+                                   DOOR_CY - sgn * _engd * uy + _bias * ux)   # pre-entrada
                             head = DOOR_AXIS if sgn > 0 else ((DOOR_AXIS + 360) % 360 - 180)           # rumbo de cruce
                             he = (head - yaw + 180) % 360 - 180
                             if eng["state"] == "GOTO":
@@ -1804,8 +1814,13 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                         if eng["wt"] > 12:                    # ~4s bloqueado hacia la pre-entrada
                                             eng.update(state=None, cool=now + 8.0)
                                             lg.write("DOOR-ENG abort (GOTO bloqueado) -> logica normal 8s\n")
+                                            if meta2 is not None and hasattr(meta2, "door_result"):
+                                                try:
+                                                    meta2.door_result(False, ncol - eng.get("c0n", ncol))
+                                                except Exception:
+                                                    pass
                             if eng["state"] == "ALIGN":
-                                if abs(he) <= DOOR_ALIGN_TOL:
+                                if abs(he) <= _atol:
                                     eng["ok"] += 1; engcmd = ((0, 0, 0, 0), "ENG-AL.")
                                     if eng["ok"] >= 2:
                                         eng.update(state="CROSS", ts=now)
@@ -1813,6 +1828,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                 elif now - eng["ts"] > 12.0:                  # no consigue alinear: no bloquear la run
                                     eng.update(state=None, cool=now + 8.0)
                                     lg.write(f"DOOR-ENG abort (ALIGN timeout, he={he:+.0f})\n")
+                                    if meta2 is not None and hasattr(meta2, "door_result"):
+                                        try:
+                                            meta2.door_result(False, ncol - eng.get("c0n", ncol))
+                                        except Exception:
+                                            pass
                                 else:
                                     eng["ok"] = 0
                                     # pulso anti-sobregiro (giro real ~15-20 deg/tick por la deadzone)
@@ -1825,6 +1845,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                     eng.update(state=None)
                                     lg.write(f"DOOR-ENG CROSSED t={now-t0:.0f}s pos=({x:+.2f},{y:+.2f})\n")
                                     rd.event("door_crossed", now - t0, x, y, None)
+                                    if meta2 is not None and hasattr(meta2, "door_result"):
+                                        try:
+                                            meta2.door_result(True, ncol - eng.get("c0n", ncol))
+                                        except Exception:
+                                            pass
                                 elif abs(he) > DOOR_REALIGN:                  # deriva del bipedo: NO avanzar torcido
                                     eng.update(state="ALIGN", ok=0, ts=now); engcmd = ((0, 0, 0, 0), "ENG-RE")
                                 else:
@@ -1840,6 +1865,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                                 if eng["wt"] >= 4:           # ~5s presionando -> no insistir
                                                     eng.update(state=None, cool=now + 8.0)
                                                     lg.write("DOOR-ENG abort (CROSS sin avance) -> logica normal 8s\n")
+                                                    if meta2 is not None and hasattr(meta2, "door_result"):
+                                                        try:
+                                                            meta2.door_result(False, ncol - eng.get("c0n", ncol))
+                                                        except Exception:
+                                                            pass
                                             else:
                                                 eng["wt"] = 0
                                             eng["px"] = x; eng["py"] = y; eng["pt"] = now
@@ -2168,6 +2198,12 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # Para el brazo M1 de la campana payload: G1_META2=0 G1_VCAP=0.28.
             if VCAP is not None and cmd[1] > VCAP:
                 cmd = (cmd[0], VCAP, cmd[2], 0)
+            # --- EXTENSION B (rama analogy-profiles): techo de GIRO del perfil de analogia.
+            # Los giros de arranque dominan el derrame con taza llena (sesion real 2026-07-08)
+            # y no estaban gobernados. Solo bucle normal (recuperaciones intactas, como el cap).
+            if META2_MODE == "2" and m2o is not None and m2o.get("turn"):
+                if abs(cmd[2]) > m2o["turn"]:
+                    cmd = (cmd[0], cmd[1], math.copysign(m2o["turn"], cmd[2]), 0)
             prev_fwd = (cmd[1] > 0.1)
             cdp.eval(g.set_cmd_js(*cmd))
             time.sleep(0.1)

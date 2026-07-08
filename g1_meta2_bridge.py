@@ -60,6 +60,37 @@ ACTION_CAP = {          # techos por acción cuando NO hay analogía desplegable
     "INSUFFICIENT": None,   # sin grounding: no frenar por sí solo (se loguea)
 }
 
+# ===== EXTENSION B (rama analogy-profiles): PERFILES MULTI-PARAMETRO (tesis Tabla 16) =====
+# El perfil de la analogia deja de ser solo techo de avance: incluye techo de GIRO (los giros
+# de arranque dominan el derrame con taza llena, medido en la sesion real 2026-07-08) y
+# holgura del DWA robot_r (la "inflacion" local; rango seguro [0.22, 0.30] — por debajo de
+# 0.24 en agresivo vuelven los roces P2). La L3 (Pl_env) modula robot_r = la semantica EXACTA
+# de la Layer 3 de la tesis. Opt-in: G1_M2_PROFILES=1. Giro nunca < 0.35 (deadzone ~0.3).
+PROFILES_ON = os.environ.get("G1_M2_PROFILES", "0") == "1"
+PROFILE_FULL = {
+    "Efficient_Nav": {"turn": None, "robot_r": 0.24},
+    "Cautious_Nav": {"turn": 0.38, "robot_r": 0.28},
+}
+ACTION_FULL = {
+    "FALLBACK": {"turn": 0.36, "robot_r": 0.28},
+    "HELP": {"turn": None, "robot_r": 0.28},
+    "INSUFFICIENT": {"turn": None, "robot_r": None},
+}
+
+# ===== EXTENSION A (rama analogy-profiles): BIBLIOTECA DE VARIANTES DE PUERTA =====
+# Variantes que PARAMETRIZAN el engagement existente (no lo sustituyen). Diseno DATA-DRIVEN
+# (mineria 2026-07-08 sobre 279 cruces: limpios |lat| p50=0.06 / yaw_err p50=4 grados; con
+# colision p50=0.14/14 — entrar torcido o descentrado predice el golpe; sesgo sistematico
+# a -lat en B->A). Trust DST L2 por variante persistido en G1_M2_STATE (clave "_door"):
+# cruce limpio -> match; colision en fase puerta o aborto de engagement -> mismatch.
+# Seleccion al arranque: mayor Pl (empate -> Door_Direct). Opt-in: G1_M2_DOORLIB=1.
+DOORLIB_ON = os.environ.get("G1_M2_DOORLIB", "0") == "1"
+DOOR_VARIANTS = {
+    "Door_Direct": {"eng_d": 0.85, "align_tol": 8.0, "lat_bias": 0.0},
+    "Door_Far": {"eng_d": 1.20, "align_tol": 6.0, "lat_bias": 0.0},
+    "Door_BiasPlus": {"eng_d": 0.85, "align_tol": 8.0, "lat_bias": 0.12},
+}
+
 
 class Meta2Bridge:
     """Suavizado + persistencia BRIDGE-SIDE (el reasoner de Renxi no se toca):
@@ -155,6 +186,8 @@ class Meta2Bridge:
         self._l2 = None
         self._run_spills = {}      # analogia -> derrames atribuidos en ESTA run
         self._run_time = {}        # analogia -> segundos gobernando en ESTA run
+        self.door_variant = None   # EXTENSION A (requiere G1_M2_STATE + G1_M2_DOORLIB)
+        self._door_results = []    # [(ok, cols)] de la run en curso
         if self.STATE_FILE:
             self._l2 = self._l2_load()
             # arranque ZERO-SHOT corregido: si la analogia inicial esta desacreditada
@@ -183,6 +216,19 @@ class Meta2Bridge:
                                   f"en {self.L4_WIN} runs con Pl alta bajo '{cur}' -> "
                                   f"re-seleccion: arrancando en '{alt}'")
                             self.applied = alt
+            # EXTENSION A: seleccionar la variante de puerta con mas confianza (Pl)
+            if DOORLIB_ON:
+                dst_ = self._l2.setdefault("_door", {})
+                for v in DOOR_VARIANTS:
+                    dst_.setdefault(v, {"m_match": 0.5, "m_mismatch": 0.0, "m_theta": 0.5,
+                                        "crossings": 0, "fails": 0})
+                def _plv(v):
+                    m = dst_[v]
+                    return m["m_match"] + m["m_theta"]
+                order = list(DOOR_VARIANTS)          # empate -> orden de definicion (Direct 1o)
+                self.door_variant = max(order, key=lambda v: (round(_plv(v), 3), -order.index(v)))
+                print(f"  [META2-DOOR] variante de engagement: {self.door_variant} "
+                      f"(Pl={{{', '.join('%s:%.2f' % (v, _plv(v)) for v in order)}}})")
             import atexit
             atexit.register(self.end_run)
 
@@ -218,6 +264,26 @@ class Meta2Bridge:
                 "m_mismatch": n * (m["m_mismatch"] * ev.get("mismatch", 0.0) + m["m_mismatch"] * th_e
                                    + m["m_theta"] * ev.get("mismatch", 0.0)),
                 "m_theta": n * (m["m_theta"] * th_e)}
+
+    def door_result(self, ok, cols=0):
+        """EXTENSION A: resultado de una fase de puerta (llamado por g1_goto en door_crossed
+        o en un aborto de engagement). Evidencia DST inmediata a la variante activa."""
+        self._door_results.append((bool(ok), int(cols)))
+        if not (self._l2 and self.door_variant):
+            return
+        m = self._l2.get("_door", {}).get(self.door_variant)
+        if not m:
+            return
+        if ok and cols == 0:
+            ev = {"match": 0.30}
+            m["crossings"] = m.get("crossings", 0) + 1
+        else:
+            ev = {"mismatch": min(0.5, 0.30 + 0.10 * max(0, cols - 1))}
+            m["fails"] = m.get("fails", 0) + 1
+        m.update(self._dempster(m, ev))
+        pl = m["m_match"] + m["m_theta"]
+        print(f"  [META2-DOOR] {self.door_variant}: {'CRUZADA' if ok and cols==0 else 'FALLO'} "
+              f"(cols={cols}) -> Pl={pl:.2f}")
 
     def end_run(self):
         # cierre de run (atexit con G1_M2_STATE): convertir el resultado en evidencia DST.
@@ -471,6 +537,18 @@ class Meta2Bridge:
             if (cap is not None and cap > 0.0
                     and act_eff not in ("WARMUP",) and act not in ("FALLBACK", "HELP", "INSUFFICIENT")):
                 cap = min(0.40, max(0.22, round(cap * env_scale, 3)))
+        # EXTENSION B: perfil multi-parametro (giro + holgura DWA), con L3 sobre robot_r
+        _turn = None; _rr = None
+        if PROFILES_ON:
+            if act_firm and act in ("FALLBACK", "HELP", "INSUFFICIENT"):
+                _pf = ACTION_FULL.get(act, {})
+            else:
+                _pf = PROFILE_FULL.get(self.applied, {})
+            _turn = _pf.get("turn")
+            _rr = _pf.get("robot_r")
+            if _rr is not None and env_scale is not None:
+                # entorno abierto (env>1) -> holgura mas fina (rutas mas directas); angosto -> mas ancha
+                _rr = max(0.22, min(0.30, round(_rr / env_scale, 3)))
         changed = (self.last is None or act_eff != self.last["action"]
                    or self.applied != self.last["active"])
         self.last = {"action": act_eff, "raw_action": act, "active": self.applied,
@@ -480,7 +558,10 @@ class Meta2Bridge:
                      "pl": round(pl_a, 3) if pl_a is not None else None,
                      "frag": readings.get("fragility", {}).get("value") if self._has_frag else None,
                      "rho": rho,
-                     "env": round(env_scale, 3) if env_scale is not None else None}
+                     "env": round(env_scale, 3) if env_scale is not None else None,
+                     "turn": _turn, "robot_r": _rr,
+                     "door": (dict(name=self.door_variant, **DOOR_VARIANTS[self.door_variant])
+                              if (DOORLIB_ON and self.door_variant) else None)}
         return self.last
 
     def summary(self):
