@@ -88,6 +88,24 @@ class Meta2Bridge:
     #   Pl < BLEND_PL -> su techo de velocidad se FUNDE hacia el conservador (blend tesis 5.3.4)
     STATE_FILE = os.environ.get("G1_M2_STATE", "")
     PL_MIN = float(os.environ.get("G1_M2_PL_MIN", "0.45"))
+    # --- CALIBRACION DE LA FRAGILIDAD A LA PLATAFORMA (hallazgo campana real, 2026-07-14) ---
+    # El mapeo derrame->fragility y la atribucion DST se calibraron con la estadistica del
+    # GEMELO (baseline 0.5 derrames/run). El G1 REAL derrama ~12/run (73 marcas / 6 runs) y
+    # aun asi completa la tarea: 3 derrames NO son una catastrofe, son lo normal. Con los
+    # valores del gemelo, el 3er derrame -> region dangerous -> veto duro -> HELP -> aborto,
+    # SIEMPRE (4/4 runs gobernadas abortaron en la salida, a 246 g y a 200 g).
+    # G1_M2_REALCAL=1 aplica la calibracion medida en el laboratorio real.
+    _RC = os.environ.get("G1_M2_REALCAL", "") == "1"
+    FRAG_DIP = float(os.environ.get("G1_M2_FRAG_DIP", "0.20" if _RC else "0.50"))
+    FRAG_LOAD = float(os.environ.get("G1_M2_FRAG_LOAD", "0.06" if _RC else "0.20"))
+    FRAG_MAXEXTRA = int(os.environ.get("G1_M2_FRAG_MAXEXTRA", "14" if _RC else "3"))
+    # Atribucion DST RELATIVA a la expectativa de la plataforma (0 = semantica absoluta previa):
+    # derrames por encima de la referencia -> mismatch; claramente por debajo -> match.
+    # Sin esto, en el robot real 'match' es inalcanzable (exige run de 0 derrames) y la
+    # analogia conservadora solo puede perder confianza hasta ser vetada -> el veto promociona
+    # la analogia MAS ARRIESGADA (observado: run 20260714_163627 desplego Efficient_Nav).
+    SPILL_REF = float(os.environ.get("G1_M2_SPILL_REF", "12" if _RC else "0"))
+    MATCH_MIN_S = float(os.environ.get("G1_M2_MATCH_MIN_S", "30" if _RC else "10"))
     BLEND_PL = 0.70
     CONSERVATIVE = "Cautious_Nav"          # analogia refugio (el M1 del blend)
     CONSERVATIVE_CAP = 0.28
@@ -227,13 +245,25 @@ class Meta2Bridge:
         st = self._l2[self._task_id]
         total_spills = sum(self._run_spills.values())
         for a, s in self._run_spills.items():
-            if s > 0 and a in st:
+            if a not in st:
+                continue
+            if self.SPILL_REF > 0:
+                # RELATIVA: la evidencia se mide contra lo que la plataforma hace de serie.
+                # Exposicion minima (MATCH_MIN_S) para premiar: un aborto temprano no informa.
+                if s > self.SPILL_REF:
+                    ev = {"mismatch": min(0.5, 0.10 + 0.05 * (s - self.SPILL_REF))}
+                    st[a].update(self._dempster(st[a], ev))
+                elif s <= 0.5 * self.SPILL_REF and self._run_time.get(a, 0.0) >= self.MATCH_MIN_S:
+                    st[a].update(self._dempster(st[a], {"match": 0.25}))
+                if s:
+                    st[a]["spills"] = st[a].get("spills", 0) + s
+            elif s > 0:
                 ev = {"mismatch": min(0.5, 0.30 + 0.10 * (s - 1))}
                 st[a].update(self._dempster(st[a], ev))
                 st[a]["spills"] = st[a].get("spills", 0) + s
-        if total_spills == 0 and self._run_time:
+        if self.SPILL_REF <= 0 and total_spills == 0 and self._run_time:
             maj = max(self._run_time, key=self._run_time.get)
-            if maj in st and self._run_time[maj] >= 10.0:
+            if maj in st and self._run_time[maj] >= self.MATCH_MIN_S:
                 st[maj].update(self._dempster(st[maj], {"match": 0.25}))
         for a in self._run_time:
             if a in st:
@@ -343,8 +373,8 @@ class Meta2Bridge:
                 extra = max(0, int(spill_count) - 1)
                 # dip del ultimo derrame (tau=25s) + carga acumulada por reincidencia (tau=50s):
                 # 1 derrame -> ~0.51 (precaucion), 2 -> ~0.31 (FALLBACK), 3+ -> <0.12 (HELP)
-                frag -= 0.50 * math.exp(-dt_ / 25.0)
-                frag -= 0.20 * min(extra, 3) * math.exp(-dt_ / 50.0)
+                frag -= self.FRAG_DIP * math.exp(-dt_ / 25.0)
+                frag -= self.FRAG_LOAD * min(extra, self.FRAG_MAXEXTRA) * math.exp(-dt_ / 50.0)
             frag = max(0.05, frag)
             # SIN mediana: el derrame es un EVENTO cierto (ground truth), no ruido de sensor.
             # La historia se guarda solo para el margen few-shot (std) del intervalo DST.
