@@ -115,6 +115,16 @@ ARMS = {
                "G1_M2_STATE": "meta2_state_abgate.json",
                "G1_M2_L3": "1", "G1_M2_L4": "1",
                "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
+    # EXPLORACION de variantes de puerta en el gemelo (Renxi: exploration del high-level
+    # policy): fuerza la variante MENOS ensayada; el estado resultante (las 3 variantes con
+    # trust poblado) se transfiere al real por Ext C. Fallar aqui es gratis.
+    "explore": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
+                "G1_SIM_ID": "lab_v1_explore_door",
+                "G1_M2_STATE": "meta2_state_explore.json",
+                "G1_M2_L3": "1", "G1_M2_L4": "1",
+                "G1_M2_PROFILES": "1", "G1_M2_DOORLIB": "1", "G1_M2_FRAGSPEED": "1",
+                "G1_M2_DOOR_EXPLORE": "1",
+                "G1_M2_ABORT_WIN": "150", "G1_M2_ABORT_PROG": "0.25", "G1_M2_HELP_S": "16"},
     "abfull": {"G1_META2": "2", "G1_M2_CFG": "config_meta2_g1payload.json",
                "G1_SIM_ID": "lab_v1_ab_full",
                "G1_M2_STATE": "meta2_state_abfull.json",

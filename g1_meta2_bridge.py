@@ -261,9 +261,22 @@ class Meta2Bridge:
                     m = dst_[v]
                     return m["m_match"] + m["m_theta"]
                 order = list(DOOR_VARIANTS)          # empate -> orden de definicion (Direct 1o)
-                self.door_variant = max(order, key=lambda v: (round(_plv(v), 3), -order.index(v)))
-                print(f"  [META2-DOOR] variante de engagement: {self.door_variant} "
-                      f"(Pl={{{', '.join('%s:%.2f' % (v, _plv(v)) for v in order)}}})")
+                if os.environ.get("G1_M2_DOOR_EXPLORE", "") == "1":
+                    # EXPLORACION ACTIVA (Renxi 2026-07-21: "exploration" del high-level policy).
+                    # La seleccion por Pl es optimista (Th cuenta a favor) pero DEGENERA: si la
+                    # incumbente nunca falla, las alternativas quedan a 0 ensayos (A/B formal:
+                    # Direct 8/8, Far/BiasPlus 0). En el GEMELO fallar es gratis -> se elige la
+                    # variante MENOS ensayada (round-robin auto-balanceado via estado persistido)
+                    # y el trust poblado se transfiere al robot real por Ext C (G1_M2_STATE_INIT).
+                    # SOLO para sesiones de exploracion en sim; el real siempre explota por Pl.
+                    self.door_variant = min(order, key=lambda v: (dst_[v]["crossings"] + dst_[v]["fails"],
+                                                                  order.index(v)))
+                    print(f"  [META2-DOOR] EXPLORACION: variante menos ensayada -> {self.door_variant} "
+                          f"(ensayos={{{', '.join('%s:%d' % (v, dst_[v]['crossings'] + dst_[v]['fails']) for v in order)}}})")
+                else:
+                    self.door_variant = max(order, key=lambda v: (round(_plv(v), 3), -order.index(v)))
+                    print(f"  [META2-DOOR] variante de engagement: {self.door_variant} "
+                          f"(Pl={{{', '.join('%s:%.2f' % (v, _plv(v)) for v in order)}}})")
             import atexit
             atexit.register(self.end_run)
 
