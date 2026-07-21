@@ -3186,6 +3186,64 @@ def _save_map(cdp, pose=None):
     return len(prev)
 
 
+def cmd_furniture(secs=15):
+    """CENSO DE MUEBLES por VISION: acumula en nav_map.json las celdas que ve el canal DEPTH
+    (banda 0.10-1.30 m absoluta: sofa, sillas, muebles BAJO el plano del laser). El acumulador
+    de 'waypoint' usa el laser y NO puede verlos (autopsia 2026-07-21: freno-arrastre -> HELP
+    en el pasillo del sofa porque el A* planeaba a traves de el; el mueble avisado por camara
+    no estaba mapeado). USO: robot QUIETO de pie ENFRENTE del mueble a 1-1.5 m; repetir desde
+    2 angulos. Requiere G1_PERC y el perception_server corriendo. Anti-ruido: solo celdas
+    vistas en >=5 frames y a 0.4-3.0 m del robot."""
+    if g1_perception is None:
+        print("falta g1_perception.py"); return
+    perc = g1_perception.make_client_from_env(g.OCELL)
+    if perc is None:
+        print("define G1_PERC=host:puerto (y perception_server corriendo)"); return
+    cdp = g.get_cdp()
+    _install(cdp)
+    print(f">>> CENSO {secs}s: robot QUIETO frente al mueble. Acumulando celdas de VISION...")
+    counts = {}
+    frames = 0
+    t0 = time.time()
+    px = py = None
+    while time.time() - t0 < secs:
+        srcp, p, _ = read_pose(cdp)
+        if not p:
+            time.sleep(0.2); continue
+        x, y, yaw = p[0], p[1], yaw_of(p)
+        px, py = x, y
+        fr = grab_cam(cdp)
+        if not fr:
+            time.sleep(0.2); continue
+        res = perc.query(fr, x, y, yaw)
+        if res is None:
+            time.sleep(0.2); continue
+        frames += 1
+        for c in (res.cells or ()):  # celdas OCELL en frame del MAPA
+            d = math.hypot(c[0] * g.OCELL - x, c[1] * g.OCELL - y)
+            if 0.4 <= d <= 3.0:
+                counts[tuple(c)] = counts.get(tuple(c), 0) + 1
+        print(f"  frames={frames} celdas_candidatas={len(counts)}   t={time.time()-t0:.0f}/{secs}s", end="\r")
+        time.sleep(0.25)
+    good = {c for c, n in counts.items() if n >= 5}
+    print()
+    if not good:
+        print("Sin celdas estables (¿mueble a 1-1.5 m y de frente? ¿perception_server con depth vivo?)")
+        return
+    try:
+        prev = json.load(open(MAP_FILE)); cells = set(tuple(c) for c in prev.get("cells", []))
+    except Exception:
+        cells = set()
+    added = good - cells
+    cells |= good
+    json.dump({"cells": [list(c) for c in sorted(cells)], "OCELL": g.OCELL,
+               "frame": "map", "hband": [HBAND_LO, HBAND_HI]}, open(MAP_FILE, "w"))
+    print(f"nav_map.json: +{len(added)} celdas nuevas (total {len(cells)}). Nuevas:")
+    for c in sorted(added):
+        print("   (%.1f, %.1f)" % (c[0] * g.OCELL, c[1] * g.OCELL))
+    print("Verifica que las posiciones cuadran con el mueble real. Repite desde otro angulo.")
+
+
 def cmd_waypoint(label):
     """PASO 2: conduce el robot al destino (con la app o teleop) y Ctrl+C -> guarda la ULTIMA pose como 'label'.
     Mientras, acumula el mapa de obstaculos en nav_map.json."""
@@ -3323,6 +3381,8 @@ def main():
         cmd_appsniff(int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 40)
     elif c == "waypoint":
         cmd_waypoint(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif c == "furniture":
+        cmd_furniture(int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 15)
     elif c == "listwp":
         cmd_listwp()
     elif c == "noisecheck":
