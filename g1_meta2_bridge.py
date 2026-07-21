@@ -634,6 +634,9 @@ class Meta2Bridge:
                      "rho": rho,
                      "env": round(env_scale, 3) if env_scale is not None else None,
                      "turn": _turn, "robot_r": _rr,
+                     # incertidumbre DST por parametro (la dispersion empirica que juega el papel
+                     # de la covarianza en los intervalos): se loguea por muestra (meta2_unc)
+                     "unc": {k: round(v.get("uncertainty", 0.0), 3) for k, v in readings.items()},
                      "door": (dict(name=self.door_variant, **DOOR_VARIANTS[self.door_variant])
                               if (DOORLIB_ON and self.door_variant) else None)}
         return self.last

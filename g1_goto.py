@@ -107,6 +107,10 @@ DOOR_CY = float(os.environ.get("G1_DOOR_Y", "1.25"))
 # estatico por definicion: celda de la zona de puerta confirmada en >=2 barridos frescos queda
 # FIJADA el resto de la run (bypass del descarte de campo cercano). G1_DOORSTICKY=0 revierte.
 DOOR_STICKY = os.environ.get("G1_DOORSTICKY", "1") == "1"
+# Cadencia de laser_snapshots (s). Para sesiones de CALIBRACION DE COVARIANZA: G1_LASER_SNAP=0.5
+# (el fabricante no expone covarianza del lidar; la estimamos offline de estos snapshots, que
+# desde 2026-07-21 llevan pose+fase de movimiento para separar parado/andando/girando).
+LASER_SNAP = float(os.environ.get("G1_LASER_SNAP", "2.0"))
 DOORSTICK_R = float(os.environ.get("G1_DOORSTICK_R", "1.4"))   # m alrededor del centro del vano
 # FIX B: FRENO POR CAMARA — la mitad no implementada del principio de Renxi 2026-07-02 ("el
 # LiDAR decide, la vision APOYA: los clamps solo MODERAN la velocidad"). El canal clamp del
@@ -271,10 +275,13 @@ class RunRecorder:
             self.last_spill_t = time.time()
             self.spill_count = getattr(self, "spill_count", 0) + 1
 
-    def maybe_laser(self, t, pts, every=2.0):
-        if t - self._laser_t >= every:
-            self.rec["laser_snapshots"].append({"t": round(t, 2),
-                                                "pts": [[round(a, 2), round(b, 2)] for a, b in pts]})
+    def maybe_laser(self, t, pts, every=None, ctx=None):
+        ev = LASER_SNAP if every is None else every
+        if t - self._laser_t >= ev:
+            snap = {"t": round(t, 2), "pts": [[round(a, 2), round(b, 2)] for a, b in pts]}
+            if ctx:
+                snap.update(ctx)               # pose + fase de movimiento (covarianza offline)
+            self.rec["laser_snapshots"].append(snap)
             self._laser_t = t
 
     def telem(self, t, row, every=1.0):
@@ -2186,6 +2193,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "meta2_cap": (m2o or {}).get("cap"),              # techo vigente (None=sin techo); en modo 2 se aplica
                              "meta2_rho": (m2o or {}).get("rho"),              # rho_DCA runtime: margen de arbitraje / presupuesto de perturbacion
                              "meta2_env": (m2o or {}).get("env"),              # Layer 3: escala de relevancia de entorno (G1_M2_L3)
+                             "meta2_unc": (m2o or {}).get("unc"),              # incertidumbre DST por parametro (dispersion empirica -> intervalos)
                              "meta2_active": (m2o or {}).get("active"),
                              "meta2_tens": (m2o or {}).get("tension"),
                              "meta2_ful": (m2o or {}).get("fulfillment"),
@@ -2194,7 +2202,10 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "balance": round(m_cl - m_cr, 3),                # +izq libre / -dcha libre (0 = centrado)
                              "dets": ([[d.get("label"), round(d.get("conf", 0), 2),
                                         d.get("bearing_deg"), d.get("range_m")] for d in perc_dets] or None)})
-            rd.maybe_laser(now - t0, op)
+            rd.maybe_laser(now - t0, op, ctx={"x": round(x, 3), "y": round(y, 3),
+                                              "yaw": round(yaw, 1),
+                                              "fwd": round(prev_cmd[1], 2), "wz": round(prev_cmd[2], 2),
+                                              "fresh": bool(scan_fresh)})
             if now - tprint > 0.4:
                 print("  " + line); tprint = now
 
@@ -3072,7 +3083,8 @@ def benchmark_run(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=Non
             rd.sample(now - t0, x, y, yaw, d_goal, spd, c0, len(op), phase="NATIVO",
                       extra={"err": hh.get("err"), "bat": h.get("bat"), "cpuT": h.get("cpuT"),
                              "merr": h.get("merr"), "loc_match": loc})
-            rd.maybe_laser(now - t0, op)
+            rd.maybe_laser(now - t0, op, ctx={"x": round(x, 3), "y": round(y, 3),
+                                              "yaw": round(yaw, 1), "spd": round(spd, 2)})
             if now - tprint > 0.4:
                 print("  " + line); tprint = now
             if vshare is not None:
