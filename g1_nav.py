@@ -35,13 +35,19 @@ LOGPATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "g1_nav.log")
 # ---- VISION (cámara + YOLO) como capa de obstáculos complementaria al láser ----
 vlock = threading.Lock()
 vision = {"jpg": None, "n": 0, "block": False, "label": "", "side": 1, "cf": 1.0, "ts": 0, "dump": 0}
+# Resolucion de captura de camara (px de ancho) y calidad JPEG. Con las 2 GPUs del edge la
+# inferencia a 640 es gratis; el coste real es el payload CDP (~4x, sigue siendo <100KB a ~3Hz).
+# OJO: las intrinsics del perception_server DEBEN ir a juego (320 -> fx 300 cx 160 cy 120;
+# 640 -> fx 600 cx 320 cy 240 = los DEFAULTS del server, que esta disenado para 640).
+CAM_W = int(os.environ.get("G1_CAM_W", "320"))
+CAM_Q = float(os.environ.get("G1_CAM_Q", "0.5"))
 CAM_JS = (
     "(function(){var v=document.querySelector('video');"
     "if(!v||!v.videoWidth)return '';"
-    "var W=320,H=Math.round(W*v.videoHeight/v.videoWidth);"
+    f"var W={CAM_W},H=Math.round(W*v.videoHeight/v.videoWidth);"
     "var c=window.__camc||(window.__camc=document.createElement('canvas'));"
     "c.width=W;c.height=H;c.getContext('2d').drawImage(v,0,0,W,H);"
-    "try{return c.toDataURL('image/jpeg',0.5);}catch(e){return '';}})()"
+    f"try{{return c.toDataURL('image/jpeg',{CAM_Q});}}catch(e){{return '';}}}})()"
 )
 
 
