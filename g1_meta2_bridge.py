@@ -135,6 +135,11 @@ class Meta2Bridge:
     # trayendo tambien las confianzas de variantes de puerta (_door). El robot real arranca
     # con los priors aprendidos en simulacion = zero-shot con experiencia transferida.
     STATE_INIT = os.environ.get("G1_M2_STATE_INIT", "")
+    # FILTRO DE PARTICULAS de regimen (Renxi 2026-07-21, Manager POMDP): estimador de estado
+    # en MODO SOMBRA — calcula y loguea el posterior (meta2_pf) sobre {tapa, llenado, salud
+    # sensorial, bateria, atasco}; NO altera ninguna decision (la politica sigue siendo el
+    # pipeline QoE-analogias, sin RL). G1_M2_PF=0 lo apaga.
+    PF_ON = os.environ.get("G1_M2_PF", "1") == "1"
     PL_MIN = float(os.environ.get("G1_M2_PL_MIN", "0.45"))
     # --- CALIBRACION DE LA FRAGILIDAD A LA PLATAFORMA (hallazgo campana real, 2026-07-14) ---
     # El mapeo derrame->fragility y la atribucion DST se calibraron con la estadistica del
@@ -222,6 +227,14 @@ class Meta2Bridge:
         self._run_spills = {}      # analogia -> derrames atribuidos en ESTA run
         self._run_time = {}        # analogia -> segundos gobernando en ESTA run
         self.door_variant = None   # EXTENSION A (requiere G1_M2_STATE + G1_M2_DOORLIB)
+        self._pf = None            # PF de regimen (sombra); ver cabecera de clase
+        self._pf_n = 0
+        if self.PF_ON:
+            try:
+                from g1_particle_filter import RegimePF
+                self._pf = RegimePF()
+            except Exception as e:
+                print("  [META2-PF] no disponible:", repr(e))
         self._door_results = []    # [(ok, cols)] de la run en curso
         if self.STATE_FILE:
             self._l2 = self._l2_load()
@@ -430,7 +443,7 @@ class Meta2Bridge:
         return self._med(h)
 
     def tick(self, now, clearance, progression, reliability, laser_noise=None, bat=None,
-             hold_progression=False, mobility=None, spill_dt=None, spill_count=0):
+             hold_progression=False, mobility=None, spill_dt=None, spill_count=0, spd=None, wz=None):
         """Devuelve dict de decisión a ~1/period Hz, o None si toca esperar (throttle).
         hold_progression=True cuando el robot esta PARADO A PROPOSITO (alineando en el
         engagement, girando en el sitio): la progression=0 de ese momento es comandada, no
@@ -502,6 +515,17 @@ class Meta2Bridge:
                 self._run_spills[self.applied] = self._run_spills.get(self.applied, 0) + new_sp
             self._last_spill_n = int(spill_count)
             self._run_time[self.applied] = self._run_time.get(self.applied, 0.0) + self.period
+        # --- PF de regimen (SOMBRA): estima {tapa, llenado, sensado, bateria, atasco} ---
+        pf_post = None
+        if self._pf is not None:
+            try:
+                new_sp_pf = max(0, int(spill_count) - self._pf_n)
+                self._pf_n = int(spill_count)
+                pf_post = self._pf.step(now, spill_new=new_sp_pf, spd=spd, wz=wz,
+                                        laser_noise=laser_noise, bat=bat,
+                                        progression=progression)
+            except Exception:
+                pf_post = None
         out = self.reasoner.decide({"timestamp": now, "readings": readings})
         self.n_calls += 1
         raw_active = out.active_after
@@ -650,6 +674,7 @@ class Meta2Bridge:
                      # incertidumbre DST por parametro (la dispersion empirica que juega el papel
                      # de la covarianza en los intervalos): se loguea por muestra (meta2_unc)
                      "unc": {k: round(v.get("uncertainty", 0.0), 3) for k, v in readings.items()},
+                     "pf": pf_post,
                      "door": (dict(name=self.door_variant, **DOOR_VARIANTS[self.door_variant])
                               if (DOORLIB_ON and self.door_variant) else None)}
         return self.last

@@ -2112,7 +2112,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                               if getattr(rd, "last_spill_t", None) else None)
                     _o = meta2.tick(now, m_clear, m_prog, m_rel, ss2.get("laser_noise"), h.get("bat"),
                                     hold_progression=_hold, mobility=_mob,
-                                    spill_dt=_sp_dt, spill_count=getattr(rd, "spill_count", 0))
+                                    spill_dt=_sp_dt, spill_count=getattr(rd, "spill_count", 0),
+                                    spd=_v, wz=prev_cmd[2])
                 except Exception as e:
                     _o = None
                     if now - vis_log_t > 10.0:
@@ -2194,6 +2195,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "meta2_rho": (m2o or {}).get("rho"),              # rho_DCA runtime: margen de arbitraje / presupuesto de perturbacion
                              "meta2_env": (m2o or {}).get("env"),              # Layer 3: escala de relevancia de entorno (G1_M2_L3)
                              "meta2_unc": (m2o or {}).get("unc"),              # incertidumbre DST por parametro (dispersion empirica -> intervalos)
+                             "meta2_pf": (m2o or {}).get("pf"),                # posterior del PF de regimen (SOMBRA): tapa/llenado/sensado/bateria/atasco
                              "meta2_active": (m2o or {}).get("active"),
                              "meta2_tens": (m2o or {}).get("tension"),
                              "meta2_ful": (m2o or {}).get("fulfillment"),
