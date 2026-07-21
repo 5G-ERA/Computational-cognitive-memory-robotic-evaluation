@@ -30,6 +30,16 @@ except Exception:
     Meta2Bridge = None
 META2_MODE = os.environ.get("G1_META2", "0") # 0=off | 1=SHADOW (decide+loguea, no toca control) | 2=ACTIVO (techo de velocidad por analogia)
 VCAP = (float(os.environ["G1_VCAP"]) if os.environ.get("G1_VCAP") else None)   # techo fijo M1 (sin gobernanza)
+# --- EXT E: LIMITADOR DE JERK DE COMANDO (politica de bajo nivel / Worker; Adrian 2026-07-21).
+# Mineria de 133 marcas reales: saltos de AVANCE >=0.30 en los 1.5s previos a una marca son
+# 5.7x mas frecuentes que en baseline (22% vs 4%); los saltos de giro NO muestran asociacion
+# (0.6x) — el giro sostenido ya lo doma el turn cap (Ext B); lo que derrama es el ESCALON.
+# Asimetrico: acelerar/invertir en rampa; REDUCIR hacia cero pasa INSTANTANEO (las frenadas
+# de HARD-GUARD/COLOR-BRAKE/HELP no se suavizan). G1_SLEW=1 activa (default OFF para pares
+# con/sin en el laboratorio). Limites por tick (~0.1s): 0.08 avance / 0.12 giro.
+SLEW_ON = os.environ.get("G1_SLEW", "") == "1"
+SLEW_LIN = float(os.environ.get("G1_SLEW_LIN", "0.08"))
+SLEW_ANG = float(os.environ.get("G1_SLEW_ANG", "0.12"))
 # --- ENTORNO de la prueba (pedido del tutor 2026-07-03, campaña de simulacion): separa las runs de
 # SIMULACION de las de robot REAL en dataset/log/CSV para que jamas se mezclen en el analisis.
 #   G1_ENV=real (defecto) | sim      ·  G1_SIM_ID=<etiqueta libre del contenedor/escenario> (opcional)
@@ -2307,6 +2317,17 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             if META2_MODE == "2" and m2o is not None and m2o.get("turn"):
                 if abs(cmd[2]) > m2o["turn"]:
                     cmd = (cmd[0], cmd[1], math.copysign(m2o["turn"], cmd[2]), 0)
+            # --- EXT E: jerk limitado (ver cabecera). ULTIMO de la cadena: rampa solo al
+            # ACELERAR o INVERTIR; cualquier reduccion hacia cero (guardas/HELP/paradas)
+            # pasa sin tocar. prev_cmd = lo realmente ENVIADO el tick anterior.
+            if SLEW_ON:
+                _f, _w = cmd[1], cmd[2]
+                if abs(_f) > abs(prev_cmd[1]) or _f * prev_cmd[1] < 0:
+                    _f = max(prev_cmd[1] - SLEW_LIN, min(prev_cmd[1] + SLEW_LIN, _f))
+                if abs(_w) > abs(prev_cmd[2]) or _w * prev_cmd[2] < 0:
+                    _w = max(prev_cmd[2] - SLEW_ANG, min(prev_cmd[2] + SLEW_ANG, _w))
+                if (_f, _w) != (cmd[1], cmd[2]):
+                    cmd = (cmd[0], _f, _w, 0); ph = ph.strip() + "~"
             prev_fwd = (cmd[1] > 0.1)
             cdp.eval(g.set_cmd_js(*cmd))
             time.sleep(0.1)
