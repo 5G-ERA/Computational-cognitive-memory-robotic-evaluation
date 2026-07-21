@@ -4,65 +4,17 @@
    "m_match": 0.5,
    "m_mismatch": 0.0,
    "m_theta": 0.5,
-   "runs": 6,
+   "runs": 8,
    "spills": 0
   },
   "Cautious_Nav": {
    "m_match": 0.9841618239879608,
    "m_mismatch": 0.0,
    "m_theta": 0.015838176012039185,
-   "runs": 13,
+   "runs": 21,
    "spills": 0
   },
   "_ful_hist": [
-   {
-    "ful": 0.738,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.679,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.65,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.745,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.695,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.345,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.737,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.693,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
    {
     "ful": 0.364,
     "applied": "Cautious_Nav",
@@ -74,16 +26,64 @@
     "applied": "Cautious_Nav",
     "pl": 1.0,
     "spills": 0
+   },
+   {
+    "ful": 0.8,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.66,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.751,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.578,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.815,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.451,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.724,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.745,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
    }
   ]
  },
  "_door": {
   "Door_Direct": {
-   "m_match": 0.9159649999999997,
-   "m_mismatch": 0.0,
-   "m_theta": 0.08403499999999997,
-   "crossings": 5,
-   "fails": 0
+   "m_match": 0.9799445927036385,
+   "m_mismatch": 0.006016622188908193,
+   "m_theta": 0.014038785107452451,
+   "crossings": 10,
+   "fails": 1
   },
   "Door_Far": {
    "m_match": 0.7717745691662785,
