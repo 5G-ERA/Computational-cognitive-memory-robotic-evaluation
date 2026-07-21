@@ -100,7 +100,7 @@ _DOOR_GATEFIX = os.environ.get("G1_DOOR_GATEFIX", "") == "1" or os.environ.get("
 DOOR_ENGAGE = (os.environ.get("G1_DOOR_ENGAGE", "1") == "1")   # G1_DOOR_ENGAGE=0 revierte
 DOOR_CX = float(os.environ.get("G1_DOOR_X", "-3.90"))    # centro del vano (frame G1, del mapa estatico)
 DOOR_CY = float(os.environ.get("G1_DOOR_Y", "1.25"))
-# --- FIXES DE CAPACIDADES (2026-07-15, autopsia de las 10 colisiones reales; ver docs) ---
+# --- FIXES DE CAPACIDADES (2026-07-21, autopsia de las 10 colisiones reales; ver docs) ---
 # FIX C: celdas del MARCO DE PUERTA pegajosas. La jamba fina en incidencia rasante devuelve
 # pocos puntos y cae dentro de NEAR_BLIND durante el propio cruce -> el filtro K-de-N + el
 # decaimiento la hacian PARPADEAR en c0_hard (0.7<->2.5, golpe 20260714_174051). El marco es
@@ -117,7 +117,7 @@ DOORSTICK_R = float(os.environ.get("G1_DOORSTICK_R", "1.4"))   # m alrededor del
 # y mandan HARD-GUARD/DWA (evita el 'muro fantasma' de las runs 143511/143646). Nunca veta:
 # modera el avance; giros/retrocesos intactos. G1_COLORBRAKE=0 revierte.
 COLOR_BRAKE = os.environ.get("G1_COLORBRAKE", "1") == "1"
-# Politica calibrada por REPLAY sobre las 60 runs reales (2026-07-15): (1) SUPRIMIDO a menos
+# Politica calibrada por REPLAY sobre las 60 runs reales (2026-07-21): (1) SUPRIMIDO a menos
 # de CB_DOOR_R del vano — alli el marco llena la camara con el laser viendo via libre a traves
 # del hueco (2.50) y pararse = el muro fantasma de las runs 143511/143646 (los runs limpios
 # disparaban 4-10 veces, todos en la boca); (2) aviso sostenido (>=CB_NPTS) -> ARRASTRE lento
@@ -1494,9 +1494,17 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 if scan_fresh:
                     for c in confirmed:
                         if math.hypot(c[0] * g.OCELL - DOOR_CX, c[1] * g.OCELL - DOOR_CY) <= DOORSTICK_R:
-                            door_seen[c] = door_seen.get(c, 0) + 1
-                            if door_seen[c] >= 2 and len(door_sticky) < 240:
-                                door_sticky.add(c)
+                            # v3 (smoke 20260721_100417, cazado por el gemelo: v1 fijaba ruido
+                            # vivo -> 6 celdas fantasma en la boca -> DWA contra el borde real,
+                            # 9 colisiones; y la adyacencia (v2) no discrimina en rejilla de
+                            # 0.2m con vano de 0.85m). SOLO se fija lo que esta EN el mapa
+                            # estatico: la jamba es pared CONOCIDA cuyo score decae al entrar
+                            # en NEAR_BLIND durante el cruce (el mecanismo exacto del parpadeo
+                            # de c0_hard); el ruido vivo no esta en refmap y jamas se fija.
+                            if refmap and c in refmap:
+                                door_seen[c] = door_seen.get(c, 0) + 1
+                                if door_seen[c] >= 2 and len(door_sticky) < 240:
+                                    door_sticky.add(c)
                 if door_sticky:
                     confirmed |= door_sticky
             # --- PERCEPCION GPU (HILO APARTE): depth -> scan virtual (la MESA que el LiDAR no ve) + suelo despejado ---

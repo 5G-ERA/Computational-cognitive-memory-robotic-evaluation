@@ -1,0 +1,9 @@
+== run 1/4 brazo=abfull (10:11:09)
+  RUN {'file': '20260721_101118_ours_B.json', 'arm': 'abfull', 'result': 'reached', 'time_s': 94.08, 'collisions': 0, 'spills': 0, 'spill_expected': 0.0, 'spill_risk_pct': 1.2, 'eta_max': 0.97, 'meta2_mode': '2'}
+== run 2/4 brazo=abfull (10:12:55)
+  RUN {'file': '20260721_101305_ours_B.json', 'arm': 'abfull', 'result': 'reached', 'time_s': 94.45, 'collisions': 0, 'spills': 0, 'spill_expected': 0.0, 'spill_risk_pct': 0.6, 'eta_max': 0.88, 'meta2_mode': '2'}
+== run 3/4 brazo=abfull (10:14:42)
+  RUN {'file': '20260721_101452_ours_B.json', 'arm': 'abfull', 'result': 'reached', 'time_s': 95.24, 'collisions': 0, 'spills': 0, 'spill_expected': 0.0, 'spill_risk_pct': 1.1, 'eta_max': 0.87, 'meta2_mode': '2'}
+== run 4/4 brazo=abfull (10:16:31)
+  RUN {'file': '20260721_101640_ours_B.json', 'arm': 'abfull', 'result': 'reached', 'time_s': 94.94, 'collisions': 0, 'spills': 0, 'spill_expected': 0.0, 'spill_risk_pct': 0.8, 'eta_max': 0.81, 'meta2_mode': '2'}
+CAMPANA COMPLETA: 140 runs -> /Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT/campaign_results.json

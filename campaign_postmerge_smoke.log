@@ -1,0 +1,7 @@
+== run 1/3 brazo=abfull (10:00:33)
+  RUN {'file': '20260721_100042_ours_B.json', 'arm': 'abfull', 'result': 'reached', 'time_s': 95.52, 'collisions': 0, 'spills': 0, 'spill_expected': 0.0, 'spill_risk_pct': 1.1, 'eta_max': 0.98, 'meta2_mode': '2'}
+== run 2/3 brazo=abfull (10:02:21)
+  RUN {'file': '20260721_100231_ours_B.json', 'arm': 'abfull', 'result': 'reached', 'time_s': 94.79, 'collisions': 0, 'spills': 0, 'spill_expected': 0.0, 'spill_risk_pct': 2.5, 'eta_max': 0.98, 'meta2_mode': '2'}
+== run 3/3 brazo=abfull (10:04:08)
+  RUN {'file': '20260721_100417_ours_B.json', 'arm': 'abfull', 'result': 'aborted_meta2_help', 'time_s': 215.97, 'collisions': 9, 'spills': 0, 'spill_expected': 0.0, 'spill_risk_pct': 1.1, 'eta_max': 0.98, 'meta2_mode': '2'}
+CAMPANA COMPLETA: 136 runs -> /Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT/campaign_results.json
