@@ -78,7 +78,31 @@ def run_depth(rgb):
     if kind == "hf":
         from PIL import Image
         out = m(Image.fromarray(rgb))
+        # BUG cazado 2026-07-21 (GPUEDGE, frame real: min/med/max 0/132/255): out["depth"] es
+        # la imagen de VISUALIZACION normalizada a 0-255, NO metros. Los metros estan en
+        # out["predicted_depth"] (tensor del modelo Metric-Indoor). Con 0-255, el filtro
+        # 0.2<Z<3.0 dejaba pasar solo pixeles de valor 1-2 -> scan vacio en modo "gpu".
+        pd = out.get("predicted_depth")
+        if pd is not None:
+            try:
+                import torch
+                import torch.nn.functional as F
+                t = pd.squeeze()
+                if t.dim() == 2:
+                    H, W = rgb.shape[0], rgb.shape[1]
+                    d = F.interpolate(t[None, None].float(), size=(H, W), mode="bilinear",
+                                      align_corners=False)[0, 0].detach().cpu().numpy().astype(np.float32)
+                    if float(np.nanmax(d)) > 60.0:      # metrico interior jamas >60 m: escala rara
+                        print("[depth] AVISO: predicted_depth con max %.1f (¿modelo no metrico?)"
+                              % float(np.nanmax(d)))
+                    return d
+            except Exception as e:
+                print("[depth] fallback a out['depth'] (predicted_depth fallo: %r)" % (e,))
         d = np.asarray(out["depth"], dtype=np.float32)
+        if float(d.max()) > 60.0:                        # visualizacion 0-255: NO son metros
+            print("[depth] ERROR: solo hay imagen de visualizacion 0-255 (sin predicted_depth); "
+                  "canal depth desactivado este frame")
+            return None
         return d
     if kind == "metric3d":
         import torch
@@ -388,7 +412,9 @@ def _check_intrinsics(W, H):
     global _WARNED_INTR
     if _WARNED_INTR or ARGS is None or ARGS.stub:
         return
-    if abs(ARGS.cx - W / 2.0) > W * 0.25 or abs(ARGS.cy - H / 2.0) > H * 0.25:
+    # umbral 0.25 -> 0.10 (2026-07-21): los frames reales resultaron 16:9 (320x180) y el
+    # cy=120 de 4:3 (17% de descuadre) se colaba, sesgando las alturas ~0.2 m a 2 m.
+    if abs(ARGS.cx - W / 2.0) > W * 0.10 or abs(ARGS.cy - H / 2.0) > H * 0.10:
         sc = W / (2.0 * ARGS.cx) if ARGS.cx else 1.0
         print(f"[perception][AVISO] frame {W}x{H} pero cx={ARGS.cx} cy={ARGS.cy} (centro ~{W//2},{H//2}). "
               f"Las intrinsics parecen de OTRA resolucion -> depth->suelo mal, pocas celdas. "
