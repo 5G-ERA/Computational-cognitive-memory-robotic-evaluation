@@ -295,32 +295,39 @@ def cmd_drive():
     import termios, tty, select
     cdp = get_cdp()
     print("\nDRIVE: W/S adelante-atras, A/D giro, Q/E lateral, ESPACIO=stop, X=salir.")
-    print("Valor fijo bajo (0.15). Manten el MANDO listo como kill-switch.\n")
-    V = 0.15
-    keymap = {
-        "w": (0, V, 0, 0), "s": (0, -V, 0, 0),
-        "a": (0, 0, -V, 0), "d": (0, 0, V, 0),
-        "q": (-V, 0, 0, 0), "e": (V, 0, 0, 0),
+    print("       +/- ajusta la velocidad (0.10-0.40). Manten el MANDO como kill-switch.\n")
+    V = 0.25                                    # 0.15 fijo quedaba bajo la deadzone del stick (~0.1-0.3)
+    DIRS = {
+        "w": (0, 1, 0, 0), "s": (0, -1, 0, 0),
+        "a": (0, 0, -1, 0), "d": (0, 0, 1, 0),
+        "q": (-1, 0, 0, 0), "e": (1, 0, 0, 0),
         " ": (0, 0, 0, 0),
     }
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
     try:
         tty.setcbreak(fd)
-        cur = (0, 0, 0, 0)
+        cur_dir = (0, 0, 0, 0)
         last = 0
+        print(f"  velocidad = {V:.2f}")
         while True:
             r, _, _ = select.select([sys.stdin], [], [], 0.1)
             if r:
                 ch = sys.stdin.read(1).lower()
                 if ch == "x":
                     break
-                if ch in keymap:
-                    cur = keymap[ch]
-                    print(f"  -> lx={cur[0]:+.2f} ly={cur[1]:+.2f} rx={cur[2]:+.2f} ry={cur[3]:+.2f}")
+                if ch in ("+", "="):
+                    V = min(0.40, round(V + 0.05, 2)); print(f"  velocidad = {V:.2f}")
+                elif ch in ("-", "_"):
+                    V = max(0.10, round(V - 0.05, 2)); print(f"  velocidad = {V:.2f}")
+                elif ch in DIRS:
+                    cur_dir = DIRS[ch]
+                    c = tuple(x * V for x in cur_dir)
+                    print(f"  -> lx={c[0]:+.2f} ly={c[1]:+.2f} rx={c[2]:+.2f} ry={c[3]:+.2f}"
+                          + ("   [STOP]" if cur_dir == (0, 0, 0, 0) else ""))
             # refresca el comando (hombre-muerto en pagina a 600ms)
             if time.time() - last > 0.1:
-                cdp.eval(set_cmd_js(*cur))
+                cdp.eval(set_cmd_js(*(x * V for x in cur_dir)))
                 last = time.time()
     except KeyboardInterrupt:
         pass
