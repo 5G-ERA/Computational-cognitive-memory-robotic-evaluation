@@ -1315,6 +1315,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     trail = []
     # --- diagnostico: calibracion de giro (signo real vs comandado) + spin ---
     prev_yaw = None; prev_cmd = (0, 0, 0, 0); prev_lt = None; prev_xy = None; strafecal = []
+    last_sent = (0.0, 0.0, 0.0, 0)   # lo REALMENTE publicado el tick anterior (prev_cmd se
+                                     # reasigna ANTES de las guardas con el cmd de ESTE tick)
     spin_acc = 0.0; prog_pos = None; prog_t = t0; turncal = []; phcount = {}
     minc0 = 9.9
     rd = RunRecorder("ours", label, (wx, wy))
@@ -2206,7 +2208,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "meta2_env": (m2o or {}).get("env"),              # Layer 3: escala de relevancia de entorno (G1_M2_L3)
                              "meta2_unc": (m2o or {}).get("unc"),              # incertidumbre DST por parametro (dispersion empirica -> intervalos)
                              "meta2_pf": (m2o or {}).get("pf"),                # posterior del PF de regimen (SOMBRA): tapa/llenado/sensado/bateria/atasco
-                             "sent": [round(prev_cmd[1], 3), round(prev_cmd[2], 3)],   # lo ENVIADO el tick anterior (post-guardas/rampa; 'cmd' es pre-guardas)
+                             "sent": [round(last_sent[1], 3), round(last_sent[2], 3)],   # lo ENVIADO el tick anterior (post-guardas/rampa; 'cmd' es pre-guardas)
                              "meta2_active": (m2o or {}).get("active"),
                              "meta2_tens": (m2o or {}).get("tension"),
                              "meta2_ful": (m2o or {}).get("fulfillment"),
@@ -2321,16 +2323,25 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # --- EXT E: jerk limitado (ver cabecera). ULTIMO de la cadena: rampa solo al
             # ACELERAR o INVERTIR; cualquier reduccion hacia cero (guardas/HELP/paradas)
             # pasa sin tocar. prev_cmd = lo realmente ENVIADO el tick anterior.
-            if SLEW_ON:
+            # Exenciones (smoke 171335: 5 colisiones en la APROXIMACION de la puerta con la
+            # rampa global — el alineado necesita correcciones rapidas): sin rampa a <2m del
+            # vano ni en fases de recuperacion/escape/agresivo. Suavidad en crucero (donde
+            # vive la senal 5.7x de los escalones de avance); agilidad donde se negocia
+            # geometria. El RTF del gemelo ademas dobla la rampa en tiempo-sim: alli es peor caso.
+            _slew_ok = (SLEW_ON
+                        and math.hypot(x - DOOR_CX, y - DOOR_CY) > 2.0
+                        and not any(k in ph for k in ("ENG", "AGR", "R-", "ESC")))
+            if _slew_ok:
                 _f, _w = cmd[1], cmd[2]
-                if abs(_f) > abs(prev_cmd[1]) or _f * prev_cmd[1] < 0:
-                    _f = max(prev_cmd[1] - SLEW_LIN, min(prev_cmd[1] + SLEW_LIN, _f))
-                if abs(_w) > abs(prev_cmd[2]) or _w * prev_cmd[2] < 0:
-                    _w = max(prev_cmd[2] - SLEW_ANG, min(prev_cmd[2] + SLEW_ANG, _w))
+                if abs(_f) > abs(last_sent[1]) or _f * last_sent[1] < 0:
+                    _f = max(last_sent[1] - SLEW_LIN, min(last_sent[1] + SLEW_LIN, _f))
+                if abs(_w) > abs(last_sent[2]) or _w * last_sent[2] < 0:
+                    _w = max(last_sent[2] - SLEW_ANG, min(last_sent[2] + SLEW_ANG, _w))
                 if (_f, _w) != (cmd[1], cmd[2]):
                     cmd = (cmd[0], _f, _w, 0); ph = ph.strip() + "~"
             prev_fwd = (cmd[1] > 0.1)
             cdp.eval(g.set_cmd_js(*cmd))
+            last_sent = cmd
             time.sleep(0.1)
         rd.finish("aborted", {"time_s": round(time.time() - t0, 2), "path_m": round(_path_len(trail), 2),
                               "collisions": ncol, "c0min": round(minc0, 2), **diag_summary()})
