@@ -100,6 +100,36 @@ _DOOR_GATEFIX = os.environ.get("G1_DOOR_GATEFIX", "") == "1" or os.environ.get("
 DOOR_ENGAGE = (os.environ.get("G1_DOOR_ENGAGE", "1") == "1")   # G1_DOOR_ENGAGE=0 revierte
 DOOR_CX = float(os.environ.get("G1_DOOR_X", "-3.90"))    # centro del vano (frame G1, del mapa estatico)
 DOOR_CY = float(os.environ.get("G1_DOOR_Y", "1.25"))
+# --- FIXES DE CAPACIDADES (2026-07-15, autopsia de las 10 colisiones reales; ver docs) ---
+# FIX C: celdas del MARCO DE PUERTA pegajosas. La jamba fina en incidencia rasante devuelve
+# pocos puntos y cae dentro de NEAR_BLIND durante el propio cruce -> el filtro K-de-N + el
+# decaimiento la hacian PARPADEAR en c0_hard (0.7<->2.5, golpe 20260714_174051). El marco es
+# estatico por definicion: celda de la zona de puerta confirmada en >=2 barridos frescos queda
+# FIJADA el resto de la run (bypass del descarte de campo cercano). G1_DOORSTICKY=0 revierte.
+DOOR_STICKY = os.environ.get("G1_DOORSTICKY", "1") == "1"
+DOORSTICK_R = float(os.environ.get("G1_DOORSTICK_R", "1.4"))   # m alrededor del centro del vano
+# FIX B: FRENO POR CAMARA — la mitad no implementada del principio de Renxi 2026-07-02 ("el
+# LiDAR decide, la vision APOYA: los clamps solo MODERAN la velocidad"). El canal clamp del
+# perception_server ("lo tengo encima", NEAR_CLAMP=0.7, solo columnas centrales con obstruccion
+# alta) veia el sofa/mueble BAJO el plano del laser (colisiones 103218 t=22.6 y 174051:
+# color_near 30+ constante hasta el impacto) y el cliente solo lo logueaba. Actua UNICAMENTE
+# si el laser dice via libre (c0 > CB_C0): en la boca de la puerta el laser ya ve las jambas
+# y mandan HARD-GUARD/DWA (evita el 'muro fantasma' de las runs 143511/143646). Nunca veta:
+# modera el avance; giros/retrocesos intactos. G1_COLORBRAKE=0 revierte.
+COLOR_BRAKE = os.environ.get("G1_COLORBRAKE", "1") == "1"
+# Politica calibrada por REPLAY sobre las 60 runs reales (2026-07-15): (1) SUPRIMIDO a menos
+# de CB_DOOR_R del vano — alli el marco llena la camara con el laser viendo via libre a traves
+# del hueco (2.50) y pararse = el muro fantasma de las runs 143511/143646 (los runs limpios
+# disparaban 4-10 veces, todos en la boca); (2) aviso sostenido (>=CB_NPTS) -> ARRASTRE lento
+# CB_CREEP, no parada (pasar cerca del sofa es legitimo; 104244 paso limpio con n=20-22);
+# (3) camara LLENA (>=CB_STOP, solo visto de verdad delante del mueble: n=47 en el roce del
+# arranque 103218 t=2) -> parada. G1_COLORBRAKE=0 revierte todo.
+CB_NPTS = int(os.environ.get("G1_CB_NPTS", "8"))       # columnas clamp para el ARRASTRE (sostenidas)
+CB_STOP = int(os.environ.get("G1_CB_STOP", "24"))      # columnas clamp para PARADA total
+CB_TICKS = int(os.environ.get("G1_CB_TICKS", "4"))     # ticks seguidos antes de actuar (~0.4-1s)
+CB_C0 = float(os.environ.get("G1_CB_C0", "0.9"))       # solo si el laser ve >= esto de holgura
+CB_CREEP = float(os.environ.get("G1_CB_CREEP", "0.10"))  # avance de arrastre con aviso (m/s)
+CB_DOOR_R = float(os.environ.get("G1_CB_DOOR_R", "2.0"))  # m del vano donde el freno se SUPRIME
 DOOR_AXIS = float(os.environ.get("G1_DOOR_AXIS", "135.0"))     # deg: direccion de cruce lado A -> lado B
 DOOR_ENG_D = float(os.environ.get("G1_DOOR_ENG_D", "0.85"))    # m del centro al punto de engagement
 DOOR_ENG_TOL = 0.22              # m: engagement alcanzado
@@ -1349,6 +1379,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     cambuf = deque(maxlen=20)                     # (t, jpg) ultimos ~6s de camara (autopsia pre-colision)
     film_t = 0.0                                  # ultimo frame de la pelicula guardado
     hg_log_t = 0.0; c0_hard = 9.9; hard_set = set()   # guardia de alta confianza
+    door_seen = {}; door_sticky = set()               # FIX C: confirmaciones/celdas fijadas del marco
+    cb_hits = 0; cb_on = False                        # FIX B: persistencia del aviso de camara
     sei = g1_metrics.SEIMetrics()                            # clearance + progression por tick (las 2 metricas del tutor)
     sens = g1_metrics.SensingMonitor()                       # auto-evaluacion de sensado (ruido/fiabilidad) = feedback de capacidad
     m_clear = 0.0; m_prog = 0.0; m_rel = 1.0; m_cl = 0.0; m_cr = 0.0
@@ -1455,6 +1487,18 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                          if math.hypot(c[0] * g.OCELL - x, c[1] * g.OCELL - y) >= g.NEAR_BLIND)
                 filt_rej = (1.0 - len(confirmed) / lf) if lf else 0.0
                 rej_sum += filt_rej; rej_n += 1
+            # --- FIX C: marco de puerta pegajoso (ver cabecera). Cuenta confirmaciones REALES
+            # (post-filtro, a distancia sana) y fija la celda; el bypass reinyecta las fijadas
+            # aunque el robot este encima (NEAR_BLIND) -> c0_hard estable durante el cruce.
+            if DOOR_STICKY:
+                if scan_fresh:
+                    for c in confirmed:
+                        if math.hypot(c[0] * g.OCELL - DOOR_CX, c[1] * g.OCELL - DOOR_CY) <= DOORSTICK_R:
+                            door_seen[c] = door_seen.get(c, 0) + 1
+                            if door_seen[c] >= 2 and len(door_sticky) < 240:
+                                door_sticky.add(c)
+                if door_sticky:
+                    confirmed |= door_sticky
             # --- PERCEPCION GPU (HILO APARTE): depth -> scan virtual (la MESA que el LiDAR no ve) + suelo despejado ---
             if perc_worker is not None and now - perc_t > PERC_PERIOD:
                 _fr = grab_cam(cdp)
@@ -2193,6 +2237,31 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         hg_log_t = now
                 elif c0_hard < HARD_SLOW and cmd[1] > 0.22:
                     cmd = (cmd[0], 0.22, cmd[2], 0)            # acercarse a una pared: despacio
+            # --- FIX B: FRENO POR CAMARA (ver cabecera). Solo-camara: el laser dice libre pero
+            # el canal clamp lleva CB_TICKS ticks gritando "lo tengo encima" (mueble bajo el
+            # plano del laser: brazo de sofa, asiento). Para el avance; DWA sigue girando y las
+            # recuperaciones (retroceso) no se tocan.
+            if COLOR_BRAKE and cmd[1] > 0.05 and math.hypot(x - DOOR_CX, y - DOOR_CY) > CB_DOOR_R:
+                _ccn = (perc_raw.get("color_near") or 0) if isinstance(perc_raw, dict) else 0
+                _cfresh = (perc_rx_t is not None) and (now - perc_rx_t) < 1.5
+                if _cfresh and c0 > CB_C0 and _ccn >= CB_NPTS:
+                    cb_hits += 1
+                else:
+                    cb_hits = 0; cb_on = False
+                if cb_hits >= CB_TICKS and _ccn >= CB_STOP:
+                    cmd = (cmd[0], 0.0, cmd[2], 0); ph = ph.strip() + "!C"
+                    if not cb_on:
+                        cb_on = True
+                        lg.write(f"COLOR-BRAKE STOP color_near={_ccn} c0={c0:.2f} "
+                                 f"pos=({x:+.2f},{y:+.2f}) t={now - t0:.0f}s\n")
+                        rd.event("color_brake", now - t0, x, y, {"near": _ccn, "c0": round(c0, 2)})
+                elif cb_hits >= CB_TICKS and cmd[1] > CB_CREEP:
+                    cmd = (cmd[0], CB_CREEP, cmd[2], 0); ph = ph.strip() + "!c"
+                    if not cb_on:
+                        cb_on = True
+                        lg.write(f"COLOR-BRAKE CREEP color_near={_ccn} c0={c0:.2f} "
+                                 f"pos=({x:+.2f},{y:+.2f}) t={now - t0:.0f}s\n")
+                        rd.event("color_creep", now - t0, x, y, {"near": _ccn, "c0": round(c0, 2)})
             # --- META2 ACTIVO (G1_META2=2): el perfil de la analogia DCE es un TECHO de avance.
             # Solo modera cmd[1]>0 (como HARD-GUARD y el moderador Renxi): retroceso/giros de las
             # recuperaciones y del ESCAPE no se tocan. HELP firme -> avance 0 (el DCE pide parar).
