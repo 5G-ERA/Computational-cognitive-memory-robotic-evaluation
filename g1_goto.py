@@ -117,6 +117,15 @@ DOOR_CY = float(os.environ.get("G1_DOOR_Y", "1.25"))
 # estatico por definicion: celda de la zona de puerta confirmada en >=2 barridos frescos queda
 # FIJADA el resto de la run (bypass del descarte de campo cercano). G1_DOORSTICKY=0 revierte.
 DOOR_STICKY = os.environ.get("G1_DOORSTICKY", "1") == "1"
+# CENTRADO SENSOR-RELATIVO DEL VANO (Adrian 2026-07-21: "garantizar que encuentre el centro").
+# Las 2 colisiones reales del dia estan EN la estructura del vano ((-3.74,1.17) y (-4.53,1.80)):
+# el enganche apunta al centro DEL MAPA y ±10-15cm de error de localizacion se comen el margen
+# (vano ~0.85 - robot ~0.60). Solucion: medir el centro con el LASER (bordes internos de las
+# dos jambas en el mapa vivo — DOORSTICKY las mantiene mientras cruzas) y servo al centro
+# MEDIDO: el error de localizacion se cancela (robot y jambas en el mismo marco). Correccion
+# acotada a ±0.30m. G1_DOOR_CENTER=0 revierte al centro del mapa.
+DOOR_CENTER = os.environ.get("G1_DOOR_CENTER", "1") == "1"
+DOOR_CENTER_MAX = float(os.environ.get("G1_DOOR_CENTER_MAX", "0.30"))
 # Cadencia de laser_snapshots (s). Para sesiones de CALIBRACION DE COVARIANZA: G1_LASER_SNAP=0.5
 # (el fabricante no expone covarianza del lidar; la estimamos offline de estos snapshots, que
 # desde 2026-07-21 llevan pose+fase de movimiento para separar parado/andando/girando).
@@ -1872,12 +1881,38 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                             rd.event("door_engage", now - t0, x, y, {"dir": "AB" if sgoal > 0 else "BA"})
                         if eng["state"]:
                             sgn = 1.0 if sgoal > 0 else -1.0
+                            # --- CENTRO MEDIDO del vano (ver cabecera G1_DOOR_CENTER) ---
+                            door_c_meas = None
+                            if DOOR_CENTER:
+                                _L = []; _R = []
+                                for (_ccx, _ccy) in omap.keys():
+                                    _mx = _ccx * g.OCELL - DOOR_CX; _my = _ccy * g.OCELL - DOOR_CY
+                                    if abs(_mx * ux + _my * uy) > 0.35:      # fuera del plano del vano
+                                        continue
+                                    _lt = -_mx * uy + _my * ux               # lateral (+= izq del eje)
+                                    if 0.15 <= _lt <= 1.2:
+                                        _L.append(_lt)
+                                    elif -1.2 <= _lt <= -0.15:
+                                        _R.append(_lt)
+                                if _L and _R:
+                                    _gap = min(_L) - max(_R)
+                                    if 0.55 <= _gap <= 1.30:                 # parece el vano de verdad
+                                        _c = 0.5 * (min(_L) + max(_R))
+                                        door_c_meas = max(-DOOR_CENTER_MAX, min(DOOR_CENTER_MAX, _c))
+                                        if eng.get("cseen") is None:
+                                            eng["cseen"] = 1
+                                            lg.write(f"DOOR-CENTER medido: off={door_c_meas:+.2f}m gap={_gap:.2f}m "
+                                                     f"(jambas L={min(_L):+.2f} R={max(_R):+.2f})\n")
+                                            rd.event("door_center", now - t0, x, y,
+                                                     {"off": round(door_c_meas, 3), "gap": round(_gap, 2)})
                             # EXTENSION A (rama analogy-profiles): la variante de puerta del bridge
                             # parametriza el engagement (pre-entrada, tolerancia, bias en eje FIJO).
                             _dv = (m2o or {}).get("door") if META2_MODE == "2" else None
                             _engd = (_dv or {}).get("eng_d", DOOR_ENG_D)
                             _atol = (_dv or {}).get("align_tol", DOOR_ALIGN_TOL)
                             _bias = (_dv or {}).get("lat_bias", 0.0)
+                            if door_c_meas is not None:
+                                _bias = _bias + door_c_meas                   # apuntar al centro MEDIDO
                             exp = (DOOR_CX - sgn * _engd * ux - _bias * uy,
                                    DOOR_CY - sgn * _engd * uy + _bias * ux)   # pre-entrada
                             head = DOOR_AXIS if sgn > 0 else ((DOOR_AXIS + 360) % 360 - 180)           # rumbo de cruce
@@ -1937,7 +1972,10 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                 elif abs(he) > DOOR_REALIGN:                  # deriva del bipedo: NO avanzar torcido
                                     eng.update(state="ALIGN", ok=0, ts=now); engcmd = ((0, 0, 0, 0), "ENG-RE")
                                 else:
-                                    latL = (-(x - DOOR_CX) * uy + (y - DOOR_CY) * ux) * sgn   # + = IZQ del eje
+                                    _latrob = -(x - DOOR_CX) * uy + (y - DOOR_CY) * ux
+                                    if door_c_meas is not None:
+                                        _latrob = _latrob - door_c_meas       # servo al centro MEDIDO
+                                    latL = _latrob * sgn                       # + = IZQ del eje
                                     if abs(latL) > 0.14 and abs(srob) > 0.35:  # descentrado ANTES del vano -> strafe al eje
                                         lx = DOOR_STRAFE_SIGN * (DOOR_STRAFE if latL < 0 else -DOOR_STRAFE)
                                         engcmd = ((lx, 0, 0, 0), "ENG-C")
