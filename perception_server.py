@@ -156,7 +156,10 @@ def get_det_model():
     return m
 
 
-DET_KEEP = {"person", "diningtable", "table", "chair", "couch", "refrigerator", "door"}
+# (auditoria 22-jul) YOLO11/ultralytics usa 'dining table' CON espacio: 'diningtable' jamas
+# casaba y la mesa LiDAR-ciega nunca salia. Se anaden las formas con espacio + bench.
+DET_KEEP = {"person", "diningtable", "dining table", "table", "chair", "couch",
+            "refrigerator", "door", "bench"}
 
 
 def run_det(rgb, fx, cx):

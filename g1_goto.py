@@ -126,6 +126,14 @@ DOOR_STICKY = os.environ.get("G1_DOORSTICKY", "1") == "1"
 # acotada a ±0.30m. G1_DOOR_CENTER=0 revierte al centro del mapa.
 DOOR_CENTER = os.environ.get("G1_DOOR_CENTER", "1") == "1"
 DOOR_CENTER_MAX = float(os.environ.get("G1_DOOR_CENTER_MAX", "0.30"))
+# SUELO DETERMINISTA DE ZONA-VANO (auditoria 2026-07-22, hallazgo #1 confirmado): tras un
+# abort del FSM (cooldown 8s), un A*-fail o con la fragilidad dormida (marcador caido, como
+# el 21-jul), el robot puede cruzar el vano con DWA a 0.40 y sin techo (Efficient cap=None).
+# Guarda ADITIVA e independiente del razonador: a <1.2m del centro del vano y FUERA de las
+# fases de negociacion (ENG/AGR/ESC/recuperaciones), avance <=0.28 y giro <=0.38 (los valores
+# del propio ENG-GO/perfil Cautious). El suelo del hueco del veto L2. G1_DOORGUARD=0 revierte.
+DOORGUARD = os.environ.get("G1_DOORGUARD", "1") == "1"
+DOORGUARD_R = float(os.environ.get("G1_DOORGUARD_R", "1.2"))
 # Cadencia de laser_snapshots (s). Para sesiones de CALIBRACION DE COVARIANZA: G1_LASER_SNAP=0.5
 # (el fabricante no expone covarianza del lidar; la estimamos offline de estos snapshots, que
 # desde 2026-07-21 llevan pose+fase de movimiento para separar parado/andando/girando).
@@ -244,6 +252,29 @@ class RunRecorder:
                     "goal": {"x": goal[0], "y": goal[1]}, "pcd": pcd, "OCELL": g.OCELL,
                     "hband": [HBAND_LO, HBAND_HI], "started": time.strftime("%Y-%m-%d %H:%M:%S"),
                     "samples": [], "events": [], "laser_snapshots": [], "telemetry": [], "summary": {}}
+        # SNAPSHOT DE CONFIGURACION (auditoria 22-jul): la tabla del paper no puede depender
+        # de memoria humana. Env G1_* + SHA de git + brazo declarado (G1_ARM=C2-GOV...).
+        try:
+            self.rec["env_g1"] = {k: v for k, v in sorted(os.environ.items()) if k.startswith("G1_")}
+            self.rec["arm"] = os.environ.get("G1_ARM") or None
+            import subprocess as _sp
+            _here = os.path.dirname(os.path.abspath(__file__))
+            self.rec["git"] = {
+                "sha": _sp.run(["git", "rev-parse", "--short", "HEAD"], cwd=_here, timeout=2,
+                               capture_output=True, text=True).stdout.strip() or None,
+                "dirty": bool(_sp.run(["git", "status", "--porcelain", "-uno"], cwd=_here, timeout=2,
+                                      capture_output=True, text=True).stdout.strip())}
+        except Exception:
+            pass
+        # PAYLOAD legible por maquina (G1_FILL_G / G1_CUP_G): el endpoint primario del paper
+        # son GRAMOS; hoy vivian solo en el chat.
+        try:
+            _fg = os.environ.get("G1_FILL_G"); _cg = os.environ.get("G1_CUP_G")
+            if _fg or _cg:
+                self.rec["payload"] = {"fill_g": float(_fg) if _fg else None,
+                                       "cup_g": float(_cg) if _cg else None}
+        except Exception:
+            pass
         self._laser_t = 0.0
         self._telem_t = -9.0
         # --- GROUND TRUTH de derrames (condicion payload): un humano marca cada derrame.
@@ -253,6 +284,10 @@ class RunRecorder:
         #                (el adaptador reenvia /spill_event a este mismo puerto)
         # G1_SPILL_GT_PORT=0 lo desactiva.
         self._gt_spills = 0
+        self._gt_hb_t = None       # ultimo latido del marcador (heartbeat spill_mark v2)
+        self._gt_hb_seen = False
+        self._gt_lost = False      # canal caido en este momento (para alarma/evento)
+        self._gt_dropouts = 0
         _port = int(os.environ.get("G1_SPILL_GT_PORT", "7777") or 0)
         if _port:
             def _gt_listener():
@@ -263,20 +298,60 @@ class RunRecorder:
                     s.bind(("0.0.0.0", _port))
                 except Exception:
                     return
+                unknown_logged = False
                 while True:
                     try:
-                        s.recvfrom(64)
+                        data, _addr = s.recvfrom(128)
                     except Exception:
                         return
+                    msg = data.decode("utf-8", errors="replace").strip().lower()
                     t = time.time() - self.t0
+                    # HEARTBEAT (auditoria 22-jul): distingue "cero derrames" de "marcador
+                    # muerto" — el fallo del 21-jul es irreproducible sin esto.
+                    if msg == "hb":
+                        self._gt_hb_t = time.time(); self._gt_hb_seen = True
+                        continue
                     last = self.rec["samples"][-1] if self.rec["samples"] else None
-                    self.event("spill_human", t, last["x"] if last else 0.0,
-                               last["y"] if last else 0.0, extra={"src": "manual"})
+                    lx = last["x"] if last else 0.0; ly = last["y"] if last else 0.0
+                    if msg.startswith("weigh:"):
+                        try:
+                            g_ = float(msg.split(":", 1)[1])
+                            self.event("weigh", t, lx, ly, extra={"grams": g_, "src": "manual"})
+                            print(f"  [spill-GT] PESO registrado: {g_:.0f} g t={t:.1f}s")
+                        except Exception:
+                            pass
+                        continue
+                    if msg.startswith("invalid"):
+                        why = msg.split(":", 1)[1] if ":" in msg else ""
+                        self.event("run_invalid", t, lx, ly, extra={"reason": why, "src": "manual"})
+                        self.rec["summary"]["valid"] = False
+                        self.rec["summary"]["invalid_reason"] = why
+                        print(f"  [spill-GT] RUN MARCADA INVALIDA ({why or 'sin motivo'})")
+                        continue
+                    if not msg.startswith("spill"):
+                        # anti-falsos (trampa cazada por el verificador: antes CUALQUIER
+                        # datagrama contaba como derrame)
+                        if not unknown_logged:
+                            print(f"  [spill-GT] datagrama desconocido ignorado: {msg[:24]!r}")
+                            unknown_logged = True
+                        continue
+                    self.event("spill_human", t, lx, ly, extra={"src": "manual"})
                     self._gt_spills += 1
                     print(f"  [spill-GT] DERRAME humano #{self._gt_spills} t={t:.1f}s")
             threading.Thread(target=_gt_listener, daemon=True).start()
 
     def sample(self, t, x, y, yaw, d, spd, c0, nobs, cmd=None, phase="", extra=None):
+        # vigilancia del canal spill-GT (solo si el marcador v2 dio senal de vida alguna vez)
+        if self._gt_hb_seen:
+            _dhb = time.time() - (self._gt_hb_t or 0)
+            if not self._gt_lost and _dhb > 6.0:
+                self._gt_lost = True; self._gt_dropouts += 1
+                self.event("gt_lost", t, x, y, extra={"since_s": round(_dhb, 1)})
+                print(f"  [spill-GT] *** MARCADOR CAIDO (sin latido {_dhb:.0f}s) ***")
+            elif self._gt_lost and _dhb < 3.0:
+                self._gt_lost = False
+                self.event("gt_back", t, x, y, None)
+                print("  [spill-GT] marcador recuperado")
         rec = {"t": round(t, 2), "x": round(x, 3), "y": round(y, 3),
                "yaw": round(yaw, 1), "d": round(d, 3), "spd": round(spd, 3),
                "c0": round(c0, 2), "nobs": nobs, "phase": phase,
@@ -342,6 +417,14 @@ class RunRecorder:
         summary = dict(summary or {})
         if getattr(self, "_gt_spills", 0):
             summary["spills_human"] = self._gt_spills
+        # estado del canal de verdad de campo (auditoria 22-jul)
+        if getattr(self, "_gt_hb_seen", False):
+            summary["gt_hb_seen"] = True
+            summary["gt_alive_at_end"] = (time.time() - (self._gt_hb_t or 0)) < 6.0
+            summary["gt_dropouts"] = self._gt_dropouts
+        if self.rec["summary"].get("valid") is False:      # marcado invalido in-situ
+            summary["valid"] = False
+            summary["invalid_reason"] = self.rec["summary"].get("invalid_reason", "")
         self.rec["result"] = result
         self.rec["summary"] = summary
         self.rec["duration_s"] = round(time.time() - self.t0, 2)
@@ -1409,6 +1492,9 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     hg_log_t = 0.0; c0_hard = 9.9; hard_set = set()   # guardia de alta confianza
     door_seen = {}; door_sticky = set()               # FIX C: confirmaciones/celdas fijadas del marco
     cb_hits = 0; cb_on = False                        # FIX B: persistencia del aviso de camara
+    dg_on = False                                     # DOORGUARD: ya avisado en esta pasada de zona
+    vis_lost_t = 0.0; vis_lost = False                # watchdog de vision en caliente
+    door_side = None; door_geom_t = 0.0               # detector GEOMETRICO de cruce (independiente del FSM)
     sei = g1_metrics.SEIMetrics()                            # clearance + progression por tick (las 2 metricas del tutor)
     sens = g1_metrics.SensingMonitor()                       # auto-evaluacion de sensado (ruido/fiabilidad) = feedback de capacidad
     m_clear = 0.0; m_prog = 0.0; m_rel = 1.0; m_cl = 0.0; m_cr = 0.0
@@ -1544,6 +1630,19 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 if FILM_PERIOD > 0 and _fr and now - film_t > FILM_PERIOD:   # PELICULA de la run
                     rd.save_cam(f"t{int(now - t0):03d}s", _fr)
                     film_t = now
+            # WATCHDOG de vision EN CALIENTE (auditoria 22-jul: el 21-jul el canal murio 62s
+            # en plena run sin aviso — el gate solo comprobaba al ARRANCAR)
+            if perc_worker is not None and perc_rx_t is not None:
+                _dvis = now - perc_rx_t
+                if not vis_lost and _dvis > 15.0:
+                    vis_lost = True; vis_lost_t = now
+                    lg.write(f"[VIS] canal de percepcion SIN RESPUESTA hace {_dvis:.0f}s t={now - t0:.0f}s\n")
+                    print(f"  [VIS] *** percepcion caida ({_dvis:.0f}s sin respuesta) ***")
+                    rd.event("vision_lost", now - t0, x, y, extra={"since_s": round(_dvis, 1)})
+                elif vis_lost and _dvis < 3.0:
+                    vis_lost = False
+                    lg.write(f"[VIS] percepcion RECUPERADA tras {now - vis_lost_t:.0f}s\n")
+                    rd.event("vision_back", now - t0, x, y, extra={"out_s": round(now - vis_lost_t, 1)})
             if perc_worker is not None and perc_worker.latest is not None:
                 res = perc_worker.latest                       # ultimo resultado disponible (puede ir 1-2 ticks por detras)
                 nperc = perc_worker.n_ok
@@ -1812,6 +1911,12 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # tesis, L3/Pl_env modulando). El agresivo conserva su minimo validado.
             _prr = (m2o or {}).get("robot_r") if META2_MODE == "2" else None
             g.ROBOT_R = AGGR_ROBOT_R if aggressive else (_prr if _prr else ROBOT_R0)
+            # DOORGUARD: cuerpo con margen real en zona-vano — SOLO fuera de agresivo (el
+            # minimo 0.24 del agresivo existe justo para enhebrar el vano atascado; recorte
+            # del verificador). En crucero cerca del vano, semiancho fisico con brazos.
+            if DOORGUARD and not aggressive and g.ROBOT_R < 0.28 \
+                    and math.hypot(x - DOOR_CX, y - DOOR_CY) < DOORGUARD_R:
+                g.ROBOT_R = 0.28
 
             # --- PLAN A* + CONTROL LOCAL DWA (hacia el WAYPOINT, no una frontera) ---
             if cmd is None:
@@ -1884,8 +1989,13 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                             # --- CENTRO MEDIDO del vano (ver cabecera G1_DOOR_CENTER) ---
                             door_c_meas = None
                             if DOOR_CENTER:
+                                # v2 (auditoria 22-jul): SOLO evidencia estatica (refmap o celdas
+                                # fijadas por DOORSTICKY) — el ruido vivo K-de-3 podia desplazar el
+                                # centro ~12cm pasando el sanity check (misma leccion que sticky v3).
                                 _L = []; _R = []
-                                for (_ccx, _ccy) in omap.keys():
+                                _cand = [c for c in omap.keys()
+                                         if (refmap and c in refmap) or c in door_sticky]
+                                for (_ccx, _ccy) in _cand:
                                     _mx = _ccx * g.OCELL - DOOR_CX; _my = _ccy * g.OCELL - DOOR_CY
                                     if abs(_mx * ux + _my * uy) > 0.35:      # fuera del plano del vano
                                         continue
@@ -1894,11 +2004,25 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                         _L.append(_lt)
                                     elif -1.2 <= _lt <= -0.15:
                                         _R.append(_lt)
+                                if (_L and not _R) or (_R and not _L):
+                                    if not eng.get("cmiss"):                 # jamba UNICA: avisar, no callar
+                                        eng["cmiss"] = 1
+                                        lg.write("DOOR-CENTER-MISS: solo una jamba visible; centro del mapa\n")
+                                        rd.event("door_center_miss", now - t0, x, y, None)
                                 if _L and _R:
                                     _gap = min(_L) - max(_R)
                                     if 0.55 <= _gap <= 1.30:                 # parece el vano de verdad
                                         _c = 0.5 * (min(_L) + max(_R))
-                                        door_c_meas = max(-DOOR_CENTER_MAX, min(DOOR_CENTER_MAX, _c))
+                                        _c = max(-DOOR_CENTER_MAX, min(DOOR_CENTER_MAX, _c))
+                                        # mediana de 5 + rechazo de saltos: una medicion corrupta
+                                        # aislada no mueve el servo
+                                        _h = eng.setdefault("cmeds", [])
+                                        _h.append(_c); del _h[:-5]
+                                        _med = sorted(_h)[len(_h) // 2]
+                                        if eng.get("cused") is not None and abs(_med - eng["cused"]) > 0.08:
+                                            _med = eng["cused"]              # hold: salto sospechoso
+                                        eng["cused"] = _med
+                                        door_c_meas = _med
                                         if eng.get("cseen") is None:
                                             eng["cseen"] = 1
                                             lg.write(f"DOOR-CENTER medido: off={door_c_meas:+.2f}m gap={_gap:.2f}m "
@@ -2259,6 +2383,19 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                               "yaw": round(yaw, 1),
                                               "fwd": round(prev_cmd[1], 2), "wz": round(prev_cmd[2], 2),
                                               "fresh": bool(scan_fresh)})
+            # CRUCE GEOMETRICO (auditoria 22-jul): 2 de 6 cruces reales ocurrieron FUERA del
+            # FSM (sin door_crossed). Evento pasivo por cambio de lado del plano del vano —
+            # solo registro (la biblioteca sigue aprendiendo solo de cruces del FSM, v1).
+            _gdc = math.hypot(x - DOOR_CX, y - DOOR_CY)
+            if _gdc < 1.4:
+                _gux = math.cos(math.radians(DOOR_AXIS)); _guy = math.sin(math.radians(DOOR_AXIS))
+                _gs = 1 if ((x - DOOR_CX) * _gux + (y - DOOR_CY) * _guy) > 0 else -1
+                if door_side is not None and _gs != door_side and now - door_geom_t > 5.0:
+                    door_geom_t = now
+                    rd.event("door_crossed_geom", now - t0, x, y, None)
+                door_side = _gs
+            else:
+                door_side = None
             if now - tprint > 0.4:
                 print("  " + line); tprint = now
 
@@ -2334,6 +2471,24 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         lg.write(f"COLOR-BRAKE CREEP color_near={_ccn} c0={c0:.2f} "
                                  f"pos=({x:+.2f},{y:+.2f}) t={now - t0:.0f}s\n")
                         rd.event("color_creep", now - t0, x, y, {"near": _ccn, "c0": round(c0, 2)})
+            # --- SUELO DE ZONA-VANO (G1_DOORGUARD; ver cabecera): determinista, bajo el
+            # razonador. Cubre el agujero verificado: cruce via DWA puro tras un abort del
+            # FSM / A*-fail / fragilidad dormida. Las fases de negociacion quedan exentas.
+            if DOORGUARD and math.hypot(x - DOOR_CX, y - DOOR_CY) < DOORGUARD_R \
+                    and not any(k in ph for k in ("ENG", "AGR", "ESC", "R-", "BRK")):
+                _dg_hit = False
+                if cmd[1] > 0.28:
+                    cmd = (cmd[0], 0.28, cmd[2], 0); _dg_hit = True
+                if abs(cmd[2]) > 0.38:
+                    cmd = (cmd[0], cmd[1], math.copysign(0.38, cmd[2]), 0); _dg_hit = True
+                if _dg_hit:
+                    ph = ph.strip() + "!D"
+                    if not dg_on:
+                        dg_on = True
+                        lg.write(f"DOOR-GUARD techo de zona-vano t={now - t0:.0f}s pos=({x:+.2f},{y:+.2f})\n")
+                        rd.event("door_guard", now - t0, x, y, None)
+            elif dg_on and math.hypot(x - DOOR_CX, y - DOOR_CY) > DOORGUARD_R + 0.3:
+                dg_on = False
             # --- META2 ACTIVO (G1_META2=2): el perfil de la analogia DCE es un TECHO de avance.
             # Solo modera cmd[1]>0 (como HARD-GUARD y el moderador Renxi): retroceso/giros de las
             # recuperaciones y del ESCAPE no se tocan. HELP firme -> avance 0 (el DCE pide parar).
@@ -2355,7 +2510,10 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # --- EXTENSION B (rama analogy-profiles): techo de GIRO del perfil de analogia.
             # Los giros de arranque dominan el derrame con taza llena (sesion real 2026-07-08)
             # y no estaban gobernados. Solo bucle normal (recuperaciones intactas, como el cap).
-            if META2_MODE == "2" and m2o is not None and m2o.get("turn"):
+            # (auditoria 22-jul) el techo de giro clampaba TAMBIEN recovery/desatasco/FSM,
+            # al reves de su proposito: gobierna el giro SOSTENIDO de crucero. Solo DWA/SEEK.
+            if META2_MODE == "2" and m2o is not None and m2o.get("turn") \
+                    and ph.strip().startswith(("DWA", "SEEK")):
                 if abs(cmd[2]) > m2o["turn"]:
                     cmd = (cmd[0], cmd[1], math.copysign(m2o["turn"], cmd[2]), 0)
             # --- EXT E: jerk limitado (ver cabecera). ULTIMO de la cadena: rampa solo al
@@ -2368,7 +2526,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # geometria. El RTF del gemelo ademas dobla la rampa en tiempo-sim: alli es peor caso.
             _slew_ok = (SLEW_ON
                         and math.hypot(x - DOOR_CX, y - DOOR_CY) > 2.0
-                        and not any(k in ph for k in ("ENG", "AGR", "R-", "ESC")))
+                        and not any(k in ph for k in ("ENG", "AGR", "R-", "ESC", "BRK")))
             if _slew_ok:
                 _f, _w = cmd[1], cmd[2]
                 if abs(_f) > abs(last_sent[1]) or _f * last_sent[1] < 0:
@@ -3306,13 +3464,37 @@ def cmd_furniture(secs=15):
     except Exception:
         cells = set()
     added = good - cells
-    cells |= good
-    json.dump({"cells": [list(c) for c in sorted(cells)], "OCELL": g.OCELL,
-               "frame": "map", "hband": [HBAND_LO, HBAND_HI]}, open(MAP_FILE, "w"))
-    print(f"nav_map.json: +{len(added)} celdas nuevas (total {len(cells)}). Nuevas:")
+    if not added:
+        print("Todas las celdas ya estaban en el mapa. Nada que guardar."); return
+    print(f"+{len(added)} celdas CANDIDATAS (revisa que caen SOBRE el mueble, no sobre personas):")
     for c in sorted(added):
         print("   (%.1f, %.1f)" % (c[0] * g.OCELL, c[1] * g.OCELL))
-    print("Verifica que las posiciones cuadran con el mueble real. Repite desde otro angulo.")
+    # salvaguardas (auditoria 22-jul): una persona en el encuadre se volvia mueble permanente
+    try:
+        resp = input("¿Guardar estas celdas en nav_map.json? [s/N] ").strip().lower()
+    except EOFError:
+        resp = "n"
+    if resp != "s":
+        print("Descartado (nada escrito)."); return
+    try:
+        import shutil
+        shutil.copy(MAP_FILE, MAP_FILE + ".bak")      # backup rodante: 'furniture undo' restaura
+    except Exception:
+        pass
+    cells |= added
+    json.dump({"cells": [list(c) for c in sorted(cells)], "OCELL": g.OCELL,
+               "frame": "map", "hband": [HBAND_LO, HBAND_HI]}, open(MAP_FILE, "w"))
+    print(f"nav_map.json: +{len(added)} celdas (total {len(cells)}). 'furniture undo' deshace.")
+    print("Repite desde otro angulo si el mueble es grande.")
+
+
+def cmd_furniture_undo():
+    """Restaura nav_map.json desde el backup previo al ultimo censo (furniture)."""
+    import shutil
+    if not os.path.exists(MAP_FILE + ".bak"):
+        print("No hay backup (.bak) que restaurar."); return
+    shutil.copy(MAP_FILE + ".bak", MAP_FILE)
+    print("nav_map.json restaurado desde el backup previo al ultimo censo.")
 
 
 def cmd_waypoint(label):
@@ -3453,7 +3635,10 @@ def main():
     elif c == "waypoint":
         cmd_waypoint(sys.argv[2] if len(sys.argv) > 2 else None)
     elif c == "furniture":
-        cmd_furniture(int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 15)
+        if len(sys.argv) > 2 and sys.argv[2] == "undo":
+            cmd_furniture_undo()
+        else:
+            cmd_furniture(int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 15)
     elif c == "listwp":
         cmd_listwp()
     elif c == "noisecheck":

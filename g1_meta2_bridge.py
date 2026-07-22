@@ -232,7 +232,11 @@ class Meta2Bridge:
         if self.PF_ON:
             try:
                 from g1_particle_filter import RegimePF
-                self._pf = RegimePF()
+                _fg = os.environ.get("G1_FILL_G")
+                _fp = min(1.0, max(0.30, float(_fg) / 246.0)) if _fg else 0.90
+                self._pf = RegimePF(fill_prior=_fp)
+                if _fg:
+                    print(f"  [META2-PF] prior de llenado sembrado: {_fg} g -> fill={_fp:.2f}")
             except Exception as e:
                 print("  [META2-PF] no disponible:", repr(e))
         self._door_results = []    # [(ok, cols)] de la run en curso
@@ -242,7 +246,25 @@ class Meta2Bridge:
             # (Pl<PL_MIN) y hay otra con mas plausibilidad, EMPEZAR en la mejor (la firma
             # M2+Wrong->DST de la tesis: tras k runs malas, la k+1 arranca ya corregida).
             pl0 = self._l2_pl(self.applied)
-            best = max(self._analogies, key=lambda a: self._l2_pl(a)) if self._analogies else None
+            # INVARIANTE DE MONOTONIA DEL VETO (auditoria 22-jul; incidente 20260714_163627:
+            # vetar la conservadora desplego la RAPIDA sobre carga fragil). Orden de riesgo =
+            # techo del perfil (None = sin techo = maximo riesgo). El flip de arranque elige
+            # la alternativa deployable MAS SEGURA; si todas son mas arriesgadas que la
+            # vetada, se RETIENE la vetada con techo clampado (self._veto_clamp) y se avisa.
+            def _riskcap(a_):
+                c_ = (self.PROFILE_FULL.get(a_, {}) or {}).get("cap") if hasattr(self, "PROFILE_FULL") else None
+                if c_ is None:
+                    c_ = {"Cautious_Nav": 0.28, "Efficient_Nav": None}.get(a_)
+                return c_ if c_ is not None else 9.9
+            self._veto_clamp = None
+            _dep = [a_ for a_ in self._analogies if self._l2_pl(a_) >= self.PL_MIN]
+            best = min(_dep, key=_riskcap) if _dep else None
+            if best and pl0 < self.PL_MIN and _riskcap(best) > _riskcap(self.applied):
+                self._veto_clamp = 0.24
+                print(f"  [META2-L2] '{self.applied}' desacreditada (Pl={pl0:.2f}) pero la unica "
+                      f"alternativa ('{best}') es MAS arriesgada: se retiene con techo 0.24 "
+                      f"(invariante de monotonia del veto)")
+                best = None
             if best and pl0 < self.PL_MIN and self._l2_pl(best) > pl0:
                 print(f"  [META2-L2] analogia inicial '{self.applied}' desacreditada "
                       f"(Pl={pl0:.2f}); arrancando en '{best}' (Pl={self._l2_pl(best):.2f})")
@@ -653,13 +675,20 @@ class Meta2Bridge:
         # EXTENSION D: escala gradual por fragility sobre avance y giro
         if FRAGSPEED_ON and self._has_frag:
             _fr = readings.get("fragility", {}).get("value", 1.0)
-            if _fr < 0.80:
-                _sc = max(0.55, 0.55 + 0.45 * (_fr - 0.12) / (0.80 - 0.12))
+            # (auditoria 22-jul) con REALCAL el 1er derrame deja frag EXACTAMENTE en 0.80 y
+            # el ancla vieja daba escala 1.0 = letra muerta. Ancla REALCAL-consciente: 0.85
+            # -> 1 derrame ~3% de freno, 2 derrames ~12% (gradacion real, no un escalon).
+            _fhi = 0.85 if self._RC else 0.80
+            if _fr <= _fhi:
+                _sc = max(0.55, 0.55 + 0.45 * (_fr - 0.12) / (_fhi - 0.12))
                 _base = cap if cap is not None else 0.40
                 if _base > 0.0:
                     cap = max(0.18, round(_base * _sc, 3))
                 if _turn is not None:
                     _turn = max(0.35, round(_turn * _sc, 3))
+        _vc = getattr(self, "_veto_clamp", None)
+        if _vc is not None:
+            cap = _vc if cap is None else min(cap, _vc)
         changed = (self.last is None or act_eff != self.last["action"]
                    or self.applied != self.last["active"])
         self.last = {"action": act_eff, "raw_action": act, "active": self.applied,
