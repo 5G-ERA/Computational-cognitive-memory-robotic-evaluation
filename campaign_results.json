@@ -2015,5 +2015,53 @@
   "spill_risk_pct": 0.8,
   "eta_max": 0.88,
   "meta2_mode": "2"
+ },
+ {
+  "file": "20260724_180802_ours_B.json",
+  "arm": "abfull",
+  "result": "aborted_meta2_help",
+  "time_s": 215.13,
+  "collisions": 1,
+  "spills": 0,
+  "spill_expected": 0.0,
+  "spill_risk_pct": 0.5,
+  "eta_max": 0.85,
+  "meta2_mode": "2"
+ },
+ {
+  "file": "20260724_181151_ours_B.json",
+  "arm": "abfull",
+  "result": "aborted_meta2_help",
+  "time_s": 214.79,
+  "collisions": 1,
+  "spills": 0,
+  "spill_expected": 0.009,
+  "spill_risk_pct": 0.2,
+  "eta_max": 1.07,
+  "meta2_mode": "2"
+ },
+ {
+  "file": "20260724_181642_ours_B.json",
+  "arm": "abfull",
+  "result": "aborted_meta2_help",
+  "time_s": 194.12,
+  "collisions": 3,
+  "spills": 1,
+  "spill_expected": 1.149,
+  "spill_risk_pct": 1.7,
+  "eta_max": 1.35,
+  "meta2_mode": "2"
+ },
+ {
+  "file": "20260724_182010_ours_B.json",
+  "arm": "abfull",
+  "result": "aborted_meta2_help",
+  "time_s": 188.76,
+  "collisions": 3,
+  "spills": 0,
+  "spill_expected": 0.388,
+  "spill_risk_pct": 5.3,
+  "eta_max": 1.4,
+  "meta2_mode": "2"
  }
 ]

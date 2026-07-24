@@ -4,41 +4,17 @@
    "m_match": 0.625,
    "m_mismatch": 0.0,
    "m_theta": 0.375,
-   "runs": 7,
+   "runs": 8,
    "spills": 0
   },
   "Cautious_Nav": {
-   "m_match": 0.9999107089549151,
-   "m_mismatch": 0.0,
-   "m_theta": 8.929104508500737e-05,
-   "runs": 31,
-   "spills": 0
+   "m_match": 0.9999461870692703,
+   "m_mismatch": 1.614387921891512e-05,
+   "m_theta": 3.766905151080194e-05,
+   "runs": 35,
+   "spills": 1
   },
   "_ful_hist": [
-   {
-    "ful": 0.331,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.601,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.728,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.36,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
    {
     "ful": 0.257,
     "applied": "Efficient_Nav",
@@ -74,23 +50,47 @@
     "applied": "Cautious_Nav",
     "pl": 1.0,
     "spills": 0
+   },
+   {
+    "ful": 0.328,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.323,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.337,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 1
+   },
+   {
+    "ful": 0.334,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
    }
   ]
  },
  "_door": {
   "Door_Direct": {
-   "m_match": 0.9983408832972852,
-   "m_mismatch": 0.0015224813080307043,
-   "m_theta": 0.00013663539466915502,
+   "m_match": 0.9224696531541108,
+   "m_mismatch": 0.07740409537412223,
+   "m_theta": 0.00012625147105339745,
    "crossings": 23,
-   "fails": 7
+   "fails": 18
   },
   "Door_Far": {
-   "m_match": 0.7717745691662783,
-   "m_mismatch": 0.06846762925011643,
-   "m_theta": 0.15975780158360497,
+   "m_match": 0.44810229975771654,
+   "m_mismatch": 0.4591402537625623,
+   "m_theta": 0.09275744647972044,
    "crossings": 3,
-   "fails": 1
+   "fails": 5
   },
   "Door_BiasPlus": {
    "m_match": 0.6832579185520359,
