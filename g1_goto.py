@@ -144,6 +144,20 @@ DOORGUARD_R = float(os.environ.get("G1_DOORGUARD_R", "1.2"))
 # 50s culebreando, mientras door_b veia el vano limpio (103 muestras, +-0.9..3.5 grados).
 # Opt-in: G1_DOOR_VIS=1.
 DOOR_VIS = os.environ.get("G1_DOOR_VIS", "") == "1"
+# OMNI-GUARD — el "inner loop de evitacion" de Renxi (24-jul, video del wrestling; run
+# 165326 t=55-91): el FSM de puerta empujaba con c0=0.30 (HARD-GUARD solo mira el cono
+# frontal +-25 y su STOP queda por debajo) y giraba a 0.45 con el hombro a 0.30 de la
+# pared (nada comprueba holgura LATERAL en giros del FSM; el DWA esta anulado por el
+# enganche). REFLEJO bajo TODAS las fuentes de comando, sin exenciones (es medular, como
+# retirar la mano del fuego): (1) traslacion: si el obstaculo mas cercano en el SECTOR
+# +-45 de la direccion de movimiento esta a <OMNI_STOP -> se anula la traslacion (la
+# rotacion sigue libre para realinear); (2) rotacion: obstaculo a <OMNI_ROT del centro ->
+# giro lento (0.20); a <OMNI_TOUCH -> giro cero (ya esta rozando; que escape trasladando,
+# que la traslacion de alejamiento el sector la deja pasar). G1_OMNIGUARD=0 revierte.
+OMNIGUARD = os.environ.get("G1_OMNIGUARD", "1") == "1"
+OMNI_STOP = float(os.environ.get("G1_OMNI_STOP", "0.32"))   # 0.32: el wrestling real presionaba a 0.30-0.32 justos
+OMNI_ROT = float(os.environ.get("G1_OMNI_ROT", "0.34"))
+OMNI_TOUCH = float(os.environ.get("G1_OMNI_TOUCH", "0.26"))
 # Cadencia de laser_snapshots (s). Para sesiones de CALIBRACION DE COVARIANZA: G1_LASER_SNAP=0.5
 # (el fabricante no expone covarianza del lidar; la estimamos offline de estos snapshots, que
 # desde 2026-07-21 llevan pose+fase de movimiento para separar parado/andando/girando).
@@ -1503,6 +1517,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     door_seen = {}; door_sticky = set()               # FIX C: confirmaciones/celdas fijadas del marco
     cb_hits = 0; cb_on = False                        # FIX B: persistencia del aviso de camara
     dg_on = False                                     # DOORGUARD: ya avisado en esta pasada de zona
+    omni_log_t = 0.0                                  # OMNI-GUARD: throttle de log/evento
     vis_lost_t = 0.0; vis_lost = False                # watchdog de vision en caliente
     door_side = None; door_geom_t = 0.0               # detector GEOMETRICO de cruce (independiente del FSM)
     sei = g1_metrics.SEIMetrics()                            # clearance + progression por tick (las 2 metricas del tutor)
@@ -2563,6 +2578,41 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     _w = max(last_sent[2] - SLEW_ANG, min(last_sent[2] + SLEW_ANG, _w))
                 if (_f, _w) != (cmd[1], cmd[2]):
                     cmd = (cmd[0], _f, _w, 0); ph = ph.strip() + "~"
+            # --- OMNI-GUARD (ver cabecera): reflejo final, TODAS las fuentes, SIN exenciones ---
+            if OMNIGUARD and op:
+                _cy = math.cos(math.radians(yaw)); _sy = math.sin(math.radians(yaw))
+                _near = []                              # obstaculos a <1.0m en frame ROBOT (x=alante, y=izq)
+                for (_ox, _oy) in op:
+                    _dx = _ox - x; _dy = _oy - y
+                    if _dx * _dx + _dy * _dy > 1.0:
+                        continue
+                    _near.append((_dx * _cy + _dy * _sy, -_dx * _sy + _dy * _cy))
+                if _near:
+                    _hit = None
+                    _f, _l = cmd[1], cmd[0]             # avance, lateral (stick: lx + = derecha)
+                    if abs(_f) > 0.05 or abs(_l) > 0.05:
+                        _ma = math.atan2(-_l, _f) if (_f or _l) else 0.0   # direccion del movimiento (rad, frame robot)
+                        _dmin = 9.9
+                        for (_rx, _ry) in _near:
+                            _d = math.hypot(_rx, _ry)
+                            _b = math.atan2(_ry, _rx)
+                            if abs((_b - _ma + math.pi) % (2 * math.pi) - math.pi) <= math.radians(45):
+                                _dmin = min(_dmin, _d)
+                        if _dmin < OMNI_STOP:
+                            cmd = (0.0, 0.0, cmd[2], 0); _hit = ("trans", _dmin)
+                    if abs(cmd[2]) > 0.05:
+                        _dc = min(math.hypot(_rx, _ry) for (_rx, _ry) in _near)
+                        if _dc < OMNI_TOUCH:
+                            cmd = (cmd[0], cmd[1], 0.0, 0); _hit = _hit or ("rot0", _dc)
+                        elif _dc < OMNI_ROT and abs(cmd[2]) > 0.20:
+                            cmd = (cmd[0], cmd[1], math.copysign(0.20, cmd[2]), 0)
+                            _hit = _hit or ("rotslow", _dc)
+                    if _hit:
+                        ph = ph.strip() + "!O"
+                        if now - omni_log_t > 3.0:
+                            omni_log_t = now
+                            lg.write(f"OMNI-GUARD {_hit[0]} d={_hit[1]:.2f}m fase={ph} pos=({x:+.2f},{y:+.2f})\n")
+                            rd.event("omni_guard", now - t0, x, y, {"que": _hit[0], "d": round(_hit[1], 2)})
             prev_fwd = (cmd[1] > 0.1)
             cdp.eval(g.set_cmd_js(*cmd))
             last_sent = cmd
