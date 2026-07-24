@@ -155,6 +155,17 @@ DOOR_VIS = os.environ.get("G1_DOOR_VIS", "") == "1"
 # giro lento (0.20); a <OMNI_TOUCH -> giro cero (ya esta rozando; que escape trasladando,
 # que la traslacion de alejamiento el sector la deja pasar). G1_OMNIGUARD=0 revierte.
 OMNIGUARD = os.environ.get("G1_OMNIGUARD", "1") == "1"
+# ENV-CHANGE (Renxi 24-jul: "parallel loop detecting the unexpected change of the
+# environment... environment capture during task execution -> meta decisions"). Detector EN
+# SOMBRA de divergencia percibido-vs-mapa-estatico: (a) NUEVO = celdas confirmadas por el
+# laser (ya pasaron el filtro K-de-N) que NO estan en el mapa de referencia — persona,
+# mueble movido, puerta CERRADA; (b) DESAPARECIDO = celdas del mapa que deberian verse
+# (sector frontal, 0.5-2.0m) y llevan >=3 barridos frescos sin aparecer — puerta ABIERTA,
+# objeto retirado; (c) EN-RUTA = celdas nuevas a <0.3m del plan A* = corredor tomado.
+# v1 SOMBRA: metricas por muestra (env_new/env_gone/env_onpath) + eventos env_change/
+# env_gone/env_path_blocked. NO toca decisiones (comparabilidad de brazos); la integracion
+# QoE se disenara con estos datos tras la campana. G1_ENVCHANGE=0 lo apaga.
+ENVCHANGE = os.environ.get("G1_ENVCHANGE", "1") == "1"
 OMNI_STOP = float(os.environ.get("G1_OMNI_STOP", "0.32"))   # 0.32: el wrestling real presionaba a 0.30-0.32 justos
 OMNI_ROT = float(os.environ.get("G1_OMNI_ROT", "0.34"))
 OMNI_TOUCH = float(os.environ.get("G1_OMNI_TOUCH", "0.26"))
@@ -1518,6 +1529,9 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     cb_hits = 0; cb_on = False                        # FIX B: persistencia del aviso de camara
     dg_on = False                                     # DOORGUARD: ya avisado en esta pasada de zona
     omni_log_t = 0.0                                  # OMNI-GUARD: throttle de log/evento
+    envch_gone_miss = {}                              # ENV-CHANGE: celda refmap -> barridos frescos sin verse
+    envch_new_n = 0; envch_gone_n = 0; envch_onpath_n = 0
+    envch_evt_t = 0.0                                 # throttle de eventos env_*
     vis_lost_t = 0.0; vis_lost = False                # watchdog de vision en caliente
     door_side = None; door_geom_t = 0.0               # detector GEOMETRICO de cruce (independiente del FSM)
     sei = g1_metrics.SEIMetrics()                            # clearance + progression por tick (las 2 metricas del tutor)
@@ -2382,6 +2396,49 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                 rd.event("meta2_abort_shadow", now - t0, x, y,
                                          {"why": why, "badf": round(badf, 2), "prog": round(prog, 2)})
                                 m2win.clear(); m2_help_t0 = None   # re-arma la ventana para el siguiente aviso
+            # --- ENV-CHANGE (SOMBRA; ver cabecera): divergencia percibido vs mapa ---
+            if ENVCHANGE and refmap:
+                _envnew = set()
+                for c in confirmed:
+                    if c in refmap or c in door_sticky:
+                        continue
+                    if math.hypot(c[0] * g.OCELL - x, c[1] * g.OCELL - y) <= 2.5:
+                        _envnew.add(c)
+                envch_new_n = len(_envnew)
+                # desaparecidos: celdas del mapa en el sector frontal (0.5-2.0m, +-60) sin verse
+                if scan_fresh:
+                    _cy_ = math.cos(math.radians(yaw)); _sy_ = math.sin(math.radians(yaw))
+                    for c in refmap:
+                        _dx = c[0] * g.OCELL - x; _dy = c[1] * g.OCELL - y
+                        _d = math.hypot(_dx, _dy)
+                        if not (0.5 <= _d <= 2.0):
+                            envch_gone_miss.pop(c, None); continue
+                        _fx = _dx * _cy_ + _dy * _sy_
+                        if _fx < _d * 0.5:                      # fuera de +-60 frontal
+                            envch_gone_miss.pop(c, None); continue
+                        if c in live:
+                            envch_gone_miss.pop(c, None)
+                        else:
+                            envch_gone_miss[c] = envch_gone_miss.get(c, 0) + 1
+                envch_gone_n = sum(1 for v in envch_gone_miss.values() if v >= 3)
+                # celdas nuevas SOBRE el plan (corredor tomado)
+                envch_onpath_n = 0
+                if _envnew and plan_pts:
+                    for c in _envnew:
+                        _cxm = c[0] * g.OCELL; _cym = c[1] * g.OCELL
+                        if any(math.hypot(_cxm - px_, _cym - py_) < 0.30 for (px_, py_) in plan_pts[:40]):
+                            envch_onpath_n += 1
+                if now - envch_evt_t > 5.0:
+                    if envch_onpath_n >= 2:
+                        envch_evt_t = now
+                        rd.event("env_path_blocked", now - t0, x, y, {"n": envch_onpath_n})
+                        lg.write(f"ENV-CHANGE: {envch_onpath_n} celdas NUEVAS sobre el plan t={now - t0:.0f}s\n")
+                    elif envch_new_n >= 3:
+                        envch_evt_t = now
+                        rd.event("env_change", now - t0, x, y, {"n": envch_new_n})
+                    elif envch_gone_n >= 3:
+                        envch_evt_t = now
+                        rd.event("env_gone", now - t0, x, y, {"n": envch_gone_n})
             rd.sample(now - t0, x, y, yaw, d_goal, math.hypot(x - prog_pos[0], y - prog_pos[1]) if prog_pos else 0.0,
                       c0, len(oset), cmd=cmd, phase=ph.strip(),
                       extra={"err": hh.get("err"), "bat": h.get("bat"), "cpuT": h.get("cpuT"),
@@ -2414,6 +2471,9 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "meta2_unc": (m2o or {}).get("unc"),              # incertidumbre DST por parametro (dispersion empirica -> intervalos)
                              "meta2_pf": (m2o or {}).get("pf"),                # posterior del PF de regimen (SOMBRA): tapa/llenado/sensado/bateria/atasco
                              "sent": [round(last_sent[1], 3), round(last_sent[2], 3)],   # lo ENVIADO el tick anterior (post-guardas/rampa; 'cmd' es pre-guardas)
+                             "env_new": (envch_new_n if ENVCHANGE else None),   # ENV-CHANGE (sombra): celdas nuevas <2.5m no-mapa
+                             "env_gone": (envch_gone_n if ENVCHANGE else None), # celdas del mapa que deberian verse y no estan
+                             "env_onpath": (envch_onpath_n if ENVCHANGE else None),   # nuevas SOBRE el plan A*
                              "meta2_active": (m2o or {}).get("active"),
                              "meta2_tens": (m2o or {}).get("tension"),
                              "meta2_ful": (m2o or {}).get("fulfillment"),
