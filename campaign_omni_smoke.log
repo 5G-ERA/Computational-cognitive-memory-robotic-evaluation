@@ -1,2 +1,5 @@
-== run 1/2 brazo=abfull (18:02:00)
-SIM NO ARRANCA: abortando campana
+== run 1/2 brazo=abfull (18:07:51)
+  RUN {'file': '20260724_180802_ours_B.json', 'arm': 'abfull', 'result': 'aborted_meta2_help', 'time_s': 215.13, 'collisions': 1, 'spills': 0, 'spill_expected': 0.0, 'spill_risk_pct': 0.5, 'eta_max': 0.85, 'meta2_mode': '2'}
+== run 2/2 brazo=abfull (18:11:42)
+  RUN {'file': '20260724_181151_ours_B.json', 'arm': 'abfull', 'result': 'aborted_meta2_help', 'time_s': 214.79, 'collisions': 1, 'spills': 0, 'spill_expected': 0.009, 'spill_risk_pct': 0.2, 'eta_max': 1.07, 'meta2_mode': '2'}
+CAMPANA COMPLETA: 170 runs -> /Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT/campaign_results.json

@@ -154,7 +154,13 @@ DOOR_VIS = os.environ.get("G1_DOOR_VIS", "") == "1"
 # rotacion sigue libre para realinear); (2) rotacion: obstaculo a <OMNI_ROT del centro ->
 # giro lento (0.20); a <OMNI_TOUCH -> giro cero (ya esta rozando; que escape trasladando,
 # que la traslacion de alejamiento el sector la deja pasar). G1_OMNIGUARD=0 revierte.
-OMNIGUARD = os.environ.get("G1_OMNIGUARD", "1") == "1"
+# ESTADO 24-jul tarde: el GEMELO tumbo v1 (sector angular) Y v2 (corredor) — con celdas de
+# 0.2m y vanos de 0.71-0.85, el reflejo no distingue aun "presionar la pared" de "enhebrar
+# un hueco justo" (2x2 runs abortados sin cruzar, 11 bloqueos/run). OFF por defecto hasta
+# refinarlo (transformada de distancia sub-celda o reutilizar el clearance del DWA). El
+# anti-wrestling mientras tanto: DOOR-VIS (alineado en lazo cerrado) + DOORGUARD (techos de
+# zona) + el timeout anti-empuje del propio FSM (CROSS sin avance 5s -> aborta).
+OMNIGUARD = os.environ.get("G1_OMNIGUARD", "0") == "1"
 # ENV-CHANGE (Renxi 24-jul: "parallel loop detecting the unexpected change of the
 # environment... environment capture during task execution -> meta decisions"). Detector EN
 # SOMBRA de divergencia percibido-vs-mapa-estatico: (a) NUEVO = celdas confirmadas por el
@@ -2651,13 +2657,21 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     _hit = None
                     _f, _l = cmd[1], cmd[0]             # avance, lateral (stick: lx + = derecha)
                     if abs(_f) > 0.05 or abs(_l) > 0.05:
-                        _ma = math.atan2(-_l, _f) if (_f or _l) else 0.0   # direccion del movimiento (rad, frame robot)
+                        # v2 (cazado por el GEMELO, runs 180802/181151: el sector angular +-45
+                        # bloqueaba la ENTRADA del vano — las jambas quedan delante-diagonal
+                        # dentro del sector aunque el hueco central este libre; con pellizco
+                        # 0.71 son 7cm/lado y ningun test angular pasa). Test de CORREDOR:
+                        # bloquear solo si el obstaculo esta en la FRANJA que el cuerpo va a
+                        # barrer (|lateral|<0.30 = semiancho 0.28 + margen) y a <OMNI_STOP por
+                        # delante. Jamba a 0.355 de lado: pasa. Pared de frente a 0.30: bloquea.
+                        _ma = math.atan2(-_l, _f) if (_f or _l) else 0.0
+                        _cma = math.cos(_ma); _sma = math.sin(_ma)
                         _dmin = 9.9
                         for (_rx, _ry) in _near:
-                            _d = math.hypot(_rx, _ry)
-                            _b = math.atan2(_ry, _rx)
-                            if abs((_b - _ma + math.pi) % (2 * math.pi) - math.pi) <= math.radians(45):
-                                _dmin = min(_dmin, _d)
+                            _along = _rx * _cma + _ry * _sma
+                            _lat = -_rx * _sma + _ry * _cma
+                            if 0.02 < _along < OMNI_STOP and abs(_lat) < 0.30:
+                                _dmin = min(_dmin, _along)
                         if _dmin < OMNI_STOP:
                             cmd = (0.0, 0.0, cmd[2], 0); _hit = ("trans", _dmin)
                     if abs(cmd[2]) > 0.05:
