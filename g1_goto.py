@@ -172,6 +172,18 @@ OMNIGUARD = os.environ.get("G1_OMNIGUARD", "0") == "1"
 # env_gone/env_path_blocked. NO toca decisiones (comparabilidad de brazos); la integracion
 # QoE se disenara con estos datos tras la campana. G1_ENVCHANGE=0 lo apaga.
 ENVCHANGE = os.environ.get("G1_ENVCHANGE", "1") == "1"
+# RETREAT POR MIGAS DE PAN — doctrina de Renxi (24-jul 18:55, tras la trampa sofa-pared):
+# "for nearby obstacle, robot is blind. So he can only stop, and reverse back using the
+# EXACT SAME TRAJECTORY as they enter, rather than search for a new trajectory". El robot
+# es hipermetrope (laser >=1m; <1m = memoria+camara): buscar trayectoria nueva en zona
+# ciega barre los hombros contra lo invisible. La unica primitiva segura es DESHACER el
+# camino recien recorrido (era libre hace segundos). Disparo: colision IMU, o atasco
+# (<0.08m en 4s con c0<0.42). Ejecucion: marcha atras siguiendo las migas (correccion
+# suave de rumbo, SIN giros en seco), ~0.9m o hasta agotar migas; luego cooldown y el
+# planificador decide con lo aprendido. G1_RETREAT=0 revierte.
+RETREAT = os.environ.get("G1_RETREAT", "1") == "1"
+RETREAT_D = float(os.environ.get("G1_RETREAT_D", "0.9"))
+RETREAT_V = float(os.environ.get("G1_RETREAT_V", "0.22"))
 OMNI_STOP = float(os.environ.get("G1_OMNI_STOP", "0.32"))   # 0.32: el wrestling real presionaba a 0.30-0.32 justos
 OMNI_ROT = float(os.environ.get("G1_OMNI_ROT", "0.34"))
 OMNI_TOUCH = float(os.environ.get("G1_OMNI_TOUCH", "0.26"))
@@ -1538,6 +1550,9 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     envch_gone_miss = {}                              # ENV-CHANGE: celda refmap -> barridos frescos sin verse
     envch_new_n = 0; envch_gone_n = 0; envch_onpath_n = 0
     envch_evt_t = 0.0                                 # throttle de eventos env_*
+    crumbs = []                                       # RETREAT: migas (x,y) cada 0.15m, ~4.5m de cola
+    retreat = None; retreat_cool = 0.0; rt_prev_ncol = 0
+    stk_hist = []                                     # (t,x,y) para detectar atasco (4s de ventana)
     vis_lost_t = 0.0; vis_lost = False                # watchdog de vision en caliente
     door_side = None; door_geom_t = 0.0               # detector GEOMETRICO de cruce (independiente del FSM)
     sei = g1_metrics.SEIMetrics()                            # clearance + progression por tick (las 2 metricas del tutor)
@@ -2545,6 +2560,45 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # robot de puertas pasables) pero SI limitamos la velocidad de avance: acercarse con cuidado.
             if cmd[1] > 0.24 and isinstance(perc_raw.get("color_near"), (int, float)) and perc_raw["color_near"] >= 8:
                 cmd = (cmd[0], 0.24, cmd[2], 0)
+            # --- RETREAT POR MIGAS (ver cabecera; manda sobre DWA/FSM/DOOR-*) ---
+            if RETREAT:
+                stk_hist.append((now, x, y))
+                while stk_hist and now - stk_hist[0][0] > 4.5:
+                    stk_hist.pop(0)
+                if retreat is None and (not crumbs or math.hypot(x - crumbs[-1][0], y - crumbs[-1][1]) >= 0.15):
+                    crumbs.append((x, y)); del crumbs[:-30]
+                if retreat is None and now > retreat_cool and len(crumbs) >= 3:
+                    _colhit = ncol > rt_prev_ncol
+                    _old = next((p for p in stk_hist if now - p[0] >= 3.8), None)
+                    _stuck = (_old is not None and math.hypot(x - _old[1], y - _old[2]) < 0.08
+                              and c0 < 0.42)
+                    if _colhit or _stuck:
+                        retreat = {"trail": list(reversed(crumbs[:-1])), "d": 0.0,
+                                   "lx": x, "ly": y, "t0": now}
+                        eng.update(state=None, cool=now + 10.0)     # el FSM calla durante la retirada
+                        lg.write(f"RETREAT start ({'colision' if _colhit else 'atasco'}, c0={c0:.2f}) "
+                                 f"pos=({x:+.2f},{y:+.2f}) t={now - t0:.0f}s\n")
+                        rd.event("retreat_start", now - t0, x, y,
+                                 {"por": "col" if _colhit else "atasco", "c0": round(c0, 2)})
+                rt_prev_ncol = ncol
+                if retreat is not None:
+                    tr = retreat["trail"]
+                    while tr and math.hypot(tr[0][0] - x, tr[0][1] - y) < 0.22:
+                        tr.pop(0)
+                    retreat["d"] += math.hypot(x - retreat["lx"], y - retreat["ly"])
+                    retreat["lx"], retreat["ly"] = x, y
+                    if retreat["d"] >= RETREAT_D or not tr or now - retreat["t0"] > 14.0:
+                        lg.write(f"RETREAT fin: deshecho {retreat['d']:.2f}m en {now - retreat['t0']:.1f}s\n")
+                        rd.event("retreat_end", now - t0, x, y, {"d": round(retreat["d"], 2)})
+                        retreat = None; retreat_cool = now + 6.0
+                        crumbs = crumbs[:max(1, len(crumbs) - 6)]   # no re-migar la zona deshecha
+                    else:
+                        _tx, _ty = tr[0]
+                        _b = math.degrees(math.atan2(_ty - y, _tx - x))
+                        _back = (_b - (yaw + 180.0) + 180.0) % 360.0 - 180.0   # error del CULO hacia la miga
+                        _rx = max(-0.18, min(0.18, -_back * 0.02))             # correccion suave; jamas giro en seco
+                        cmd = (0.0, -RETREAT_V, _rx, 0)
+                        ph = "RETREAT"
             # --- HARD-GUARD (G1_HARDGUARD=1): las paredes/persistentes NO se rozan ni en agresivo.
             # Frena el avance segun la holgura contra lo DURO; lo blando/ruidoso sigue negociable.
             if HARD_GUARD and cmd[1] > 0.05:
