@@ -134,6 +134,16 @@ DOOR_CENTER_MAX = float(os.environ.get("G1_DOOR_CENTER_MAX", "0.30"))
 # del propio ENG-GO/perfil Cautious). El suelo del hueco del veto L2. G1_DOORGUARD=0 revierte.
 DOORGUARD = os.environ.get("G1_DOORGUARD", "1") == "1"
 DOORGUARD_R = float(os.environ.get("G1_DOORGUARD_R", "1.2"))
+# DOOR-VIS ("seguir la linea morada", Adrian 24-jul): en el enganche, si la vision ve el
+# vano (detector de puerta del perception_server, bearing fresco y coherente con el mapa),
+# el error de rumbo pasa a ser el BEARING VISUAL — el robot apunta a la ABERTURA REAL que
+# esta viendo, no a la constante DOOR_AXIS del mapa. Cierra en lazo lo que los sesgos por
+# direccion (BiasPlus etc.) compensaban en abierto: la asimetria B->A, los +-10-15cm de
+# reloc y el descentrado lateral (por paralaje, apuntar al centro desde fuera del eje YA
+# ES la correccion). Evidencia: run 163117 (BiasPlus B->A): 7 oscilaciones del plano en
+# 50s culebreando, mientras door_b veia el vano limpio (103 muestras, +-0.9..3.5 grados).
+# Opt-in: G1_DOOR_VIS=1.
+DOOR_VIS = os.environ.get("G1_DOOR_VIS", "") == "1"
 # Cadencia de laser_snapshots (s). Para sesiones de CALIBRACION DE COVARIANZA: G1_LASER_SNAP=0.5
 # (el fabricante no expone covarianza del lidar; la estimamos offline de estos snapshots, que
 # desde 2026-07-21 llevan pose+fase de movimiento para separar parado/andando/girando).
@@ -2047,6 +2057,18 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                    DOOR_CY - sgn * _engd * uy + _bias * ux)   # pre-entrada
                             head = DOOR_AXIS if sgn > 0 else ((DOOR_AXIS + 360) % 360 - 180)           # rumbo de cruce
                             he = (head - yaw + 180) % 360 - 180
+                            # DOOR-VIS (ver cabecera): rumbo por vision si hay bearing fresco y sano.
+                            # Signo verificado: bearing + = vano a la IZQUIERDA; he + = girar izquierda.
+                            if DOOR_VIS:
+                                _db = (perc_raw.get("door") or {}).get("bearing_deg") if isinstance(perc_raw, dict) else None
+                                _vfresh = perc_rx_t is not None and (now - perc_rx_t) < 1.2
+                                if _db is not None and _vfresh and abs(_db) < 45 and abs(_db - he) < 35:
+                                    if not eng.get("vlog"):
+                                        eng["vlog"] = 1
+                                        lg.write(f"DOOR-VIS activo: bearing={_db:+.1f} (mapa he={he:+.1f})\n")
+                                        rd.event("door_vis", now - t0, x, y, {"bearing": round(_db, 1),
+                                                                              "he_mapa": round(he, 1)})
+                                    he = _db
                             if eng["state"] == "GOTO":
                                 de = math.hypot(exp[0] - x, exp[1] - y)
                                 if de <= DOOR_ENG_TOL:
