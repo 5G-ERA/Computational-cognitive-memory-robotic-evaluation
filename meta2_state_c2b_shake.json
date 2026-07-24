@@ -11,22 +11,10 @@
    "m_match": 0.9841618239879608,
    "m_mismatch": 0.0,
    "m_theta": 0.015838176012039185,
-   "runs": 28,
+   "runs": 30,
    "spills": 0
   },
   "_ful_hist": [
-   {
-    "ful": 0.778,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.688,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
    {
     "ful": 0.758,
     "applied": "Cautious_Nav",
@@ -74,6 +62,18 @@
     "applied": "Cautious_Nav",
     "pl": 1.0,
     "spills": 0
+   },
+   {
+    "ful": 0.551,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.339,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
    }
   ]
  },
@@ -93,10 +93,10 @@
    "fails": 4
   },
   "Door_BiasPlus": {
-   "m_match": 0.9717117010207891,
-   "m_mismatch": 0.01858541242934069,
-   "m_theta": 0.00970288654986888,
-   "crossings": 11,
+   "m_match": 0.9800871642349527,
+   "m_mismatch": 0.013082733097635245,
+   "m_theta": 0.006830102667410787,
+   "crossings": 12,
    "fails": 3
   }
  }
