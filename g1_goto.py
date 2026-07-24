@@ -1997,7 +1997,13 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                          if (refmap and c in refmap) or c in door_sticky]
                                 for (_ccx, _ccy) in _cand:
                                     _mx = _ccx * g.OCELL - DOOR_CX; _my = _ccy * g.OCELL - DOOR_CY
-                                    if abs(_mx * ux + _my * uy) > 0.35:      # fuera del plano del vano
+                                    # v3 (shakedown real 24-jul, colision B->A en (-3.74,1.25)): el vano
+                                    # es un PASAJE profundo (~0.5m: cara A en x~-3.4, cara B en ~-3.9).
+                                    # Con +-0.35 desde B se media la boca ancha de SU cara (gap 1.13) y
+                                    # jamas el pellizco de la cara A -> centro sesgado -> golpe justo en
+                                    # la cara no vista. +-0.60 cubre TODO el tunel: min(_L)/max(_R) dan
+                                    # el estrechamiento REAL, simetrico en ambas direcciones.
+                                    if abs(_mx * ux + _my * uy) > 0.60:      # fuera del TUNEL del vano
                                         continue
                                     _lt = -_mx * uy + _my * ux               # lateral (+= izq del eje)
                                     if 0.15 <= _lt <= 1.2:

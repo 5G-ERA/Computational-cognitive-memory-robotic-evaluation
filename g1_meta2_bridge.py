@@ -296,7 +296,14 @@ class Meta2Bridge:
                     m = dst_[v]
                     return m["m_match"] + m["m_theta"]
                 order = list(DOOR_VARIANTS)          # empate -> orden de definicion (Direct 1o)
-                if os.environ.get("G1_M2_DOOR_EXPLORE", "") == "1":
+                _force = os.environ.get("G1_DOOR_VARIANT", "")
+                if _force in DOOR_VARIANTS:
+                    # OVERRIDE MANUAL (shakedown real 24-jul: B->A engancha sin pista desde el
+                    # bolsillo de B; Door_Far da 1.20m de alineacion). Perilla de operador por
+                    # trayecto — queda registrada en el snapshot env_g1 del dataset.
+                    self.door_variant = _force
+                    print(f"  [META2-DOOR] variante FORZADA por operador: {_force} (G1_DOOR_VARIANT)")
+                elif os.environ.get("G1_M2_DOOR_EXPLORE", "") == "1":
                     # EXPLORACION ACTIVA (Renxi 2026-07-21: "exploration" del high-level policy).
                     # La seleccion por Pl es optimista (Th cuenta a favor) pero DEGENERA: si la
                     # incumbente nunca falla, las alternativas quedan a 0 ensayos (A/B formal:
