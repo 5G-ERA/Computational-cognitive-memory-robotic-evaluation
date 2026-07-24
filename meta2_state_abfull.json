@@ -4,47 +4,17 @@
    "m_match": 0.625,
    "m_mismatch": 0.0,
    "m_theta": 0.375,
-   "runs": 5,
+   "runs": 7,
    "spills": 0
   },
   "Cautious_Nav": {
-   "m_match": 0.9996237282709175,
+   "m_match": 0.9999107089549151,
    "m_mismatch": 0.0,
-   "m_theta": 0.00037627172908250017,
-   "runs": 26,
+   "m_theta": 8.929104508500737e-05,
+   "runs": 31,
    "spills": 0
   },
   "_ful_hist": [
-   {
-    "ful": 0.739,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.754,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.383,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.737,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.755,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
    {
     "ful": 0.331,
     "applied": "Cautious_Nav",
@@ -74,15 +44,45 @@
     "applied": "Efficient_Nav",
     "pl": 1.0,
     "spills": 0
+   },
+   {
+    "ful": 0.324,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.664,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.351,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.778,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.81,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
    }
   ]
  },
  "_door": {
   "Door_Direct": {
-   "m_match": 0.9966194045162127,
-   "m_mismatch": 0.00310218890912319,
-   "m_theta": 0.0002784065746492398,
-   "crossings": 21,
+   "m_match": 0.9983408832972852,
+   "m_mismatch": 0.0015224813080307043,
+   "m_theta": 0.00013663539466915502,
+   "crossings": 23,
    "fails": 7
   },
   "Door_Far": {
@@ -93,11 +93,11 @@
    "fails": 1
   },
   "Door_BiasPlus": {
-   "m_match": 0.5,
-   "m_mismatch": 0.0,
-   "m_theta": 0.5,
-   "crossings": 0,
-   "fails": 0
+   "m_match": 0.6832579185520359,
+   "m_mismatch": 0.09502262443438911,
+   "m_theta": 0.22171945701357457,
+   "crossings": 2,
+   "fails": 1
   }
  }
 }
