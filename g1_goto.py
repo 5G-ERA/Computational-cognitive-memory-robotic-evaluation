@@ -338,6 +338,37 @@ class RunRecorder:
                         self.rec["summary"]["invalid_reason"] = why
                         print(f"  [spill-GT] RUN MARCADA INVALIDA ({why or 'sin motivo'})")
                         continue
+                    if msg == "hcol":
+                        # HUMANO reporta colision que el robot NO detecto (Renxi: "human can
+                        # tell the robot for feedback"). Alimenta la maquinaria de colision
+                        # existente via flag consumido por el bucle de control.
+                        self._h_col_t = time.time()
+                        self.event("human_collision", t, lx, ly, extra={"src": "human"})
+                        print(f"  [HUMANO] COLISION reportada por el operador t={t:.1f}s")
+                        continue
+                    if msg.startswith("hmove:"):
+                        # HUMANO movio el robot a mano (Renxi: "move the robot 10 cm... it
+                        # should remember I was asked to move 10 cm. Event recorded.")
+                        try:
+                            _cm = float(msg.split(":", 1)[1])
+                        except Exception:
+                            _cm = 0.0
+                        self.event("human_assist", t, lx, ly, extra={"cm": _cm, "src": "human"})
+                        try:
+                            _amf = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                "assist_memory.json")
+                            try:
+                                _am = json.load(open(_amf))
+                            except Exception:
+                                _am = []
+                            _am.append({"x": round(lx, 2), "y": round(ly, 2), "cm": _cm,
+                                        "when": time.strftime("%Y-%m-%d %H:%M:%S"),
+                                        "run": os.path.basename(self.fname)})
+                            json.dump(_am[-200:], open(_amf, "w"))
+                        except Exception:
+                            pass
+                        print(f"  [HUMANO] asistencia registrada: movido {_cm:g} cm en ({lx:+.2f},{ly:+.2f}) — MEMORIZADO")
+                        continue
                     if not msg.startswith("spill"):
                         # anti-falsos (trampa cazada por el verificador: antes CUALQUIER
                         # datagrama contaba como derrame)
@@ -1502,6 +1533,19 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     hg_log_t = 0.0; c0_hard = 9.9; hard_set = set()   # guardia de alta confianza
     door_seen = {}; door_sticky = set()               # FIX C: confirmaciones/celdas fijadas del marco
     cb_hits = 0; cb_on = False                        # FIX B: persistencia del aviso de camara
+    # --- FEEDBACK RENXI (rama tutor-feedback): canal humano + validez retrospectiva ---
+    h_col_seen = 0.0                                  # ultimo reporte humano de colision consumido
+    laser_trust = 1.0; c0_prev = 2.5; lt_prev_ncol = 0   # "use the past data to calculate the
+                                                      # validity of the laser reading"
+    assist_mem = []                                   # memoria episodica de asistencias humanas
+    try:
+        assist_mem = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                 "assist_memory.json")))
+    except Exception:
+        pass
+    assist_recall_t = 0.0
+    dc_contra = []                                    # timestamps de sugerencias CONTRADICTORIAS
+    dc_last = None                                    # ultima sugerencia de centro de puerta
     dg_on = False                                     # DOORGUARD: ya avisado en esta pasada de zona
     vis_lost_t = 0.0; vis_lost = False                # watchdog de vision en caliente
     door_side = None; door_geom_t = 0.0               # detector GEOMETRICO de cruce (independiente del FSM)
@@ -2037,6 +2081,13 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                         _med = sorted(_h)[len(_h) // 2]
                                         if eng.get("cused") is not None and abs(_med - eng["cused"]) > 0.08:
                                             _med = eng["cused"]              # hold: salto sospechoso
+                                        # META-PARAMETRO de recuperacion (Renxi): "number of
+                                        # contradictory center suggestions" — sugerencia nueva
+                                        # que contradice a la anterior (salto >0.10m) = contradiccion
+                                        if dc_last is not None and abs(_c - dc_last) > 0.10:
+                                            dc_contra.append(now)
+                                        dc_last = _c
+                                        del dc_contra[:len(dc_contra) - 20]
                                         eng["cused"] = _med
                                         door_c_meas = _med
                                         if eng.get("cseen") is None:
@@ -2367,6 +2418,34 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                 rd.event("meta2_abort_shadow", now - t0, x, y,
                                          {"why": why, "badf": round(badf, 2), "prog": round(prog, 2)})
                                 m2win.clear(); m2_help_t0 = None   # re-arma la ventana para el siguiente aviso
+            # --- FEEDBACK RENXI: canal humano + validez retrospectiva del laser ---
+            _hct = getattr(rd, "_h_col_t", 0.0)
+            if _hct and _hct > h_col_seen:
+                h_col_seen = _hct
+                ncol += 1                              # el reporte humano ES una colision: alimenta
+                lg.write(f"COLISION reportada por HUMANO t={now - t0:.0f}s pos=({x:+.2f},{y:+.2f})\n")
+            if ncol > lt_prev_ncol:
+                # colision (IMU o humana) con el laser diciendo "libre" el tick anterior ->
+                # el laser MINTIO: penalizar su validez (Renxi: "use the past data to
+                # calculate the validity of the laser reading"). Recupera despacio.
+                if c0_prev > 0.6:
+                    laser_trust = max(0.2, laser_trust - 0.25)
+                    rd.event("laser_lied", now - t0, x, y,
+                             extra={"c0_prev": round(c0_prev, 2), "trust": round(laser_trust, 2)})
+                    lg.write(f"LASER-VALIDEZ: colision con c0_prev={c0_prev:.2f} -> trust={laser_trust:.2f}\n")
+            lt_prev_ncol = ncol
+            laser_trust = min(1.0, laser_trust + 0.001)
+            c0_prev = c0
+            # recall de asistencias humanas pasadas cerca de aqui (memoria episodica)
+            if assist_mem and now - assist_recall_t > 30.0:
+                for _a in assist_mem:
+                    if math.hypot(x - _a.get("x", 99), y - _a.get("y", 99)) < 0.5:
+                        assist_recall_t = now
+                        rd.event("assist_recall", now - t0, x, y,
+                                 extra={"cm": _a.get("cm"), "cuando": _a.get("when")})
+                        lg.write(f"[HUMANO] RECUERDO: aqui me movieron {_a.get('cm')}cm ({_a.get('when')})\n")
+                        print(f"  [HUMANO] recuerdo episodico: en esta zona me asistieron ({_a.get('cm')} cm)")
+                        break
             rd.sample(now - t0, x, y, yaw, d_goal, math.hypot(x - prog_pos[0], y - prog_pos[1]) if prog_pos else 0.0,
                       c0, len(oset), cmd=cmd, phase=ph.strip(),
                       extra={"err": hh.get("err"), "bat": h.get("bat"), "cpuT": h.get("cpuT"),
@@ -2399,6 +2478,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "meta2_unc": (m2o or {}).get("unc"),              # incertidumbre DST por parametro (dispersion empirica -> intervalos)
                              "meta2_pf": (m2o or {}).get("pf"),                # posterior del PF de regimen (SOMBRA): tapa/llenado/sensado/bateria/atasco
                              "sent": [round(last_sent[1], 3), round(last_sent[2], 3)],   # lo ENVIADO el tick anterior (post-guardas/rampa; 'cmd' es pre-guardas)
+                             "laser_trust": round(laser_trust, 2),             # validez retrospectiva del laser (Renxi)
+                             "door_contra": sum(1 for t_ in dc_contra if now - t_ <= 10.0),   # contradicciones del centro de puerta en 10s
                              "meta2_active": (m2o or {}).get("active"),
                              "meta2_tens": (m2o or {}).get("tension"),
                              "meta2_ful": (m2o or {}).get("fulfillment"),

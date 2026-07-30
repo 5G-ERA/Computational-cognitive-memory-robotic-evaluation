@@ -40,7 +40,7 @@ def _heartbeat():
 threading.Thread(target=_heartbeat, daemon=True).start()
 n = 0
 print(f"Marcador de derrames v2 -> {host}:{port}  (latido cada 2s)")
-print("ENTER=derrame · 'w <gramos>'=peso · 'i [motivo]'=run invalida · Ctrl+C=salir")
+print("ENTER=derrame · 'w <g>'=peso · 'c'=colision vista por ti · 'm <cm>'=te he movido · 'i [motivo]'=invalida · Ctrl+C=salir")
 try:
     while True:
         line = input().strip()
@@ -55,6 +55,16 @@ try:
                 print(f"  peso registrado: {grams:g} g")
             except (IndexError, ValueError):
                 print("  uso: w <gramos>   (ej: w 200)")
+        elif line.lower() == "c":
+            s.sendto(b"hcol", (host, port))
+            print("  COLISION reportada al robot (el robot no la detecto; tu si)")
+        elif line.lower().startswith("m"):
+            try:
+                cm = float(line.split(None, 1)[1])
+                s.sendto(f"hmove:{cm:g}".encode(), (host, port))
+                print(f"  asistencia registrada: robot movido {cm:g} cm (el robot lo MEMORIZA)")
+            except (IndexError, ValueError):
+                print("  uso: m <cm>   (ej: m 10 = 'te he movido 10 cm')")
         elif line.lower().startswith("i"):
             why = line.split(None, 1)[1] if len(line.split(None, 1)) > 1 else ""
             s.sendto(f"invalid:{why}".encode()[:120], (host, port))
