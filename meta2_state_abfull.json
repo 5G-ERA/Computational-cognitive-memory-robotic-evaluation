@@ -4,35 +4,17 @@
    "m_match": 0.625,
    "m_mismatch": 0.0,
    "m_theta": 0.375,
-   "runs": 8,
+   "runs": 9,
    "spills": 0
   },
   "Cautious_Nav": {
-   "m_match": 0.9999461870692703,
-   "m_mismatch": 1.614387921891512e-05,
-   "m_theta": 3.766905151080194e-05,
-   "runs": 35,
+   "m_match": 0.9999772974579615,
+   "m_mismatch": 6.810762611554388e-06,
+   "m_theta": 1.5891779426960234e-05,
+   "runs": 38,
    "spills": 1
   },
   "_ful_hist": [
-   {
-    "ful": 0.257,
-    "applied": "Efficient_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.324,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.664,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
    {
     "ful": 0.351,
     "applied": "Cautious_Nav",
@@ -74,15 +56,33 @@
     "applied": "Cautious_Nav",
     "pl": 1.0,
     "spills": 0
+   },
+   {
+    "ful": 0.788,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.812,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.791,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
    }
   ]
  },
  "_door": {
   "Door_Direct": {
-   "m_match": 0.9224696531541108,
-   "m_mismatch": 0.07740409537412223,
-   "m_theta": 0.00012625147105339745,
-   "crossings": 23,
+   "m_match": 0.9719822633021539,
+   "m_mismatch": 0.027972112233674108,
+   "m_theta": 4.5624463420222995e-05,
+   "crossings": 26,
    "fails": 18
   },
   "Door_Far": {

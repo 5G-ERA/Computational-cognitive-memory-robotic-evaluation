@@ -4,23 +4,17 @@
    "m_match": 0.5,
    "m_mismatch": 0.0,
    "m_theta": 0.5,
-   "runs": 1,
+   "runs": 3,
    "spills": 0
   },
   "Cautious_Nav": {
-   "m_match": 0.8337844030944824,
-   "m_mismatch": 0.08476995442181363,
-   "m_theta": 0.0814456424837033,
-   "runs": 8,
+   "m_match": 0.9262641771382977,
+   "m_mismatch": 0.03760526965946769,
+   "m_theta": 0.03613055320223366,
+   "runs": 11,
    "spills": 2
   },
   "_ful_hist": [
-   {
-    "ful": 0.398,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
    {
     "ful": 0.76,
     "applied": "Cautious_Nav",
@@ -62,6 +56,24 @@
     "applied": "Cautious_Nav",
     "pl": 0.915,
     "spills": 1
+   },
+   {
+    "ful": 0.761,
+    "applied": "Cautious_Nav",
+    "pl": 0.935,
+    "spills": 0
+   },
+   {
+    "ful": 0.763,
+    "applied": "Cautious_Nav",
+    "pl": 0.95,
+    "spills": 0
+   },
+   {
+    "ful": 0.768,
+    "applied": "Cautious_Nav",
+    "pl": 0.962,
+    "spills": 0
    }
   ]
  }
