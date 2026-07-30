@@ -1552,6 +1552,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     envch_evt_t = 0.0                                 # throttle de eventos env_*
     crumbs = []                                       # RETREAT: migas (x,y) cada 0.15m, ~4.5m de cola
     retreat = None; retreat_cool = 0.0; rt_prev_ncol = 0
+    rt_col_ts = []; rt_count = 0                      # v2: colisiones recientes + retiradas por run
     stk_hist = []                                     # (t,x,y) para detectar atasco (4s de ventana)
     vis_lost_t = 0.0; vis_lost = False                # watchdog de vision en caliente
     door_side = None; door_geom_t = 0.0               # detector GEOMETRICO de cruce (independiente del FSM)
@@ -2567,14 +2568,27 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     stk_hist.pop(0)
                 if retreat is None and (not crumbs or math.hypot(x - crumbs[-1][0], y - crumbs[-1][1]) >= 0.15):
                     crumbs.append((x, y)); del crumbs[:-30]
+                if ncol > rt_prev_ncol:
+                    rt_col_ts.append(now)
+                    del rt_col_ts[:-6]
                 if retreat is None and now > retreat_cool and len(crumbs) >= 3:
-                    _colhit = ncol > rt_prev_ncol
+                    # v2 (reflexion 24-jul, peticion de Adrian: "solo si esta SEGURO de que esta
+                    # atascado" + autopsia del run 181017 que retrocedio HACIA la trampa a los
+                    # 5.9s): (a) UNA colision aislada ya no dispara — hacen falta >=2 en 20s, o
+                    # 1 colision CON el test de atasco; (b) edad minima 12s (al arrancar, las
+                    # migas apuntan al bolsillo de salida = el unico sitio a donde volver es la
+                    # trampa); (c) la cola de migas debe cubrir >=0.5m reales; (d) maximo 3
+                    # retiradas por run (despues, que decida la escalada P9).
+                    _ncol_20s = sum(1 for t_ in rt_col_ts if now - t_ <= 20.0)
                     _old = next((p for p in stk_hist if now - p[0] >= 3.8), None)
                     _stuck = (_old is not None and math.hypot(x - _old[1], y - _old[2]) < 0.08
                               and c0 < 0.42)
-                    if _colhit or _stuck:
+                    _colhit = (_ncol_20s >= 2) or (ncol > rt_prev_ncol and _stuck)
+                    _span = math.hypot(x - crumbs[0][0], y - crumbs[0][1])
+                    if (_colhit or _stuck) and (now - t0) > 12.0 and _span >= 0.5 and rt_count < 3:
                         retreat = {"trail": list(reversed(crumbs[:-1])), "d": 0.0,
                                    "lx": x, "ly": y, "t0": now}
+                        rt_count += 1
                         eng.update(state=None, cool=now + 10.0)     # el FSM calla durante la retirada
                         lg.write(f"RETREAT start ({'colision' if _colhit else 'atasco'}, c0={c0:.2f}) "
                                  f"pos=({x:+.2f},{y:+.2f}) t={now - t0:.0f}s\n")
@@ -2582,6 +2596,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                  {"por": "col" if _colhit else "atasco", "c0": round(c0, 2)})
                 rt_prev_ncol = ncol
                 if retreat is not None:
+                    # v2: la retirada PAUSA el reloj de HELP del P9 (autopsia 181017: el P9
+                    # mato el run a los 16s MIENTRAS el retreat deshacia el camino — dos redes
+                    # de seguridad compitiendo). La recuperacion que el sistema pidio tiene
+                    # derecho a terminar; si tras 3 retiradas sigue mal, el P9 decide (tope).
+                    m2_help_t0 = None
                     tr = retreat["trail"]
                     while tr and math.hypot(tr[0][0] - x, tr[0][1] - y) < 0.22:
                         tr.pop(0)
@@ -2592,6 +2611,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         rd.event("retreat_end", now - t0, x, y, {"d": round(retreat["d"], 2)})
                         retreat = None; retreat_cool = now + 6.0
                         crumbs = crumbs[:max(1, len(crumbs) - 6)]   # no re-migar la zona deshecha
+                        m2win.clear(); m2_help_t0 = None            # ventana P9 re-armada tras la retirada
                     else:
                         _tx, _ty = tr[0]
                         _b = math.degrees(math.atan2(_ty - y, _tx - x))
