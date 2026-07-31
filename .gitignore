@@ -7,4 +7,6 @@ __pycache__/
 g1_nav.log
 missfont.log
 ziVNypQO
+# rotaciones de goto.log (comprimidas, fuera de git: quedan solo en la máquina que rotó)
+archive/goto_hasta_*.log.gz
 # (las imágenes de crashes/ se incluyen como dataset; coméntalo si no quieres subirlas)

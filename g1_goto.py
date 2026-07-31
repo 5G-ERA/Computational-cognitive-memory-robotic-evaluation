@@ -60,6 +60,31 @@ M2_HELP_S = float(os.environ.get("G1_M2_HELP_S", "8"))          # s de HELP firm
 WP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "waypoints.json")
 MAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nav_map.json")
 GOTO_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "goto.log")
+GOTO_LOG_MAX_MB = float(os.environ.get("G1_GOTO_LOG_MAX_MB", "25"))  # umbral de rotacion; GitHub avisa a partir de 50 MB por fichero
+
+def _open_goto_log():
+    """Abre goto.log en append, rotando ANTES si supera G1_GOTO_LOG_MAX_MB (MB).
+    La rotacion comprime el log a archive/goto_hasta_<ts>.log.gz (gitignored, queda
+    solo en esta maquina) y arranca un goto.log nuevo con una linea de cabecera.
+    OJO: goto.log es append-only compartido Mac/GPUEDGE (merge=union en
+    .gitattributes). Tras una rotacion, commitea el goto.log pequeno y haz pull
+    en la OTRA maquina antes de que vuelva a escribir, o el union-merge lo
+    re-mezclara con su copia grande. Protocolo: docs/GOTO_LOG_ROTATION.md"""
+    try:
+        if os.path.exists(GOTO_LOG) and os.path.getsize(GOTO_LOG) >= GOTO_LOG_MAX_MB * 1024 * 1024:
+            import gzip, shutil
+            adir = os.path.join(os.path.dirname(GOTO_LOG), "archive")
+            os.makedirs(adir, exist_ok=True)
+            dst = os.path.join(adir, f"goto_hasta_{time.strftime('%Y%m%d_%H%M%S')}.log.gz")
+            with open(GOTO_LOG, "rb") as fin, gzip.open(dst, "wb") as fout:
+                shutil.copyfileobj(fin, fout)
+            with open(GOTO_LOG, "w") as f:
+                f.write(f"=== ROTADO {time.strftime('%Y-%m-%d %H:%M:%S')} -> archive/{os.path.basename(dst)} ===\n")
+            print(f"  [goto.log] >{GOTO_LOG_MAX_MB:.0f} MB: rotado a archive/{os.path.basename(dst)}")
+            print("  [goto.log] AVISO: commitea la rotacion y haz pull en la otra maquina (Mac/GPUEDGE) antes de su proximo run")
+    except Exception as e:
+        print(f"  [goto.log] rotacion fallida (sigo con el log actual): {e!r}")
+    return open(GOTO_LOG, "a")
 
 # --- nube 'location' (frame del MAPA, Z-up): idx0=x, idx1=y, idx2=altura. CONFIRMADO con reloc_cloud.json ---
 HBAND_LO = float(os.environ.get("G1_HBAND_LO", "-0.5"))   # borde INFERIOR banda de altura (m) para OBSTACULOS.
@@ -2813,7 +2838,7 @@ def cmd_goto(label=None):
         print("Sin waypoints. Captura primero: python g1_goto.py waypoint A"); return
     cdp = g.get_cdp()
     _install(cdp)
-    lg = open(GOTO_LOG, "a")
+    lg = _open_goto_log()
     lg.write(f"\n=== GOTO {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
 
     def go(lbl):
@@ -3156,7 +3181,7 @@ def cmd_turntest():
         print("\n  VEREDICTO:", ">>> SIGNO DE GIRO INVERTIDO: hay que invertir rx en el control <<<"
               if inverted else ("OK: el modelo del DWA coincide con el giro real (el spin viene de otra cosa)"
                                  if r1[2] and r2[2] else "MIXTO/RUIDOSO: repite con mas espacio y robot quieto al inicio"))
-        with open(GOTO_LOG, "a") as lg:
+        with _open_goto_log() as lg:
             lg.write(f"\n=== TURNTEST {time.strftime('%H:%M:%S')} ===\n")
             lg.write(f"  rx=+0.35 -> {r1[0]:+.0f}deg/s (exp {r1[1]:+.0f}) ok={r1[2]}\n")
             lg.write(f"  rx=-0.35 -> {r2[0]:+.0f}deg/s (exp {r2[1]:+.0f}) ok={r2[2]}\n")
@@ -3334,7 +3359,7 @@ def cmd_goto_viz(label):
         try:
             cdp = get_live_cdp()
             _install(cdp)
-            lg = open(GOTO_LOG, "a")
+            lg = _open_goto_log()
             lg.write(f"\n=== GOTOVIZ {label} {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
             navigate_to(cdp, lg, w["x"], w["y"], label, vshare=vshare, lock=lk, stop_event=stop_event)
             lg.write("FIN\n"); lg.close()
