@@ -32,6 +32,7 @@ USO (desde el Mac, carpeta G1 ROBOT):
 import json
 import math
 import os
+import random
 import re
 import sys
 import threading
@@ -145,11 +146,31 @@ class RosBridge:
             pass
 
 
+# --- RUIDO DE SENSORES (G1_SIM_NOISE=1; calibrado contra runs reales del 24-jul) ---
+# Objetivo medido: laser_noise real p50=0.147 (gemelo limpio 0.058), c0_std real p50=0.072
+# (gemelo 0.030), loc_conf real p50=0.90 (gemelo 1.0 constante). El ruido va SOLO aqui
+# (el codigo del robot no se toca): rayo laser gaussiano + dropout, y deriva de odometria
+# random-walk por metro; la loc_conf baja de forma EMERGENTE via el relocalizador real.
+SIM_NOISE = os.environ.get("G1_SIM_NOISE", "") == "1"
+NZ_SIG_R = float(os.environ.get("G1_SIM_NOISE_R", "0.09"))        # sigma por rayo (m)
+NZ_P_DROP = float(os.environ.get("G1_SIM_NOISE_DROP", "0.01"))    # prob. dropout por rayo
+NZ_DRIFT = float(os.environ.get("G1_SIM_NOISE_DRIFT", "0.07"))    # deriva pos (m por m) [calibrado 31-jul]
+NZ_DYAW = math.radians(float(os.environ.get("G1_SIM_NOISE_DYAW", "1.5")))  # deriva yaw (rad por m) [calibrado]
+NZ_BIAS_S = float(os.environ.get("G1_SIM_NOISE_BIAS", "0.03"))    # sesgo comun AR(1) por barrido (m)
+NZ_BURST_P = float(os.environ.get("G1_SIM_NOISE_BURST_P", "0.05"))   # prob. de rafaga por barrido
+NZ_BURST_LEN = int(os.environ.get("G1_SIM_NOISE_BURST_LEN", "3"))    # barridos que dura la rafaga
+NZ_BURST_GAIN = float(os.environ.get("G1_SIM_NOISE_BURST_GAIN", "4.0"))  # sigma x gain en rafaga
+
+
 class SimCDP:
     """Suplanta al CDP del WebView: resuelve los snippets JS de g1_goto/g1_nav_v2 contra ROS."""
 
     def __init__(self, bridge):
         self.b = bridge
+        self._nz_last = None      # ultima pos REAL vista (para la deriva por metro)
+        self._nz_dx = 0.0; self._nz_dy = 0.0; self._nz_dyaw = 0.0
+        self._nz_bias = 0.0       # sesgo comun del barrido (AR1: reflejos/inclinacion)
+        self._nz_burst = 0        # barridos restantes de la rafaga actual
         self._cloud = []          # nube plana [x,y,z,...] en frame mapa (z=0: banda de torso)
         self._cloud_t = 0.0
 
@@ -159,7 +180,20 @@ class SimCDP:
         if not od:
             return None
         p = od["pose"]["pose"]["position"]; q = od["pose"]["pose"]["orientation"]
-        return [p["x"], p["y"], p["z"], q["x"], q["y"], q["z"], q["w"]]
+        if not SIM_NOISE:
+            return [p["x"], p["y"], p["z"], q["x"], q["y"], q["z"], q["w"]]
+        # deriva random-walk proporcional a la distancia recorrida (odometria imperfecta)
+        if self._nz_last is not None:
+            dtrav = math.hypot(p["x"] - self._nz_last[0], p["y"] - self._nz_last[1])
+            if dtrav > 1e-4:
+                self._nz_dx += random.gauss(0.0, NZ_DRIFT * dtrav)
+                self._nz_dy += random.gauss(0.0, NZ_DRIFT * dtrav)
+                self._nz_dyaw += random.gauss(0.0, NZ_DYAW * dtrav)
+        self._nz_last = (p["x"], p["y"])
+        yaw = math.atan2(2 * (q["w"] * q["z"] + q["x"] * q["y"]),
+                         1 - 2 * (q["y"] * q["y"] + q["z"] * q["z"])) + self._nz_dyaw
+        return [p["x"] + self._nz_dx, p["y"] + self._nz_dy, p["z"],
+                0.0, 0.0, math.sin(yaw / 2.0), math.cos(yaw / 2.0)]
 
     def _refresh_cloud(self):
         sc = self.b.scan; po = self._pose7()
@@ -168,10 +202,25 @@ class SimCDP:
         yaw = math.atan2(2 * (po[6] * po[5] + po[3] * po[4]),
                          1 - 2 * (po[4] * po[4] + po[5] * po[5]))
         a = sc["angle_min"]; inc = sc["angle_increment"]; rmax = sc.get("range_max", 12.0)
+        if SIM_NOISE:
+            # sesgo comun del barrido (AR1) + rafagas correlacionadas (girando/reflejos:
+            # el laser_noise real vive de ESTO, no del ruido blanco por rayo)
+            self._nz_bias = 0.9 * self._nz_bias + random.gauss(0.0, NZ_BIAS_S)
+            if self._nz_burst > 0:
+                self._nz_burst -= 1
+            elif random.random() < NZ_BURST_P:
+                self._nz_burst = NZ_BURST_LEN
+            _burst = self._nz_burst > 0
+            _sig = NZ_SIG_R * (NZ_BURST_GAIN if _burst else 1.0)
+            _drop = NZ_P_DROP * (8.0 if _burst else 1.0)
         flat = []
         for i, r in enumerate(sc["ranges"]):
             if r is None or not isinstance(r, (int, float)):
                 continue
+            if SIM_NOISE:
+                if random.random() < _drop:
+                    continue                       # dropout de rayo
+                r = r + self._nz_bias + random.gauss(0.0, _sig)
             if not math.isfinite(r) or r <= sc.get("range_min", 0.15) or r >= rmax * 0.98:
                 continue
             th = yaw + a + i * inc
@@ -385,6 +434,9 @@ def main():
                            "frame": "map", "hband": [-0.5, 0.6]}, open(nm_lab, "w"))
         g1_goto.MAP_FILE = nm_lab
         print("  escenario LAB: mapa/waypoints/puerta REALES (lab.world solo-paredes, frame G1)")
+        if SIM_NOISE:
+            print("  RUIDO DE SENSORES ON: laser sigma=%.3fm drop=%.1f%% | odom deriva=%.3fm/m yaw=%.2fdeg/m"
+                  % (NZ_SIG_R, 100 * NZ_P_DROP, NZ_DRIFT, math.degrees(NZ_DYAW)))
     else:
         g1_goto.WP_FILE = wp_file                              # escenario sintetico (no toca lo del lab)
         g1_goto.MAP_FILE = os.path.join(SIM_DIR, "nav_map_sim.json")
