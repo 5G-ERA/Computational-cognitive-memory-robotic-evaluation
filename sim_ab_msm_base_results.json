@@ -1,0 +1,142 @@
+[
+ {
+  "arm": "off",
+  "file": "20260731_093537_ours_A.json",
+  "dur_s": 83.1,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "on",
+  "file": "20260731_093708_ours_A.json",
+  "dur_s": 85.2,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "on",
+  "file": "20260731_093840_ours_A.json",
+  "dur_s": 101.3,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "off",
+  "file": "20260731_094029_ours_A.json",
+  "dur_s": 83.4,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "off",
+  "file": "20260731_094200_ours_A.json",
+  "dur_s": 83.6,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "on",
+  "file": "20260731_094330_ours_A.json",
+  "dur_s": 84.8,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "on",
+  "file": "20260731_094502_ours_A.json",
+  "dur_s": 106.5,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "off",
+  "file": "20260731_094656_ours_A.json",
+  "dur_s": 93.0,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "off",
+  "file": "20260731_094836_ours_A.json",
+  "dur_s": 104.7,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "on",
+  "file": "20260731_095028_ours_A.json",
+  "dur_s": 111.6,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "on",
+  "file": "20260731_095227_ours_A.json",
+  "dur_s": 83.6,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "off",
+  "file": "20260731_095358_ours_A.json",
+  "dur_s": 117.2,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "hum",
+  "file": "20260731_095603_ours_A.json",
+  "dur_s": 83.2,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ },
+ {
+  "arm": "hum",
+  "file": "20260731_095733_ours_A.json",
+  "dur_s": 83.5,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0
+ }
+]
