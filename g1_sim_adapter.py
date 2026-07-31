@@ -160,6 +160,92 @@ NZ_BIAS_S = float(os.environ.get("G1_SIM_NOISE_BIAS", "0.03"))    # sesgo comun 
 NZ_BURST_P = float(os.environ.get("G1_SIM_NOISE_BURST_P", "0.05"))   # prob. de rafaga por barrido
 NZ_BURST_LEN = int(os.environ.get("G1_SIM_NOISE_BURST_LEN", "3"))    # barridos que dura la rafaga
 NZ_BURST_GAIN = float(os.environ.get("G1_SIM_NOISE_BURST_GAIN", "4.0"))  # sigma x gain en rafaga
+# --- CAMARA SINTETICA (G1_SIM_PERC=1): habilita DOOR-VIS en el gemelo ---
+# g1_goto exige un frame real (CAM_JS) y un servidor /perceive vivos. Aqui: SimCDP sirve un
+# JPEG dummy 320x180 y un hilo HTTP responde /health + /perceive con la deteccion 'door'
+# calculada desde la pose VERDADERA del sim (una camara real mide el bearing FISICO), con
+# realismo medido en runs reales: latencia ~0.28s, dropout 4%, bearing +-1.5deg, rango 5%.
+# El codigo del robot NO se toca: para g1_goto es un perception_server normal.
+SIM_PERC = os.environ.get("G1_SIM_PERC", "") == "1"
+SIM_PERC_PORT = int(os.environ.get("G1_SIM_PERC_PORT", "8010"))
+SP_DOOR = (float(os.environ.get("G1_DOOR_X", "-3.90")),
+           float(os.environ.get("G1_DOOR_Y", "1.25")))     # mismo centro que usa g1_goto
+SP_LAT = float(os.environ.get("G1_SIM_PERC_LAT", "0.28"))  # latencia media (s)
+SP_DROP = float(os.environ.get("G1_SIM_PERC_DROP", "0.04"))  # dropout de respuesta
+SP_BNOISE = float(os.environ.get("G1_SIM_PERC_BDEG", "1.5"))  # ruido de bearing (deg)
+
+
+def _dummy_frame():
+    """JPEG 320x180 gris-moqueta como data URI (frame neutro: todo 'suelo' para el canal de color)."""
+    try:
+        from PIL import Image
+        import io, base64
+        buf = io.BytesIO()
+        Image.new("RGB", (320, 180), (126, 116, 104)).save(buf, format="JPEG", quality=50)
+        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    except Exception:
+        return ""
+
+
+def start_sim_perc(bridge):
+    """Servidor de percepcion FALSO (hilo demonio). Bearing de puerta desde la pose verdadera."""
+    import http.server, socketserver
+
+    def true_pose():
+        od = bridge.odom
+        if not od:
+            return None
+        p = od["pose"]["pose"]["position"]; q = od["pose"]["pose"]["orientation"]
+        yaw = math.atan2(2 * (q["w"] * q["z"] + q["x"] * q["y"]),
+                         1 - 2 * (q["y"] * q["y"] + q["z"] * q["z"]))
+        return p["x"], p["y"], yaw
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _send(self, obj):
+            body = json.dumps(obj).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            self._send({"ok": True, "mode": "sim", "self_mask": 0.0})
+
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length", 0) or 0)
+            if n:
+                self.rfile.read(n)
+            time.sleep(max(0.10, random.gauss(SP_LAT, 0.05)))
+            dets = []; door = None
+            tp = true_pose()
+            if tp and random.random() > SP_DROP:
+                dx = SP_DOOR[0] - tp[0]; dy = SP_DOOR[1] - tp[1]
+                rng = math.hypot(dx, dy)
+                b = (math.degrees(math.atan2(dy, dx) - tp[2]) + 180) % 360 - 180
+                if 0.6 < rng < 2.8 and abs(b) < 28:    # vision realista: el vano solo se ve CERCA y DE FRENTE
+                    b = b + random.gauss(0.0, SP_BNOISE)
+                    rng = max(0.3, rng * (1.0 + random.gauss(0.0, 0.05)))
+                    dets = [{"label": "door", "bearing_deg": round(b, 1), "range_m": round(rng, 2)}]
+                    door = {"bearing_deg": round(b, 1), "range_m": round(rng, 2)}
+            out = {"detections": dets, "scan": []}
+            if door:
+                out["door"] = door
+            self._send(out)
+
+    class S(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    srv = S(("127.0.0.1", SIM_PERC_PORT), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+_DUMMY_URI = _dummy_frame() if SIM_PERC else ""
 
 
 class SimCDP:
@@ -244,6 +330,8 @@ class SimCDP:
             self.b.publish_cmd(K_FWD * ly, -K_LAT * lx, -K_YAW * rx)
             self.b.last_cmd_t = time.time()
             return "ok"
+        if "__camc" in e:                                 # CAM_JS: frame de camara
+            return _DUMMY_URI if SIM_PERC else ""
         if "__relocbuf||[]).length" in e:
             self._refresh_cloud()
             return len(self._cloud)
@@ -437,6 +525,12 @@ def main():
         if SIM_NOISE:
             print("  RUIDO DE SENSORES ON: laser sigma=%.3fm drop=%.1f%% | odom deriva=%.3fm/m yaw=%.2fdeg/m"
                   % (NZ_SIG_R, 100 * NZ_P_DROP, NZ_DRIFT, math.degrees(NZ_DYAW)))
+        if SIM_PERC:
+            start_sim_perc(bridge)
+            print("  CAMARA SINTETICA ON: /perceive en 127.0.0.1:%d (puerta %.2f,%.2f; lat %.2fs drop %.0f%%)"
+                  % (SIM_PERC_PORT, SP_DOOR[0], SP_DOOR[1], SP_LAT, 100 * SP_DROP))
+            if not _DUMMY_URI:
+                print("  !! PIL no disponible: frame dummy vacio -> la vision NO pasara el test de arranque")
     else:
         g1_goto.WP_FILE = wp_file                              # escenario sintetico (no toca lo del lab)
         g1_goto.MAP_FILE = os.path.join(SIM_DIR, "nav_map_sim.json")
