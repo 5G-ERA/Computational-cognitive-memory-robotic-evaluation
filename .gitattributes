@@ -1,0 +1,4 @@
+# goto.log es append-only compartido entre Mac y GPUEDGE: los merges se resuelven
+# por UNION (se conservan las lineas de ambos lados). Hasta ahora se hacia a mano;
+# este atributo lo automatiza en ambas maquinas. Rotacion: docs/GOTO_LOG_ROTATION.md
+goto.log merge=union
