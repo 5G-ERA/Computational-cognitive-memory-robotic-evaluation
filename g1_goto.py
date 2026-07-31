@@ -185,6 +185,14 @@ RETREAT_V = float(os.environ.get("G1_RETREAT_V", "0.22"))
 # presupuestos re-armados y vuelta a NORMAL). Transiciones = evento meta_state{de,a};
 # estado por muestra. G1_METASM=0 lo apaga (queda todo en NORMAL).
 METASM = os.environ.get("G1_METASM", "1") == "1"
+# RETREAT-EN-SALIDA (ataque al bolsillo de B, 31-jul): los encajes del bolsillo nacen EN el
+# arranque (run 113617: 1a colision a t=1.1s, dmax 0.44m) y la guardia de span >=0.5m del
+# RETREAT (correcta contra el desastre v1) le impedia armarse justo ahi -> molienda sin
+# recuperacion. Diseno: si el encaje es a <1.5m del punto de ARRANQUE, el span minimo baja
+# a 0.15m (retroceder hacia la pose de arranque es seguro: era valida hace un segundo).
+# El techo de salida 0.22 se PROBO Y SE DESCARTO (empeoro el encaje: sin momento, el giro
+# del engagement arrastra el hombro contra la pared). G1_EXIT_RETREAT=0 lo desactiva.
+EXIT_RT = os.environ.get("G1_EXIT_RETREAT", "1") == "1"
 # Cadencia de laser_snapshots (s). Para sesiones de CALIBRACION DE COVARIANZA: G1_LASER_SNAP=0.5
 # (el fabricante no expone covarianza del lidar; la estimamos offline de estos snapshots, que
 # desde 2026-07-21 llevan pose+fase de movimiento para separar parado/andando/girando).
@@ -1592,6 +1600,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     rt_prev_ncol = 0; rt_col_ts = []; rt_count = 0
     stk_hist = []
     meta_state = "NORMAL"; ms_ev_t = 0.0; iface_q = 1.0   # maquina de estados META
+    exit_p0 = None                                    # punto de arranque del run (EXIT-CAUTION)
     h_assist_seen = 0.0                               # ultima asistencia humana consumida
     cdp_lat = 0.05                                    # latencia del ultimo envio CDP (iface_q)
     dg_on = False                                     # DOORGUARD: ya avisado en esta pasada de zona
@@ -2611,7 +2620,10 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                               and c0 < 0.42)
                     _colhit = (_ncol_20s >= 2) or (ncol > rt_prev_ncol and _stuck)
                     _span = math.hypot(x - crumbs[0][0], y - crumbs[0][1])
-                    if (_colhit or _stuck) and (now - t0) > 12.0 and _span >= 0.5 and rt_count < 3:
+                    _near_start = (EXIT_RT and exit_p0 is not None
+                                   and math.hypot(x - exit_p0[0], y - exit_p0[1]) < 1.5)
+                    _span_min = 0.15 if _near_start else 0.5
+                    if (_colhit or _stuck) and (now - t0) > 12.0 and _span >= _span_min and rt_count < 3:
                         retreat = {"trail": list(reversed(crumbs[:-1])), "d": 0.0,
                                    "lx": x, "ly": y, "t0": now}
                         rt_count += 1
@@ -2691,6 +2703,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     cmd = (0.0, 0.0, 0.0, 0); ph = "ASSIST"
                     if now - ms_ev_t > 8.0 and int(now) % 10 == 0:
                         print("  [META-SM] ASISTENCIA: parado esperando al humano ('m <cm>' en el marcador)")
+            if exit_p0 is None:
+                exit_p0 = (x, y)                     # punto de arranque (lo usa RETREAT-en-salida)
             # --- HARD-GUARD (G1_HARDGUARD=1): las paredes/persistentes NO se rozan ni en agresivo.
             # Frena el avance segun la holgura contra lo DURO; lo blando/ruidoso sigue negociable.
             if HARD_GUARD and cmd[1] > 0.05:
