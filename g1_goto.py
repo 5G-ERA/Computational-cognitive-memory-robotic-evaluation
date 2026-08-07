@@ -25,6 +25,7 @@ except Exception:
     g1_perception = None
 import g1_metrics                            # metricas SEI: clearance (percepcion) + progression (rendimiento)
 try:
+    import g1_meta2_bridge                   # (para _resolve_path: config/ y state/ tras la reorg)
     from g1_meta2_bridge import Meta2Bridge  # DCE runtime (Meta-Reasoner 2.0 de Renxi), opcional
 except Exception:
     Meta2Bridge = None
@@ -1516,6 +1517,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
         else:
             try:
                 m2cfg = os.environ.get("G1_M2_CFG") or None      # config alternativa (p.ej. payload agua)
+                if m2cfg:                                        # config/ tras la reorg (ver bridge)
+                    m2cfg = g1_meta2_bridge._resolve_path(m2cfg, "config")
                 meta2 = Meta2Bridge(m2cfg)
                 print(f"  META2 {'ACTIVO (techo por analogia)' if META2_MODE == '2' else 'SHADOW (solo log)'}: "
                       f"Meta-Reasoner 2.0, analogia inicial {meta2.applied}")

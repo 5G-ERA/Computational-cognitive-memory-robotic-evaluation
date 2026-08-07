@@ -4,7 +4,12 @@
 > carrying an open cup of water through a narrow door, while reasoning about **how much to trust
 > its own senses**.
 
-![System architecture](docs/img/architecture.png)
+![Real recorded trajectories: five clean crossings, and one run where the laser lied](docs/img/mission.png)
+
+<sub>Real recorded data, no retouching. **Left:** the golden window — five consecutive clean
+crossings. **Right:** the same robot, the same door, 512 s and 70 m walked, seven collisions
+against a frame its laser could not see. The gap between those two panels is what this research
+is about.</sub>
 
 PhD research (University of Bedfordshire) on **meta-reasoning by analogy** for autonomous robots.
 The robot is a stock Unitree G1 “Air”: the only way in is the vendor app, so the whole stack is
@@ -33,6 +38,8 @@ Closed-loop A/B in the digital twin, interleaved arms. Full problem → solution
 ---
 
 ## How it works, in one minute
+
+![System architecture](docs/img/architecture.png)
 
 **Control path.** The robot exposes nothing but its own iOS app. A Python stack on the laptop
 attaches to the app's WebView over USB (Chrome DevTools Protocol), reads the live LiDAR cloud and
@@ -67,8 +74,9 @@ Sensor noise is calibrated against real distributions, so the twin fails the way
 | `analyze_msm.py`, `replay_msm.py` | Per-run analysis, and shadow replay of the meta level over past runs |
 | `sim_ab_msm*_campaign.py`, `sim_campaign.py` | Automated experiment campaigns in the twin |
 | `dataset/` | Every run ever recorded: samples, events, collision snapshots |
+| `config/`, `state/`, `results/` | Reasoner configurations, per-experiment trust state, campaign results |
 | `docs/` | Protocols, plans and reports — start with the runbook below |
-| `tools/`, `attic/` | Utilities (plots, viz, calibration) and historical probes kept for provenance |
+| `logs/`, `tools/`, `attic/` | Historical campaign logs, utilities (plots, figures, calibration) and old probes kept for provenance |
 
 ---
 
@@ -84,6 +92,9 @@ Sensor noise is calibrated against real distributions, so the twin fails the way
    method. Not optional: one undisciplined session once destroyed a week of results.
 4. [`docs/G1_Branch_Strategy_and_New_Stack_Case.pdf`](docs/G1_Branch_Strategy_and_New_Stack_Case.pdf) —
    which code to run for which experiment, and what the newest work buys you.
+
+> Configurations and trust state live in `config/` and `state/`, but every documented command
+> still passes a bare filename — the loader resolves it. Nothing in the protocols had to change.
 
 **Fastest useful thing you can do** — replay the meta level over a recorded session, with no robot
 and no simulator:
