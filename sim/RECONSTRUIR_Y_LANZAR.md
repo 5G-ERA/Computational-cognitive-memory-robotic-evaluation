@@ -71,39 +71,45 @@ siempre headless: el render por CPU roba física y falsea los tiempos.
 
 ## 2. Reconstruir el gemelo desde cero
 
-Necesario si se pierde el contenedor, o para montarlo en otra máquina.
+**Arquitectura real (importante):** la imagen contiene *sólo el entorno* (ROS, Gazebo,
+escritorio noVNC). El **workspace no está dentro de la imagen**: es un *bind mount* desde una
+carpeta del Mac. Hoy esa carpeta es `~/Downloads/g1_sim_docker/g1_ws` (219 MB) — es decir, el
+gemelo vivo depende de **una carpeta en Descargas**. Muévela a un sitio estable y apunta ahí
+la variable `G1_WS`.
 
+### 2.1 Levantar el entorno
 ```bash
-cd "<raíz del repo G1>"
-docker buildx build --platform linux/amd64 -f sim/Dockerfile -t g1sim:humble .
+cd "<raíz del repo G1>/sim"
+G1_WS=~/g1_ws docker compose up -d --build
 ```
+La receta (`sim/Dockerfile`, la **original** del 23-jun rescatada y versionada el 07-ago) parte
+de la imagen base con escritorio noVNC, rehace las fuentes apt de ROS y Gazebo, instala el
+stack de simulación y navegación —**incluido `rosbridge-suite`, que faltaba**— y deja el
+entorno de shell listo. `docker-compose.yml` fija lo que no se puede improvisar: `platform:
+linux/amd64` (Gazebo Classic no tiene build arm64 en Humble), `seccomp:unconfined` (lo exige
+la base Jammy), los puertos 6080/5900/8765 y `shm_size: 1gb`.
 
-Arrancarlo con los puertos y permisos correctos (la base Jammy exige `seccomp=unconfined`):
+### 2.2 Poblar el workspace (si partes de cero)
 ```bash
-docker run -d --name g1sim --security-opt seccomp=unconfined -p 6080:80 -p 5900:5900 -p 8765:8765 --shm-size=1g g1sim:humble
+mkdir -p ~/g1_ws/src && cd ~/g1_ws/src
+cp -r "<raíz del repo G1>/sim/g1_sim_pkg" ./g1_sim          # mundos + lanzadores + urdf
+cp "<raíz del repo G1>/sim/setup_g1.sh" "<raíz del repo G1>/sim/regen_g1_nav.sh" .
+git clone --depth 1 https://github.com/unitreerobotics/unitree_ros.git   # descripción oficial
+bash setup_g1.sh && bash regen_g1_nav.sh                     # genera g1_description + g1_nav.urdf
+docker exec -u ubuntu g1sim bash -lc "cd /home/ubuntu/g1_ws && colcon build --symlink-install"
 ```
+`g1_description` (110 MB, paquete oficial de Unitree Robotics) **no se versiona**: se regenera
+con los scripts. Si algún día quieres una copia hermética, la vía es Git LFS — hoy no está.
 
-Qué hace el Dockerfile, en orden: parte de la imagen base con escritorio y noVNC, rehace las
-fuentes apt de ROS y Gazebo, instala los paquetes (**incluido `rosbridge-suite`, que en el
-contenedor original se había instalado a mano y no estaba en la imagen**), replica el entorno
-de shell, clona el repositorio público de Unitree para generar `g1_description` con
-`setup_g1.sh` + `regen_g1_nav.sh`, copia el paquete `g1_sim` y compila el workspace.
-
-**Por qué `g1_description` no está en el repo**: son 110 MB de terceros (paquete oficial de
-Unitree Robotics). Se regenera con el script incluido. Si algún día quieres una copia
-hermética e independiente de que el repo de Unitree siga existiendo, la opción es meterlo con
-Git LFS — decisión pendiente, hoy no está hecho.
-
-### Verificación tras reconstruir (no te fíes: mídelo)
-1. `ros2 pkg list | grep -E "g1_sim|g1_description|rosbridge"` → los tres presentes.
+### 2.3 Verificación tras reconstruir (no te fíes: mídelo)
+1. `docker exec g1sim bash -lc "ros2 pkg list | grep -E 'g1_sim|g1_description|rosbridge'"` →
+   los tres presentes.
 2. Lanzar headless (§1.2) → debe aparecer `Successfully spawned entity [g1]`.
 3. Levantar el puente (§1.3) y teleportar a A (§1.4).
 4. Una travesía A→B con la máquina meta: **debe llegar en 95–115 s con 0 colisiones**.
    Si sale muy fuera de esa banda, la física no es equivalente a la del contenedor original
-   (arquitectura, versión de Gazebo o modelo de colisión) y **los tiempos no son comparables**
-   con las campañas anteriores: hay que rehacer el baseline del gemelo antes de usarlo.
-
----
+   y **los tiempos no son comparables** con las campañas anteriores: hay que rehacer el
+   baseline del gemelo antes de usarlo para nada.
 
 ## 3. Salvaguardar la imagen actual
 
@@ -142,5 +148,10 @@ así que si el repositorio es público, esto también lo será.
 - **Modelo de colisión**: el robot usa el envolvente real (0,44 m de hombros × 1,10 m). Con la
   caja antigua y permisiva el robot "cruzaba" la puerta con los hombros dentro de la pared —
   falso éxito documentado el 03-jul-2026. No volver a la caja simple para "mejorar" resultados.
-- **El Dockerfile aún no se ha construido**: está derivado del historial real de la imagen y
-  de la auditoría del contenedor, pero la primera build hay que validarla con §2.
+- **La receta es la original**, no una reconstrucción: `sim/Dockerfile` y
+  `sim/docker-compose.yml` son los ficheros con los que se creó el contenedor el 23-jun-2026,
+  rescatados de `~/Downloads/g1_sim_docker/` y versionados el 07-ago. El único cambio es la
+  línea de `rosbridge-suite` que faltaba. Aun así, **la primera build hay que validarla** con
+  la comprobación de §2.3: nadie la ha ejecutado todavía.
+- **El workspace vivo está en `~/Downloads`**: 219 MB fuera de git y en una carpeta que se
+  limpia sola. Moverlo es la tarea pendiente más barata y con más valor de todo este apartado.
