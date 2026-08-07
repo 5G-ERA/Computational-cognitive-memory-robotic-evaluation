@@ -1,5 +1,14 @@
 # sim/ — G1 simulation container (campaña de simulación del tutor)
 
+> **07-ago-2026 — el gemelo ya es REPRODUCIBLE.** Antes, el contenedor sólo existía en el
+> Docker del Mac: si se perdía, se perdía el entorno. Ahora hay receta completa:
+> **`sim/Dockerfile`** (derivado del historial real de la imagen) + los scripts
+> **`setup_g1.sh`** y **`regen_g1_nav.sh`** (que generan la descripción del robot desde el
+> repositorio público de Unitree) + **`RECONSTRUIR_Y_LANZAR.md`** (lanzar, reconstruir,
+> verificar y salvaguardar). Hallazgo de la auditoría: `rosbridge-suite` se había instalado
+> a mano dentro del contenedor y **no estaba en la imagen** — sin él no hay puente 8765;
+> ya está fijado en el Dockerfile.
+
 Contenedor Docker `g1sim:humble` (id `48e7c50b26d6`), base tipo Tiryoh **docker-ros2-desktop-vnc**:
 ROS2 Humble Desktop + escritorio MATE servido por noVNC, con **Gazebo, Nav2, slam_toolbox,
 foxglove_bridge y pointcloud_to_laserscan** preinstalados.
