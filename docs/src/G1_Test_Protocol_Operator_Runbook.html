@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>G1 Test Protocol — Operator Runbook</title>
+<style>
+  @page { size: A4; margin: 17mm 15mm; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 10pt;
+         color: #1a1a1a; line-height: 1.4; }
+  h1 { font-size: 16.5pt; margin: 0 0 2px; }
+  .sub { color: #555; font-size: 9.5pt; margin-bottom: 12px; }
+  h2 { font-size: 12.5pt; margin: 16px 0 6px; border-bottom: 2px solid #1f6f43; padding-bottom: 2px; color: #1f6f43; }
+  h3 { font-size: 10.8pt; margin: 11px 0 4px; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8.3pt; }
+  pre { background: #f4f6f8; border: 1px solid #d7dde3; border-radius: 4px; padding: 6px 9px;
+        white-space: pre-wrap; word-break: break-all; margin: 4px 0 8px; }
+  code { background: #f0f2f4; padding: 0 3px; border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; margin: 5px 0 9px; font-size: 9pt; }
+  th, td { border: 1px solid #c9d1d9; padding: 3px 6px; text-align: left; vertical-align: top; }
+  th { background: #ecf4ee; }
+  .ok { color: #1a7a2e; font-weight: 600; }
+  .warn { background: #fff7e0; border: 1px solid #e6c96b; border-radius: 4px; padding: 6px 10px; margin: 7px 0; font-size: 9.5pt; }
+  .lane { background: #eef4fa; border: 1px solid #b9cfe4; border-radius: 4px; padding: 6px 10px; margin: 7px 0; font-size: 9.5pt; }
+  li { margin-bottom: 2px; }
+  .pagebreak { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>G1 Test Protocol — Operator Runbook</h1>
+<div class="sub">Rev. 2026-08-07 · Every command is single-line and paste-ready. Two lanes: TWIN (simulator, any day) and REAL (lab session, R1 first). Source of this document: <code>docs/src/</code> — regenerate with <code>tools/build_docs.sh</code>.</div>
+
+<div class="warn"><b>The three iron rules.</b> One change per batch · No code edits during sessions or while a campaign runs · Instrumentation down = run invalid, repeat it.</div>
+
+<h2>PART 0 — Session setup (both lanes)</h2>
+
+<h3>0.1 Git sync (do this before anything, in this exact order)</h3>
+<pre>on GPUEDGE: cd &lt;repo&gt; && git add goto.log && git commit -m "goto.log GPUEDGE appends" && git push</pre>
+<pre>cd "/Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT" && git pull --rebase && git push origin tutor-feedback-metareasoner</pre>
+<pre>back on GPUEDGE: git pull --rebase</pre>
+<p>If a conflict appears on <code>results/runs_stats.csv</code> or <code>goto.log</code>: resolve by keeping BOTH sides (union), never discard lines.</p>
+
+<h3>0.2 Choose your code</h3>
+<table>
+<tr><th>Purpose</th><th>Checkout</th></tr>
+<tr><td>Twin tests of the meta machine / noise / camera</td><td><code>git checkout tutor-feedback-metareasoner-sim</code></td></tr>
+<tr><td>REAL R1 re-baseline (Gate 1)</td><td><code>git checkout golden-doorvis</code> (detached HEAD is fine)</td></tr>
+<tr><td>Everything else real (post-Gate-1, per plan)</td><td><code>git checkout main</code></td></tr>
+</table>
+<div class="lane"><b>Repository layout note.</b> Analysis tools live in <code>analysis/</code>, campaign runners in <code>campaigns/</code>, reasoner configs in <code>config/</code>, trust state in <code>state/</code>, maps and waypoints in <code>data/</code>. Config and state are still passed as <b>bare filenames</b> — the loader resolves them, so the commands below work unchanged.</div>
+
+<h2>PART 1 — TWIN lane (simulator)</h2>
+
+<h3>1.1 Infrastructure up</h3>
+<pre>docker ps | grep g1sim</pre>
+<p>If the container was restarted, relaunch Gazebo AND rosbridge (both are manual):</p>
+<pre>docker exec -d g1sim bash -c "source /opt/ros/humble/setup.bash && source /home/ubuntu/g1_ws/install/setup.bash && ros2 launch g1_sim lab.launch.py gui:=false > /tmp/lab_launch.log 2>&1"</pre>
+<pre>docker exec -d g1sim bash -c "source /opt/ros/humble/setup.bash && source /home/ubuntu/g1_ws/install/setup.bash && ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=8765"</pre>
+<p>If noVNC port 6080 is stolen: <code>docker stop ros2_humble</code>. Watch the simulation at <code>http://localhost:6080/vnc_lite.html</code> (password <code>ubuntu</code>) — data runs go headless.</p>
+
+<h3>1.2 Teleports (ALWAYS teleport before a manual run)</h3>
+<pre>docker exec g1sim bash -c "gz model -m g1 -x 0.99 -y 0.57 -z 0.05 -Y -2.1"      # place at A</pre>
+<pre>docker exec g1sim bash -c "gz model -m g1 -x -4.75 -y 2.60 -z 0.05 -Y -0.9"     # place at B</pre>
+
+<h3>1.3 The standard run command (build it from blocks)</h3>
+<p>Base env (always) — use a fresh <code>G1_M2_STATE</code> per experiment; delete the file to restart learning:</p>
+<pre>G1_META2=2 G1_M2_CFG=config_meta2_g1payload.json G1_SIM_ID=lab_v1_test G1_M2_STATE=meta2_state_test.json G1_M2_L3=1 G1_M2_L4=1 G1_M2_PROFILES=1 G1_M2_DOORLIB=1 G1_M2_FRAGSPEED=1 G1_M2_ABORT_WIN=150 G1_M2_ABORT_PROG=0.25 G1_M2_HELP_S=16</pre>
+<p>Optional blocks: noise <code>G1_SIM_NOISE=1</code> · synthetic camera + DOOR-VIS <code>G1_SIM_PERC=1 G1_PERC=127.0.0.1:8010 G1_DOOR_VIS=1</code> · machine off <code>G1_METASM=0 G1_RETREAT=0</code>. Then append the runner:</p>
+<pre>/Users/adrianlendinezibanez/unitree_webrtc_connect/.venv/bin/python g1_sim_adapter.py goto B</pre>
+<p>Example — full golden config in the twin (noise + camera + vision + machine), B→A:</p>
+<pre>cd "/Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT" && G1_SIM_NOISE=1 G1_SIM_PERC=1 G1_PERC=127.0.0.1:8010 G1_DOOR_VIS=1 G1_META2=2 G1_M2_CFG=config_meta2_g1payload.json G1_SIM_ID=lab_v1_test G1_M2_STATE=meta2_state_test.json G1_M2_L3=1 G1_M2_L4=1 G1_M2_PROFILES=1 G1_M2_DOORLIB=1 G1_M2_FRAGSPEED=1 G1_M2_ABORT_WIN=150 G1_M2_ABORT_PROG=0.25 G1_M2_HELP_S=16 /Users/adrianlendinezibanez/unitree_webrtc_connect/.venv/bin/python g1_sim_adapter.py goto A</pre>
+
+<h3>1.4 The five twin tests</h3>
+<table>
+<tr><th>#</th><th>Test</th><th>How</th><th>PASS if</th></tr>
+<tr><td>T1</td><td>Clean baseline, machine ON</td><td>Teleport A → run goto B (base env only)</td><td class="ok">REACHED 95–115 s, 0 col, 0 retreats; NORMAL 55–60% / BLIND 40–45%</td></tr>
+<tr><td>T2</td><td>Human collision reports → DEGRADED</td><td>During a T1 run, send <b>3× hcol ~4 s apart</b> (command below)</td><td class="ok">laser_lied ×3, trust ≈0.30, one retreat "por col", DEGRADED visible, then recovery</td></tr>
+<tr><td>T3</td><td>Trap → RECOVERY → ASSIST → human</td><td>Teleport B, spawn box at door, goto A; when it prints ASISTENCIA: delete box + send hmove:40</td><td class="ok">3 retreats → full stop → "asistencia RECIBIDA" → budget re-armed → resumes</td></tr>
+<tr><td>T4</td><td>Closed-loop A/B campaigns</td><td><code>python3 -u campaigns/sim_ab_msm_campaign.py</code> then <code>python3 -u campaigns/sim_ab_msm_noise_campaign.py</code> (~1 h each)</td><td class="ok">base: both arms 6/6; noise: OFF ≈3/6 + many col vs ON 6/6 + 0 col</td></tr>
+<tr><td>T5</td><td>Full golden config (noise+camera+vision)</td><td>Example command in §1.3</td><td class="ok">REACHED ~100–110 s, "DOOR-VIS activo", door_crossed ≈35–45 s</td></tr>
+</table>
+<p>Injection commands (second terminal):</p>
+<pre>python3 -c "import socket,time; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); [ (s.sendto(b'hcol',('127.0.0.1',7777)), time.sleep(4)) for _ in range(3) ]"</pre>
+<pre>python3 -c "import socket; socket.socket(socket.AF_INET,socket.SOCK_DGRAM).sendto(b'hmove:40',('127.0.0.1',7777))"</pre>
+<p>Trap box spawn / delete:</p>
+<pre>docker exec g1sim bash -c "source /opt/ros/humble/setup.bash && ros2 service call /spawn_entity gazebo_msgs/srv/SpawnEntity \"{name: 'trampa_msm', xml: '&lt;sdf version=\\\"1.6\\\"&gt;&lt;model name=\\\"trampa_msm\\\"&gt;&lt;static&gt;true&lt;/static&gt;&lt;link name=\\\"l\\\"&gt;&lt;collision name=\\\"c\\\"&gt;&lt;geometry&gt;&lt;box&gt;&lt;size&gt;0.45 0.45 0.5&lt;/size&gt;&lt;/box&gt;&lt;/geometry&gt;&lt;/collision&gt;&lt;visual name=\\\"v\\\"&gt;&lt;geometry&gt;&lt;box&gt;&lt;size&gt;0.45 0.45 0.5&lt;/size&gt;&lt;/box&gt;&lt;/geometry&gt;&lt;/visual&gt;&lt;/link&gt;&lt;/model&gt;&lt;/sdf&gt;', initial_pose: {position: {x: -3.30, y: 0.60, z: 0.25}}}\""</pre>
+<pre>docker exec g1sim bash -c "source /opt/ros/humble/setup.bash && ros2 service call /delete_entity gazebo_msgs/srv/DeleteEntity \"{name: 'trampa_msm'}\""</pre>
+
+<h3>1.5 Analysis after every twin run</h3>
+<pre>python3 analysis/analyze_msm.py "$(ls -t dataset/2026*_ours_B.json | head -1)"</pre>
+<pre>python3 analysis/replay_msm.py dataset/&lt;any_run&gt;.json</pre>
+<div class="lane">Noise-lane results are their own baseline — never compare noisy times against no-noise times, and never either against real-robot times.</div>
+
+<h2 class="pagebreak">PART 2 — REAL lane (lab session; R1 first)</h2>
+
+<h3>2.1 GPUEDGE: perception server</h3>
+<pre>python perception_server.py --port 8008 --fx 300 --fy 300 --cx 160 --cy 90 --self-mask 0.25</pre>
+<p>(Add <code>--debug</code> only if you want the viewer. Verify against your own shell history: <code>history | grep perception_server</code>.) Check from the Mac:</p>
+<pre>curl -s http://192.168.51.80:8008/health</pre>
+<p><span class="ok">PASS</span>: <code>ok: true</code> and MODE gpu. If detections come back empty on the smoke test, the camera frame or intrinsics are wrong — stop and fix before any run.</p>
+
+<h3>2.2 Robot bring-up (every boot)</h3>
+<ol>
+<li>Robot on → open the vendor app with <b>Bluetooth ON</b> → pair from the app (the AP password rotates every boot; iPhone Settings will say "incorrect password" — expected, don't fight it).</li>
+<li>iPhone via USB to the Mac → <code>ios_webkit_debug_proxy</code> running → app teleop moves the robot (<code>g1_teleop.py</code>).</li>
+<li>Localisation check: <pre>python g1_goto.py reloccheck</pre></li>
+<li>Marker up in its own terminal BEFORE the first run (v2 keys on golden: ENTER=spill, w &lt;g&gt;=weigh, i=invalid; branch v3 adds c and m &lt;cm&gt;): <pre>python3 spill_mark.py</pre> Verify its heartbeat appears in the run console.</li>
+</ol>
+
+<h3>2.3 The R1 run loop (10 runs: 5× A→B, 5× B→A, alternating)</h3>
+<ol>
+<li>Fill the cup to <b>247 g</b>. Weigh, type <code>w 247</code> in the marker.</li>
+<li>Launch the run (golden real config):</li>
+</ol>
+<pre>cd "/Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT" && G1_META2=2 G1_M2_CFG=config_meta2_g1payload.json G1_M2_STATE=meta2_state_r1.json G1_M2_STATE_INIT=meta2_state_twin_explored.json G1_M2_REALCAL=1 G1_M2_L3=1 G1_M2_L4=1 G1_M2_PROFILES=1 G1_M2_DOORLIB=1 G1_M2_FRAGSPEED=1 G1_M2_ABORT_WIN=150 G1_M2_ABORT_PROG=0.25 G1_M2_HELP_S=16 G1_DOOR_VIS=1 G1_PERC=192.168.51.80:8008 /Users/adrianlendinezibanez/unitree_webrtc_connect/.venv/bin/python g1_goto.py goto B</pre>
+<ol start="3">
+<li>During the run: ENTER on every slosh (a burst = ONE mark). Do not touch the robot.</li>
+<li>Run ends → weigh the cup → <code>w &lt;grams&gt;</code>. Never refill mid round-trip.</li>
+<li>Instrument trouble → <code>i reason</code> and repeat the run.</li>
+<li>Reverse leg: same command with <code>goto A</code>.</li>
+</ol>
+<div class="warn"><b>Stop-rule:</b> 3 consecutive failures of the same mode → STOP the session. Data home, autopsy offline. No lab improvisation, no code edits.</div>
+
+<h3>2.4 Gate 1 (decide at the lab, before packing)</h3>
+<table>
+<tr><th>Check</th><th>PASS</th></tr>
+<tr><td>A→B reached</td><td>≥ 90%</td></tr>
+<tr><td>B→A reached</td><td>≥ 70%</td></tr>
+<tr><td>Collisions</td><td>median 0 per run</td></tr>
+<tr><td>Times</td><td>golden band ~50–110 s</td></tr>
+</table>
+<p>PASS → continue with the Results Acquisition Plan. FAIL → autopsy first:</p>
+<pre>python3 analysis/analyze_msm.py dataset/&lt;failed_run&gt;.json</pre>
+<pre>python3 analysis/replay_msm.py dataset/&lt;failed_run&gt;.json</pre>
+
+<h3>2.5 End of session</h3>
+<pre>cd "/Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT" && git add -A && git commit -m "R1 session data" && git pull --rebase && git push</pre>
+<p>(On conflicts in append-only files: union of both sides.) Then GPUEDGE: <code>git pull --rebase</code>.</p>
+
+<h2>PART 3 — Quick-reference card</h2>
+<table>
+<tr><th>Action</th><th>Command</th></tr>
+<tr><td>Twin alive?</td><td><code>docker ps | grep g1sim</code></td></tr>
+<tr><td>Teleport A / B</td><td><code>gz model -m g1 -x 0.99 -y 0.57 -z 0.05 -Y -2.1</code> · <code>-x -4.75 -y 2.60 -z 0.05 -Y -0.9</code> (inside <code>docker exec g1sim bash -c "…"</code>)</td></tr>
+<tr><td>Twin run</td><td>base env + <code>…/.venv/bin/python g1_sim_adapter.py goto A|B</code></td></tr>
+<tr><td>Real run</td><td>real env (§2.3) + <code>…/.venv/bin/python g1_goto.py goto A|B</code></td></tr>
+<tr><td>Analyse newest run</td><td><code>python3 analysis/analyze_msm.py "$(ls -t dataset/2026*_ours_*.json | head -1)"</code></td></tr>
+<tr><td>Report collision (human)</td><td>marker key <code>c</code> (branch) or the hcol one-liner (§1.4)</td></tr>
+<tr><td>Give assistance</td><td>marker key <code>m 40</code> (branch) or the hmove one-liner (§1.4)</td></tr>
+<tr><td>Meta-reasoner intact?</td><td><code>cd meta-reasoner-2.0 && python3 -m unittest discover -q</code> → OK</td></tr>
+<tr><td>Perception health</td><td><code>curl -s http://192.168.51.80:8008/health</code></td></tr>
+<tr><td>Kill a stray run</td><td><code>pgrep -f g1_sim_adapter</code> → <code>kill &lt;PID&gt;</code> (NEVER pkill -f)</td></tr>
+</table>
+
+<table>
+<tr><th>Flag</th><th>Meaning (default)</th></tr>
+<tr><td><code>G1_METASM</code> / <code>G1_RETREAT</code> / <code>G1_EXIT_RETREAT</code></td><td>meta state machine / retreat v2 / retreat-at-exit (all 1 on the branch)</td></tr>
+<tr><td><code>G1_SIM_NOISE</code></td><td>calibrated sensor noise in the twin (0)</td></tr>
+<tr><td><code>G1_SIM_PERC</code> + <code>G1_PERC=127.0.0.1:8010</code> + <code>G1_DOOR_VIS</code></td><td>synthetic camera → DOOR-VIS in the twin (0)</td></tr>
+<tr><td><code>G1_M2_REALCAL</code></td><td>platform-calibrated QoE — REAL ROBOT ONLY (0)</td></tr>
+<tr><td><code>G1_M2_STATE</code> / <code>G1_M2_STATE_INIT</code></td><td>per-experiment trust state / sim-to-real seed (resolved from <code>state/</code>)</td></tr>
+</table>
+
+<div class="lane"><b>Expected numbers</b> — twin clean ON: 95–115 s · twin noise A/B: OFF ≈3/6 + ~27 col vs ON 6/6 + 0 col · golden real: B→A 52–60 s, 0 col · real spills: ~12/run at 247 g is NORMAL (REALCAL handles it).</div>
+
+</body>
+</html>

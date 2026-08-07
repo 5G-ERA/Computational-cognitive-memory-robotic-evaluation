@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>G1 Twin Simulation — Test Instructions</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 10.5pt;
+         color: #1a1a1a; line-height: 1.42; }
+  h1 { font-size: 17pt; margin: 0 0 2px; }
+  .sub { color: #555; font-size: 9.5pt; margin-bottom: 14px; }
+  h2 { font-size: 12.5pt; margin: 18px 0 6px; border-bottom: 1.5px solid #2a5d8f; padding-bottom: 2px; color: #2a5d8f; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8.6pt; }
+  pre { background: #f4f6f8; border: 1px solid #d7dde3; border-radius: 4px; padding: 7px 9px;
+        white-space: pre-wrap; word-break: break-all; margin: 5px 0 9px; }
+  code { background: #f0f2f4; padding: 0 3px; border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: 9.5pt; }
+  th, td { border: 1px solid #c9d1d9; padding: 4px 7px; text-align: left; vertical-align: top; }
+  th { background: #eef2f6; }
+  .ok { color: #1a7a2e; font-weight: 600; }
+  .warn { background: #fff7e0; border: 1px solid #e6c96b; border-radius: 4px; padding: 7px 10px; margin: 8px 0; }
+  .note { color: #555; font-size: 9.5pt; }
+  li { margin-bottom: 3px; }
+</style>
+</head>
+<body>
+
+<h1>G1 Digital Twin — Simulation Test Instructions</h1>
+<div class="sub">Rev. 2026-08-07 · Branch <b>tutor-feedback-metareasoner-sim</b> · Meta state machine (supervisor's spec, batches 1+2) + calibrated sensor noise + synthetic camera (DOOR-VIS in the twin) · All tests run on the Mac against the g1sim Docker container. Source: <code>docs/src/</code>, rebuild with <code>tools/build_docs.sh</code>.</div>
+
+<h2>0 &nbsp;Prerequisites (once per session)</h2>
+<ol>
+<li>Check the container and simulator are alive:
+<pre>docker ps | grep g1sim</pre>
+If <code>g1sim</code> is not running, start it. If the container was <b>restarted</b>, Gazebo and rosbridge must be relaunched (rosbridge is always manual):
+<pre>docker exec -d g1sim bash -c "source /opt/ros/humble/setup.bash && source /home/ubuntu/g1_ws/install/setup.bash && ros2 launch g1_sim lab.launch.py gui:=false > /tmp/lab_launch.log 2>&1"</pre>
+<pre>docker exec -d g1sim bash -c "source /opt/ros/humble/setup.bash && source /home/ubuntu/g1_ws/install/setup.bash && ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=8765"</pre></li>
+<li>If port 6080 (noVNC) is taken by the auto-started <code>ros2_humble</code> container: <code>docker stop ros2_humble</code>.</li>
+<li>Check out the branch:
+<pre>cd "/Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT" && git checkout tutor-feedback-metareasoner-sim</pre></li>
+</ol>
+<p class="note">Full rebuild instructions for the twin (Dockerfile, workspace, noVNC access and image backup) are in <code>sim/RECONSTRUIR_Y_LANZAR.md</code>.</p>
+
+<h2>1 &nbsp;Flag reference</h2>
+<table>
+<tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+<tr><td><code>G1_METASM</code></td><td>1</td><td>Meta state machine: NORMAL / DEGRADED (cap 0.24) / BLIND (cap 0.28) / RECOVERY / ASSIST (stop &amp; wait for human <code>m &lt;cm&gt;</code>)</td></tr>
+<tr><td><code>G1_RETREAT</code></td><td>1</td><td>Retreat v2: breadcrumb reverse on confirmed stuck, max 3/run, pauses the P9 HELP clock</td></tr>
+<tr><td><code>G1_EXIT_RETREAT</code></td><td>1</td><td>Retreat-at-exit: near the start point the span guard drops 0.5 → 0.15 m</td></tr>
+<tr><td><code>G1_SIM_NOISE</code></td><td>0</td><td>Calibrated sensor noise (adapter only): per-ray σ 0.09&nbsp;m + AR(1) bias + Poisson bursts + odom drift 0.07&nbsp;m/m, 1.5°/m</td></tr>
+<tr><td><code>G1_SIM_PERC</code></td><td>0</td><td>Synthetic camera: perception service on 127.0.0.1:8010 (door detection from true sim pose; latency 0.28&nbsp;s, dropout 4%, visible &lt;2.8&nbsp;m and ±28°)</td></tr>
+<tr><td><code>G1_PERC</code></td><td>—</td><td>Set to <code>127.0.0.1:8010</code> when using <code>G1_SIM_PERC=1</code></td></tr>
+<tr><td><code>G1_DOOR_VIS</code></td><td>0</td><td>Door heading from vision (the golden-window mechanism); needs the camera</td></tr>
+</table>
+<p class="note">Every run below also uses the standard set: <code>G1_META2=2 G1_M2_CFG=config_meta2_g1payload.json G1_M2_L3=1 G1_M2_L4=1 G1_M2_PROFILES=1 G1_M2_DOORLIB=1 G1_M2_FRAGSPEED=1 G1_M2_ABORT_WIN=150 G1_M2_ABORT_PROG=0.25 G1_M2_HELP_S=16</code> plus a per-experiment <code>G1_SIM_ID</code> and a <b>fresh</b> <code>G1_M2_STATE</code> (delete the file before a new experiment; never reuse another experiment's state). Configs and state are passed as bare filenames and resolved from <code>config/</code> and <code>state/</code>.</p>
+
+<h2>2 &nbsp;Test 1 — Clean baseline, machine ON (A→B)</h2>
+<pre>docker exec g1sim bash -c "gz model -m g1 -x 0.99 -y 0.57 -z 0.05 -Y -2.1"</pre>
+<pre>cd "/Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT" && G1_META2=2 G1_M2_CFG=config_meta2_g1payload.json G1_SIM_ID=lab_v1_msm G1_M2_STATE=meta2_state_msm_test.json G1_M2_L3=1 G1_M2_L4=1 G1_M2_PROFILES=1 G1_M2_DOORLIB=1 G1_M2_FRAGSPEED=1 G1_M2_ABORT_WIN=150 G1_M2_ABORT_PROG=0.25 G1_M2_HELP_S=16 /Users/adrianlendinezibanez/unitree_webrtc_connect/.venv/bin/python g1_sim_adapter.py goto B</pre>
+<p>Analyse the newest dataset:</p>
+<pre>python3 analysis/analyze_msm.py "$(ls -t dataset/2026*_ours_B.json | head -1)"</pre>
+<p><b>Accept if:</b> <span class="ok">REACHED in 95–115&nbsp;s, 0 collisions, 0 retreats</span>; meta states ≈ NORMAL 55–60% / BLIND 40–45% with transitions at the furniture band (x≈−1.8), the door (−2.6…−3.9) and the B approach (−4.3…−4.8). Reference runs: 106.0&nbsp;s and 95.5&nbsp;s (30-jul), 94&nbsp;s and 89&nbsp;s (07-aug, after the repo reorganisation).</p>
+
+<h2>3 &nbsp;Test 2 — Human support channel (collision reports + DEGRADED)</h2>
+<p>Start a clean A→B run as in Test 1. While it runs, report three collisions the robot did not detect (~4&nbsp;s apart, from a second terminal). Either press <code>c</code> three times in <code>spill_mark.py</code>, or send the datagrams:</p>
+<pre>python3 -c "import socket,time; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); [ (s.sendto(b'hcol',('127.0.0.1',7777)), time.sleep(4)) for _ in range(3) ]"</pre>
+<p><b>Accept if:</b> the log shows <code>COLISION reportada</code> ×3 and <code>laser_lied</code> ×3; <code>laser_trust</code> drops to ≈0.30; one RETREAT fires "por colision" (2 reports &lt;20&nbsp;s = confirmed trouble); after the retreat the machine shows <span class="ok">DEGRADED</span> (cap 0.24) briefly and then recovers. Reference run: 20260730_185420.</p>
+
+<h2>4 &nbsp;Test 3 — Recovery → human assistance (trap at the door)</h2>
+<ol>
+<li>Teleport to B: <pre>docker exec g1sim bash -c "gz model -m g1 -x -4.75 -y 2.60 -z 0.05 -Y -0.9"</pre></li>
+<li>Spawn the trap box at the door mouth:
+<pre>docker exec g1sim bash -c "source /opt/ros/humble/setup.bash && ros2 service call /spawn_entity gazebo_msgs/srv/SpawnEntity \"{name: 'trampa_msm', xml: '&lt;sdf version=\\\"1.6\\\"&gt;&lt;model name=\\\"trampa_msm\\\"&gt;&lt;static&gt;true&lt;/static&gt;&lt;link name=\\\"l\\\"&gt;&lt;collision name=\\\"c\\\"&gt;&lt;geometry&gt;&lt;box&gt;&lt;size&gt;0.45 0.45 0.5&lt;/size&gt;&lt;/box&gt;&lt;/geometry&gt;&lt;/collision&gt;&lt;visual name=\\\"v\\\"&gt;&lt;geometry&gt;&lt;box&gt;&lt;size&gt;0.45 0.45 0.5&lt;/size&gt;&lt;/box&gt;&lt;/geometry&gt;&lt;/visual&gt;&lt;/link&gt;&lt;/model&gt;&lt;/sdf&gt;', initial_pose: {position: {x: -3.30, y: 0.60, z: 0.25}}}\""</pre></li>
+<li>Run <code>goto A</code> (Test 1 command with <code>goto A</code>). The robot wedges in the door approach, retreats up to 3 times, then <b>stops in ASSIST</b> printing <code>ASISTENCIA: parado esperando al humano</code>.</li>
+<li>Act as the human: delete the box, then send the assistance (or press <code>m 40</code> in the marker):
+<pre>docker exec g1sim bash -c "source /opt/ros/humble/setup.bash && ros2 service call /delete_entity gazebo_msgs/srv/DeleteEntity \"{name: 'trampa_msm'}\""</pre>
+<pre>python3 -c "import socket; socket.socket(socket.AF_INET,socket.SOCK_DGRAM).sendto(b'hmove:40',('127.0.0.1',7777))"</pre></li>
+</ol>
+<p><b>Accept if:</b> goto.log shows <code>asistencia RECIBIDA → presupuestos re-armados</code>, the retreat budget restarts at n=1/3, and the robot resumes. The dataset must contain <code>human_assist</code> events and meta_state transitions RECOVERY→ASSIST→BLIND. If nobody helps, the P9 safety net must close the run. Reference run: 20260730_184256 (two assists consumed in one run).</p>
+
+<h2>5 &nbsp;Test 4 — Closed-loop A/B campaigns (the headline result)</h2>
+<p>Each campaign is 14 interleaved B→A runs (6 OFF / 6 ON / 2 ON+simulated human) and takes ~40–70 min. Results append to a JSON in <code>results/</code>.</p>
+<pre>python3 -u campaigns/sim_ab_msm_campaign.py          # base (no noise)</pre>
+<pre>python3 -u campaigns/sim_ab_msm_noise_campaign.py    # under calibrated noise</pre>
+<p><b>Accept if (reference 31-jul):</b></p>
+<table>
+<tr><th></th><th>OFF (golden)</th><th>ON (machine)</th></tr>
+<tr><td>Base</td><td>6/6 reached, median ≈93&nbsp;s</td><td>6/6 reached, ≈101&nbsp;s (+8–10%), <b>0 false interventions</b></td></tr>
+<tr><td>Calibrated noise</td><td>≈3/6 reached, ~27 collisions (door + B-pocket grind)</td><td class="ok">6/6 reached, 0 collisions (prevention via BLIND caps)</td></tr>
+</table>
+<p class="note">The noise outcome is stochastic: expect 2–4 OFF failures per 6, always at the door mouth (−3.3, 0.6) or the B-pocket (−4.5, 2.1). ON may occasionally draw a pocket wedge too — then retreats + ASSIST must engage (that is a pass, not a fail).</p>
+
+<h2>6 &nbsp;Test 5 — Full golden config in the twin (noise + camera + DOOR-VIS)</h2>
+<pre>docker exec g1sim bash -c "gz model -m g1 -x -4.75 -y 2.60 -z 0.05 -Y -0.9"</pre>
+<pre>cd "/Users/adrianlendinezibanez/Claude/Projects/G1 ROBOT" && G1_SIM_NOISE=1 G1_SIM_PERC=1 G1_PERC=127.0.0.1:8010 G1_DOOR_VIS=1 G1_META2=2 G1_M2_CFG=config_meta2_g1payload.json G1_SIM_ID=lab_v1_spb G1_M2_STATE=meta2_state_spb.json G1_M2_L3=1 G1_M2_L4=1 G1_M2_PROFILES=1 G1_M2_DOORLIB=1 G1_M2_FRAGSPEED=1 G1_M2_ABORT_WIN=150 G1_M2_ABORT_PROG=0.25 G1_M2_HELP_S=16 /Users/adrianlendinezibanez/unitree_webrtc_connect/.venv/bin/python g1_sim_adapter.py goto A</pre>
+<p><b>Accept if:</b> startup prints <code>CAMARA SINTETICA ON</code> and <code>[perc] … OK</code>; <span class="ok">REACHED ≈100–110&nbsp;s, 0 collisions</span>; goto.log shows <code>DOOR-VIS activo</code>; the dataset has <code>door_b</code> samples only near the door (~150–170) and a <code>door_crossed</code> event at ≈35–45&nbsp;s. Reference runs: 20260731_105215 / 105402 (both 102&nbsp;s).</p>
+
+<h2>7 &nbsp;Shadow replay over past data (no simulator needed)</h2>
+<p>Replays the state machine over any recorded dataset (real or twin) and reports occupancy, would-be retreat triggers and help requests:</p>
+<pre>python3 analysis/replay_msm.py dataset/20260724_163736_ours_A.json</pre>
+<p><b>Accept if:</b> golden runs → no triggers; the collapse-night failures → triggers + assist requests. Reference over 309 real runs: 2/192 false positives on clean runs, action in 92% of failed runs, <code>laser_lied</code> on 55% of real collisions.</p>
+
+<h2>8 &nbsp;Method rules (they cost sessions to learn)</h2>
+<ul>
+<li><b>One change per batch</b>; never edit code while a campaign is running (each run re-reads the sources).</li>
+<li>Manual runs bypass the campaign reset — <b>always teleport first</b>; delete the experiment's state file to start fresh.</li>
+<li>Instrumentation down (marker/camera server) = run invalid, repeat it.</li>
+<li>Noise results live in their own baseline lane — never compare noisy times against no-noise times.</li>
+<li>Kill stray processes by PID, never <code>pkill -f</code>.</li>
+<li>goto.log rotation: before pushing from the Mac, GPUEDGE must commit+push its own goto.log appends first, then pull.</li>
+</ul>
+
+<div class="warn"><b>Git note.</b> The branch <code>tutor-feedback-metareasoner-sim</code> is the published copy of this work. The original <code>tutor-feedback-metareasoner</code> ref on GitHub is intentionally left behind until the goto.log coordination step with GPUEDGE is done.</div>
+
+</body>
+</html>

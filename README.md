@@ -16,6 +16,9 @@ The robot is a stock Unitree G1 “Air”: the only way in is the vendor app, so
 built on top of that single channel. Above navigation sits a meta level that decides *which sense
 to believe*, recovers when it gets stuck, and asks a human for help when it cannot.
 
+> **Picking this up? Go to [`tasks/`](tasks/)** — it says what happens next and what to take to
+> the lab.
+
 ---
 
 ## Why this is interesting
@@ -71,10 +74,11 @@ Sensor noise is calibrated against real distributions, so the twin fails the way
 | `g1_sim_adapter.py`, `sim/` | Digital twin: adapter, Docker recipe, worlds, launch files — see the [twin guide](sim/RECONSTRUIR_Y_LANZAR.md) |
 | `perception_server.py` | Off-board vision service (metric depth + object detection) |
 | `spill_mark.py` | Ground-truth marker the operator uses during real sessions |
-| `analyze_msm.py`, `replay_msm.py` | Per-run analysis, and shadow replay of the meta level over past runs |
-| `sim_ab_msm*_campaign.py`, `sim_campaign.py` | Automated experiment campaigns in the twin |
-| `dataset/` | Every run ever recorded: samples, events, collision snapshots |
+| `analysis/` | Per-run analysis, autopsy reports, and shadow replay of the meta level over past runs |
+| `campaigns/` | Automated experiment campaigns in the twin |
+| `dataset/`, `data/` | Every run ever recorded (samples, events, collision snapshots), and the maps and waypoints the robot navigates with |
 | `config/`, `state/`, `results/` | Reasoner configurations, per-experiment trust state, campaign results |
+| **`tasks/`** | **What to do next — start here if you are picking the project up** |
 | `docs/` | Protocols, plans and reports — start with the runbook below |
 | `logs/`, `tools/`, `attic/` | Historical campaign logs, utilities (plots, figures, calibration) and old probes kept for provenance |
 
@@ -100,7 +104,7 @@ Sensor noise is calibrated against real distributions, so the twin fails the way
 and no simulator:
 
 ```bash
-python3 replay_msm.py dataset/<run>.json
+python3 analysis/replay_msm.py dataset/<run>.json
 ```
 
 ---

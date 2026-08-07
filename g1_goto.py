@@ -58,8 +58,9 @@ M2_ABORT_BAD = float(os.environ.get("G1_M2_ABORT_BAD", "0.6"))  # fraccion de de
 M2_ABORT_PROG = float(os.environ.get("G1_M2_ABORT_PROG", "0.4"))  # m de acercamiento minimo al goal en la ventana
 M2_HELP_S = float(os.environ.get("G1_M2_HELP_S", "8"))          # s de HELP firme CONTINUO -> abort directo
 
-WP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "waypoints.json")
-MAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nav_map.json")
+_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")   # reorg 2026-08-07
+WP_FILE = os.path.join(_DATA, "waypoints.json")
+MAP_FILE = os.path.join(_DATA, "nav_map.json")
 GOTO_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "goto.log")
 GOTO_LOG_MAX_MB = float(os.environ.get("G1_GOTO_LOG_MAX_MB", "25"))  # umbral de rotacion; GitHub avisa a partir de 50 MB por fichero
 
@@ -1003,7 +1004,7 @@ def cmd_cloudgrab():
     cdp = g.get_cdp()
     cdp.eval(RELOC_CLOUD_JS)
     cdp.eval(RELOC_JS)
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reloc_cloud.json")
+    out = os.path.join(_DATA, "reloc_cloud.json")
     print(">>> CLOUDGRAB. Con el mapa cargado y los puntos visibles, espero a capturar una nube...")
     try:
         for _ in range(40):
