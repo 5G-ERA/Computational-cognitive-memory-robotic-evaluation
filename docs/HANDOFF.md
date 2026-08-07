@@ -446,7 +446,7 @@ imposible). Solo el laser confirmado mantiene el bypass de seguridad. Regresion 
   adaptador: waypoints/refmap/puerta REALES + engagement ON; nav_map de sim vacío en
   `sim/nav_map_lab.json`. GUI validada: un solo gzserver headless + `gzclient` lanzado DESDE
   la terminal del VNC (nunca 2 gazebos: mundo vacío + topics rotos); robot visible via
-  View→Collisions; runs de datos siempre headless. Receta completa en sim/COMO_LANZAR.md.
+  View→Collisions; runs de datos siempre headless. Receta completa en sim/TROUBLESHOOTING.md.
   PENDIENTE: primera run sim A→B cruzando la PUERTA REAL (DOOR-ENG ... CROSSED) hasta reached.
 
 ### 8.17 P10 margen FEW-SHOT (Renxi, 07-03): confianza histórica en la plausibilidad

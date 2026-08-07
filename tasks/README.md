@@ -53,7 +53,7 @@ you helped when it stops and asks. Details and the argument for it:
 
 | Item | Why it matters |
 |---|---|
-| Move the twin workspace out of `~/Downloads` | The live simulator depends on a folder that gets cleaned; see [`../sim/RECONSTRUIR_Y_LANZAR.md`](../sim/RECONSTRUIR_Y_LANZAR.md) |
+| Move the twin workspace out of `~/Downloads` | The live simulator depends on a folder that gets cleaned; see [`../sim/RUN_AND_REBUILD.md`](../sim/RUN_AND_REBUILD.md) |
 | Build the twin Docker recipe once and verify it | The recipe is versioned but has never been rebuilt from scratch |
 | Re-record the B waypoint (or census the furniture there) | It sits ~40 cm from the sofa: the root cause of the start-pocket wedges, in both the real flat and the twin |
 | Exercise DEGRADED on the real robot | Never reached in real data — it needs three missed-collision reports in ~30 s |

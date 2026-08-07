@@ -71,7 +71,7 @@ Sensor noise is calibrated against real distributions, so the twin fails the way
 | `g1_goto.py` | The robot brain: navigation, door FSM, guard chain, meta level, run recording |
 | `g1_meta2_bridge.py`, `meta-reasoner-2.0/` | Meta-reasoning layer (the reasoner itself is **never modified**; its 11 tests must stay green) |
 | `g1_nav_v2.py`, `g1_metrics.py`, `g1_perception.py`, `g1_particle_filter.py` | Navigation primitives, sensing self-assessment, vision client, shadow estimator |
-| `g1_sim_adapter.py`, `sim/` | Digital twin: adapter, Docker recipe, worlds, launch files — see the [twin guide](sim/RECONSTRUIR_Y_LANZAR.md) |
+| `g1_sim_adapter.py`, `sim/` | Digital twin: adapter, Docker recipe, worlds, launch files — see the [twin guide](sim/RUN_AND_REBUILD.md) |
 | `perception_server.py` | Off-board vision service (metric depth + object detection) |
 | `spill_mark.py` | Ground-truth marker the operator uses during real sessions |
 | `analysis/` | Per-run analysis, autopsy reports, and shadow replay of the meta level over past runs |
@@ -90,7 +90,7 @@ Sensor noise is calibrated against real distributions, so the twin fails the way
 
 1. [`docs/G1_Test_Protocol_Operator_Runbook.pdf`](docs/G1_Test_Protocol_Operator_Runbook.pdf) —
    the operating manual: every command, for the twin and for the real robot.
-2. [`sim/RECONSTRUIR_Y_LANZAR.md`](sim/RECONSTRUIR_Y_LANZAR.md) — launch, rebuild and back up the
+2. [`sim/RUN_AND_REBUILD.md`](sim/RUN_AND_REBUILD.md) — launch, rebuild and back up the
    digital twin. Everything here runs without touching the robot.
 3. [`docs/G1_Disciplined_Session_Protocol.pdf`](docs/G1_Disciplined_Session_Protocol.pdf) — the
    method. Not optional: one undisciplined session once destroyed a week of results.
