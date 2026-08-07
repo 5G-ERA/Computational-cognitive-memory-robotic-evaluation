@@ -81,6 +81,7 @@ Sensor noise is calibrated against real distributions, so the twin fails the way
 | **`tasks/`** | **What to do next — start here if you are picking the project up** |
 | `docs/` | Protocols, plans and reports — start with the runbook below |
 | `logs/`, `tools/`, `attic/` | Historical campaign logs, utilities (plots, figures, calibration) and old probes kept for provenance |
+| `docs/notes/` | Dated engineering records from earlier phases, including how the robot's SLAM stream was reached at all — see its [index](docs/notes/README.md) |
 
 ---
 
