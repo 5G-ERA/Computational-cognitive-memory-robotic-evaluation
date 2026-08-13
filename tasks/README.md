@@ -57,6 +57,30 @@ you helped when it stops and asks. Details and the argument for it:
 
 ---
 
+## ▶ READY FOR THE NEXT REAL SESSION — door centring
+
+Adrián's observation on 13 Aug ("on the way back it always drifts a little to one side before the
+door frame and puts itself in a worse position") is **confirmed and fixed in the twin**.
+
+- **What it is:** on B→A every run arrives ~0.35 m off the door axis at 2 m out. Runs that cross
+  cleanly re-centre to ~0.01 m; runs that fail arrive still 0.19 m off — and the physical margin
+  is only ±0.20 m (0.99 m opening, 0.29 m effective half-width).
+- **Cause:** the lateral strafe-to-axis servo already existed but was gated to fire only above
+  0.14 m of error and to stop correcting 0.35 m before the opening.
+- **Change:** both gates parameterised — `G1_DOOR_CTR_TOL` and `G1_DOOR_CTR_S`, **defaults
+  identical to the old behaviour**.
+- **Twin evidence (12 interleaved B→A runs, noise + camera + DOOR-VIS):** 0.14/0.35 → 5/6, three
+  collisions, |offset| 0.069 m; **0.07/0.18 → 6/6, zero collisions, |offset| 0.012 m**, no time
+  cost. The two distributions do not overlap.
+- **Ruled out on the way:** "trust vision more to centre itself" cannot work — the door bearing
+  correlates +0.51 with the true geometric bearing but **−0.00 with the lateral offset** at close
+  range. Bearing says where to point, not where you are.
+
+**How to run it on the robot:** same golden command plus `G1_DOOR_CTR_TOL=0.07 G1_DOOR_CTR_S=0.18`,
+as an A/B against the unmodified line — one change, alternating arms, on a **charged** battery.
+Honest caveat: the twin's baseline offset (0.069 m) is milder than the real one (0.19 m), so the
+twin proves the mechanism, not that it prevents the real collisions.
+
 ## ▷ Open engineering items
 
 | Item | Why it matters |
