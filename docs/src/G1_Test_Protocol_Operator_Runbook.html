@@ -94,8 +94,12 @@
 <h2 class="pagebreak">PART 2 — REAL lane (lab session; R1 first)</h2>
 
 <h3>2.1 GPUEDGE: perception server</h3>
-<pre>python perception_server.py --port 8008 --fx 300 --fy 300 --cx 160 --cy 90 --self-mask 0.25</pre>
-<p>(Add <code>--debug</code> only if you want the viewer. Verify against your own shell history: <code>history | grep perception_server</code>.) Check from the Mac:</p>
+<p><b>First, check the GPUs are free.</b> A local LLM service (llama-server / Kimi) lives on the same box and can hold ~20&nbsp;GB on <i>each</i> card, leaving too little for the depth model. Do this before the robot is even switched on:</p>
+<pre>nvidia-smi --query-gpu=memory.used,memory.total --format=csv</pre>
+<p>If both cards are near full, stop the LLM service (or wait for it) before launching perception — discovering this mid-session, with the cup full, is the expensive way to find out.</p>
+<p>Then launch the server (this is the exact command in use):</p>
+<pre>python perception_server.py --host 0.0.0.0 --port 8008 --fx 300 --fy 300 --cx 160 --cy 90 --cam-h 1.10 --cam-pitch -10 --debug --self-mask 0.25</pre>
+<p>(<code>--debug</code> enables the viewer at <code>:8008/view</code>; drop it if you do not need it.) Check from the Mac:</p>
 <pre>curl -s http://192.168.51.80:8008/health</pre>
 <p><span class="ok">PASS</span>: <code>ok: true</code> and MODE gpu. If detections come back empty on the smoke test, the camera frame or intrinsics are wrong — stop and fix before any run.</p>
 

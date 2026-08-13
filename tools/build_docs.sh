@@ -9,12 +9,21 @@
 # Uso:  bash tools/build_docs.sh          (desde la raiz del repo)
 set -euo pipefail
 
-CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# Cualquier navegador Chromium sirve (--headless --print-to-pdf es comun a todos).
+# El 13-ago-2026 Chrome desaparecio del Mac y el script murio: por eso se busca en lista.
+CHROME=""
+for c in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+         "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" \
+         "/Applications/Chromium.app/Contents/MacOS/Chromium" \
+         "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"; do
+  [ -x "$c" ] && { CHROME="$c"; break; }
+done
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$HERE/docs/src"
 OUT="$HERE/docs"
 
-[ -x "$CHROME" ] || { echo "ERROR: no encuentro Chrome en $CHROME"; exit 1; }
+[ -n "$CHROME" ] || { echo "ERROR: no encuentro ningun navegador Chromium (Chrome/Edge/Chromium/Brave)"; exit 1; }
+echo "  navegador: $(echo "$CHROME" | sed -E "s|.*/Applications/([^/]+)\.app/.*|\1|")"
 [ -d "$SRC" ] || { echo "ERROR: no existe $SRC"; exit 1; }
 
 for f in "$SRC"/*.html; do

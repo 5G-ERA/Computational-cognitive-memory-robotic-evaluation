@@ -35,8 +35,13 @@ afterwards has something honest to be compared against.
 - **Gate 1 fails** → data home, autopsy with the analysis tools. Change nothing until the cause
   has a name.
 
-**Before leaving home:** the log-sync step described in the runbook (§0.1) must be done in
-order — the machine that appends to the shared log commits and pushes first.
+**Log sync: DONE (13 Aug 2026).** The lab machine was four commits behind with a 48 MB
+`goto.log`; it now sits on the current `main` with the rotated log (its old copy archived
+locally and preserved in git history). Nothing to do before the session on that front.
+
+**New check before the session:** the lab machine also hosts a local LLM service that can hold
+~20 GB of VRAM on *each* GPU, which starves the depth model. Run `nvidia-smi` and free the
+cards before launching the perception server — not after the cup is full.
 
 ---
 

@@ -31,7 +31,7 @@
 <tr><th></th><th>Step</th></tr>
 <tr><td>☐</td><td><b>goto.log coordination (do this FIRST):</b> on GPUEDGE run <code>git add goto.log && git commit -m "goto.log GPUEDGE appends" && git push</code>. Then push the held branch from the Mac. Then on GPUEDGE <code>git pull --rebase</code>. Never skip the order — otherwise GPUEDGE's pre-rotation goto.log union-merges back.</td></tr>
 <tr><td>☐</td><td>Mac: <code>git status</code> clean, then <b>check out the golden code</b>: <code>git checkout golden-doorvis</code> (detached HEAD is fine for the session).</td></tr>
-<tr><td>☐</td><td>GPUEDGE: launch the perception server as in the runbook §2.1 (incl. <code>--self-mask 0.25</code>). Verify <code>/health</code> and MODE gpu.</td></tr>
+<tr><td>☐</td><td>GPUEDGE: <b>check GPU memory first</b> (<code>nvidia-smi</code>) — the local LLM service can hold ~20&nbsp;GB per card and starve the depth model. Then launch the perception server as in the runbook §2.1 and verify <code>/health</code> and MODE gpu.</td></tr>
 <tr><td>☐</td><td>Cup + scale + water at hand. Standard start weight <b>247 g</b>. Phone with the vendor app, Bluetooth ON.</td></tr>
 </table>
 
