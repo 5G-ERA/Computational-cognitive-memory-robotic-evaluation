@@ -120,6 +120,15 @@ PERC_PERIOD = 0.3                # s entre consultas al servidor de percepcion G
 DOOR_CENTER = (os.environ.get("G1_DOOR_CENTER", "1") == "1")   # centrar izq/dcha en la puerta (idea de Renxi): strafe al lado mas libre
 DOOR_BAL_TH = 0.22               # |clear_left - clear_right| (normalizado) para considerar el robot DESCENTRADO
 DOOR_STRAFE = 0.34               # magnitud del strafe lateral (> deadzone ~0.3, si no el robot no se mueve)
+# CENTRADO EN EL VANO (13-ago-2026). El servo de strafe al eje ya existia, pero con dos
+# puertas que se comen el margen: solo corrige si el desvio supera 0.14 m, y DEJA de corregir
+# a 0.35 m del vano. Medido en 30 travesias reales + el gemelo: todas llegan a ~-0.35 m del
+# eje a 2 m; las que CRUZAN limpias se recentran a ~-0.01, las que fallan se quedan en -0.19.
+# Con vano de 0.99 m y semiancho real 0.29 m el margen fisico es +-0.20 m, asi que una zona
+# muerta de 0.14 se come el 70%. Ambas puertas quedan parametrizadas; los DEFAULTS reproducen
+# el comportamiento anterior EXACTO.
+DOOR_CTR_TOL = float(os.environ.get("G1_DOOR_CTR_TOL", "0.14"))  # m de desvio que se tolera
+DOOR_CTR_S = float(os.environ.get("G1_DOOR_CTR_S", "0.35"))      # m antes del vano donde deja de corregir
 DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "-1"))  # DEFAULT -1 (2026-07-02): MEDIDO en runs
                                  # 123933 (46 ticks orden izq -> 38cm a la DERECHA) y 122857 (51 ticks, 98cm
                                  # contra lo ordenado): el mapeo fisico de lx esta INVERTIDO. DOOR-CTR centraba
@@ -2240,7 +2249,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                     if door_c_meas is not None:
                                         _latrob = _latrob - door_c_meas       # servo al centro MEDIDO
                                     latL = _latrob * sgn                       # + = IZQ del eje
-                                    if abs(latL) > 0.14 and abs(srob) > 0.35:  # descentrado ANTES del vano -> strafe al eje
+                                    if abs(latL) > DOOR_CTR_TOL and abs(srob) > DOOR_CTR_S:  # descentrado -> strafe al eje
                                         lx = DOOR_STRAFE_SIGN * (DOOR_STRAFE if latL < 0 else -DOOR_STRAFE)
                                         engcmd = ((lx, 0, 0, 0), "ENG-C")
                                     else:
