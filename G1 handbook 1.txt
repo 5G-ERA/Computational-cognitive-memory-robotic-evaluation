@@ -1,0 +1,51 @@
+1. Install Unitree App on iPhone
+Terminal 1: ios_webkit_debug_proxy
+
+Terminal 2,3,4: go to /home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING
+Terminal 2,3,4: source ~/g1env/bin/activate
+
+terminal 2 Run perception server:
+G1_FLOORCOLOR=1 python perception_server.py --host 0.0.0.0 --port 8008 --fx 300 --fy 300 --cx 160 --cy 120 --cam-h 1.10 --cam-pitch -10 --debug
+
+In browser go to: http://0.0.0.0:8008/debug.mjpg
+
+Terminal 3: G1_META2=1 G1_PERC=127.0.0.1:8008 python g1_goto.py gotoviz B
+
+
+
+
+Health check of the robot - PC connection, prints out odometry:
+python3 g1_goto.py reloccheck
+
+Spill marker command:
+python spill_mark.py
+
+Press ENTER when the water spills
+
+
+Git Interactions:
+git add dataset/ goto.log
+git commit -m "commit name"
+git push origin main
+
+git pull origin main
+
+
+META_REASONING$ git log -1
+commit 87781f0a15bb434e15798a0f76b46786e5201232 (HEAD -> main, origin/main, origin/HEAD)
+Author: Anlan <qiuanlan@gmail.com>
+Date:   Fri Jul 3 09:40:23 2026 +0100
+
+    runs META2 shadow A-B-A
+(g1env) ros@GPUEDGE:~/Documents/G1_UNITREE_ROBOT_META_REASONING$ 
+
+
+
+IN case of connectivity issues:
+
+Step 1: Click on AP connection.
+Step 2: Copy hotspot pass.
+Step 3: Go to iphone WiFi settings and connect to G1_8799 network and paste the password.
+Step 4: Repeat steps Steps  1,2,3 if still unsuccessful.
+
+Make sure 5g/mobile network is off on your mobile phone.
