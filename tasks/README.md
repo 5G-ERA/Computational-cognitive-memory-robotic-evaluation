@@ -6,18 +6,21 @@ Pending work, newest first. **The next thing that happens in the lab is R1.**
 
 ## ▶ NEXT LAB SESSION — R1 re-baseline
 
-**Take with you:** [`G1_R1_Session_Checklist.pdf`](G1_R1_Session_Checklist.pdf) (2 pages, the
-step-by-step sheet) and [`G1_Test_Protocol_Operator_Runbook.pdf`](G1_Test_Protocol_Operator_Runbook.pdf)
-(5 pages, every command).
+**Take with you:** [`G1_R1_Real_Robot_Runbook.pdf`](G1_R1_Real_Robot_Runbook.pdf) — **the document
+for this session** (6 pages: the choices already made, pre-flight, bring-up, shakedown, the run loop
+and Gate 1). [`G1_R1_Session_Checklist.pdf`](G1_R1_Session_Checklist.pdf) is the 2-page summary of the
+same thing; the [Operator Runbook](G1_Test_Protocol_Operator_Runbook.pdf) covers both lanes and is the
+reference for the twin.
 
 **Goal:** re-establish the baseline on the frozen golden code, so that everything measured
 afterwards has something honest to be compared against.
 
 | | |
 |---|---|
+| **Machine** | The **lab machine**, not the laptop: the golden runs were driven from there (perception on `127.0.0.1`), and the datasets and USB proxy live there |
 | **Code** | `git checkout golden-doorvis` — the frozen tag, nothing else |
 | **Runs** | 10, alternating direction (5 + 5) |
-| **Payload** | Cup filled to 247 g; weigh before and after **every leg** |
+| **Payload** | **Dry** — empty cup in the hand. Water at 200 g is the *next* batch on the same binary (Disciplined Protocol). An earlier revision of this page said 247 g of water: that was wrong |
 | **Marker** | Started before the first run, heartbeat visible. On golden it is the version *without* the `c` / `m` keys |
 | **Stop rule** | 3 consecutive failures of the same mode → stop the session, analyse offline |
 | **Rule** | No code edits in the lab. None |
