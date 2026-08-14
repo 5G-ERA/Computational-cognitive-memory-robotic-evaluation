@@ -124,6 +124,20 @@ DOOR_CTR2 = os.environ.get("G1_DOOR_CTR2", "") == "1"
 DOOR_CTR_HOLD = float(os.environ.get("G1_DOOR_CTR_HOLD", "0.25"))   # m: por encima, no avanza
 DOOR_CTR_VY = float(os.environ.get("G1_DOOR_CTR_VY", "0.28"))       # avance simultaneo (= el de ENG-GO)
 DOOR_CTR_HOLD_S = float(os.environ.get("G1_DOOR_CTR_HOLD_S", "6.0"))  # s maximos parado corrigiendo
+# --- RUMBO SIN PARAR (G1_DOOR_YAW2, 14-ago). El arreglo lateral funciono: la run 165706 entro
+# al vano a lat -0.03 (los fallos entran a -0.23) y aun asi no cruzo. Se quedo DENTRO del vano
+# oscilando: avanza, el rumbo deriva, al pasar de DOOR_REALIGN (14 deg) para a realinear, y
+# realineando RETROCEDE; vuelve a entrar y se repite -- 8 realineaciones, 0.21 m perdidos, y el
+# vigilante de progreso lo mata (0.32 m en 74 s) sin haber acumulado los 0.75 m del cruce.
+# NO es un sesgo de giro que se pueda compensar: en 51 tramos la deriva mediana es +0.1 deg/s y
+# va a la izquierda el 51% de las veces. Lo que varia es el sesgo POR RUN (-4 a +3 deg/s), asi
+# que no hay feed-forward posible; hay que corregir en lazo sin pagar el paron.
+# QUE HACE: si esta BIEN CENTRADO y el error de rumbo no pasa de HARD, gira y avanza en el mismo
+# comando (fase ENG-RG) en vez de pararse. Fuera de eso, la realineacion de siempre -- el limite
+# duro sigue existiendo porque avanzar muy torcido es lo que engancha el marco.
+DOOR_YAW2 = os.environ.get("G1_DOOR_YAW2", "") == "1"
+DOOR_YAW_HARD = float(os.environ.get("G1_DOOR_YAW_HARD", "25.0"))   # deg: por encima, parar como antes
+DOOR_YAW_LAT = float(os.environ.get("G1_DOOR_YAW_LAT", "0.12"))     # m: solo si esta centrado
 DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "-1"))  # DEFAULT -1 (2026-07-02): MEDIDO en runs
                                  # 123933 (46 ticks orden izq -> 38cm a la DERECHA) y 122857 (51 ticks, 98cm
                                  # contra lo ordenado): el mapeo fisico de lx esta INVERTIDO. DOOR-CTR centraba
@@ -2153,7 +2167,15 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                         except Exception:
                                             pass
                                 elif abs(he) > DOOR_REALIGN:                  # deriva del bipedo: NO avanzar torcido
-                                    eng.update(state="ALIGN", ok=0, ts=now); engcmd = ((0, 0, 0, 0), "ENG-RE")
+                                    _lr = -(x - DOOR_CX) * uy + (y - DOOR_CY) * ux
+                                    if door_c_meas is not None:
+                                        _lr = _lr - door_c_meas
+                                    if (DOOR_YAW2 and abs(_lr) < DOOR_YAW_LAT
+                                            and abs(he) <= DOOR_YAW_HARD):     # centrado: girar SIN parar
+                                        engcmd = ((0, DOOR_CTR_VY,
+                                                   -g.AV_TURN if he > 0 else g.AV_TURN, 0), "ENG-RG")
+                                    else:
+                                        eng.update(state="ALIGN", ok=0, ts=now); engcmd = ((0, 0, 0, 0), "ENG-RE")
                                 else:
                                     _latrob = -(x - DOOR_CX) * uy + (y - DOOR_CY) * ux
                                     if door_c_meas is not None:
