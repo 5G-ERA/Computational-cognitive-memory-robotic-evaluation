@@ -56,7 +56,11 @@ If performance recovers, battery is causal; if not, the degradation is cumulativ
   vs 0.030). Its apparent edge in arrivals sat inside the n=6 noise floor — two identical
   configurations differed by just as much.
 
-## ▷ NEXT BRANCH — voxel memory in the blind band (`feature/voxel-memory`)
+## ▷ IN PROGRESS — voxel memory in the blind band (`feature/voxel-memory`)
+
+> **14 Aug, implemented and calibrated against real data; twin A/B running.** Flag `G1_VOXMEM`,
+> **off by default** — defaults reproduce the previous behaviour exactly. The offline safety
+> replay below chose the TTL; it was not picked by eye. Not on the robot until the twin agrees.
 
 Renxi's suggestion (14 Aug): [spatio_temporal_voxel_layer](https://github.com/SteveMacenski/spatio_temporal_voxel_layer)
 — *"the robot is helpless if it is in the blind spots"*, and *"there is a setting to pay more
@@ -92,6 +96,35 @@ that reproduces current behaviour exactly.
 **Validation path.** Offline replay first, over every recorded collision (does it mark the obstacle
 before impact?) and over the clean runs (does it invent obstacles?) — `analysis/replay_msm.py` is
 the pattern. Then the twin, then the robot. Own branch, one change.
+
+### What was built, and how the TTL was chosen
+
+A cell confirmed at a *healthy* range is remembered for `G1_VOXMEM_TTL` seconds and re-injected
+into the grid while it lies within `G1_VOXMEM_R` (1.2 m) of the robot — the band the vendor cuts.
+Outside that radius the scan rules, so memory never contradicts a good observation; and if the scan
+sees the cell again, memory stays out of the way. Retention requires `G1_VOXMEM_K` (2) prior
+confirmations **from outside the blind band**, so a cell that only ever flickered up close can
+never qualify. `G1_VOXMEM_MAX` (400) caps the set, keeping the most recent.
+
+The TTL came from a replay over the **244 clouds saved at real collisions**. For each, the cells
+memory would hold were projected against the trajectory the robot actually walked in the following
+seconds, counting any that would have invaded the DWA clearance (0.22 m) — i.e. phantom obstacles
+blocking ground the robot demonstrably crossed:
+
+| TTL | Cells held per instant | Snapshots with a phantom |
+|---|---|---|
+| 2 s | 27.7 | 0 / 244 |
+| **3 s** | **28.6** | **0 / 244** |
+| 4 s | 29.4 | 2 / 244 (1%) |
+| 6 s | 30.7 | 8 / 244 (3%) |
+
+3 s is the longest window with zero measured phantoms, and it is what the default sits at. Going to
+4 s would buy coverage (69% → 90% of the blindness-preceded collisions) at the price of the first
+phantoms — a trade to revisit *after* the twin, with evidence, not before.
+
+Twin A/B: `campaigns/sim_ab_voxmem.py` — 12 interleaved runs under calibrated noise, full META
+stack in both arms, `G1_VOXMEM` the only variable. Per-sample field `vox_inj` records how many
+cells memory is holding, so the mechanism can be audited run by run rather than inferred.
 
 ## ▷ Open engineering items
 
