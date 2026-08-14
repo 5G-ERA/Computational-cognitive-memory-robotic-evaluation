@@ -157,6 +157,26 @@ DOOR_VIS = os.environ.get("G1_DOOR_VIS", "") == "1"
 # desde 2026-07-21 llevan pose+fase de movimiento para separar parado/andando/girando).
 LASER_SNAP = float(os.environ.get("G1_LASER_SNAP", "2.0"))
 DOORSTICK_R = float(os.environ.get("G1_DOORSTICK_R", "1.4"))   # m alrededor del centro del vano
+# --- MEMORIA DE VOXELS EN LA BANDA CIEGA (Renxi 14-ago: spatio_temporal_voxel_layer) --------
+# EL PROBLEMA, MEDIDO: 107 de 193 colisiones reales ocurrieron con el laser declarando libre
+# mas de 0.6 m. De ellas, 29 estuvieron precedidas de CEGUERA medible -- el laser vio el
+# obstaculo y lo perdio al acercarse -- con mediana de 2.2 s y p90 de 4.1 s. El bucle de
+# confirmacion recorre SOLO el barrido actual, asi que una celda que deja de verse desaparece
+# de la rejilla en el mismo tick: "the standard local costmap instantly erases whatever was
+# there, and your local planner happily plots a trajectory into the invisible obstacle".
+# QUE HACE: una celda confirmada a distancia SANA se recuerda VOXMEM_TTL segundos y se
+# reinyecta mientras esta a menos de VOXMEM_R del robot (la banda donde el fabricante recorta
+# el laser). Fuera de ese radio manda el barrido: la memoria nunca contradice una observacion
+# buena, solo cubre donde el sensor esta ciego por diseno.
+# SEGURIDAD (leccion de DOORSTICKY v1, que fijo ruido vivo -> 6 celdas fantasma en la boca de
+# la puerta y 9 colisiones): la celda debe haberse confirmado >=VOXMEM_K veces ESTANDO FUERA
+# de la banda ciega, caduca sola, y el conjunto tiene tope. Ademas se PURGA si el barrido la
+# ve libre estando dentro del alcance fiable.
+VOXMEM = os.environ.get("G1_VOXMEM", "") == "1"                  # OFF por defecto
+VOXMEM_TTL = float(os.environ.get("G1_VOXMEM_TTL", "3.0"))       # s que se recuerda (3 s cubre el 69%)
+VOXMEM_R = float(os.environ.get("G1_VOXMEM_R", "1.2"))           # m: radio donde aplica la memoria
+VOXMEM_K = int(os.environ.get("G1_VOXMEM_K", "2"))               # confirmaciones sanas para memorizar
+VOXMEM_MAX = int(os.environ.get("G1_VOXMEM_MAX", "400"))         # tope de celdas recordadas
 # FIX B: FRENO POR CAMARA — la mitad no implementada del principio de Renxi 2026-07-02 ("el
 # LiDAR decide, la vision APOYA: los clamps solo MODERAN la velocidad"). El canal clamp del
 # perception_server ("lo tengo encima", NEAR_CLAMP=0.7, solo columnas centrales con obstruccion
@@ -1509,6 +1529,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     film_t = 0.0                                  # ultimo frame de la pelicula guardado
     hg_log_t = 0.0; c0_hard = 9.9; hard_set = set()   # guardia de alta confianza
     door_seen = {}; door_sticky = set()               # FIX C: confirmaciones/celdas fijadas del marco
+    vox_mem = {}; vox_seen = {}                       # memoria de voxels: celda -> t de ultima confirmacion sana
+    vox_inj = 0                                       # (diag) celdas reinyectadas por memoria en el tick
     cb_hits = 0; cb_on = False                        # FIX B: persistencia del aviso de camara
     dg_on = False                                     # DOORGUARD: ya avisado en esta pasada de zona
     vis_lost_t = 0.0; vis_lost = False                # watchdog de vision en caliente
@@ -1639,6 +1661,29 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                     door_sticky.add(c)
                 if door_sticky:
                     confirmed |= door_sticky
+            # --- MEMORIA DE VOXELS EN LA BANDA CIEGA (ver cabecera) ---
+            vox_inj = 0
+            if VOXMEM:
+                if scan_fresh:
+                    for c in confirmed:               # 'confirmed' ya esta filtrado a distancia SANA
+                        vox_seen[c] = vox_seen.get(c, 0) + 1
+                        if vox_seen[c] >= VOXMEM_K:
+                            vox_mem[c] = now          # sello de la ultima confirmacion fiable
+                if vox_mem:
+                    _add = []
+                    for c, ts in list(vox_mem.items()):
+                        if now - ts > VOXMEM_TTL:     # caduca
+                            vox_mem.pop(c, None); vox_seen.pop(c, None); continue
+                        _d = math.hypot(c[0] * g.OCELL - x, c[1] * g.OCELL - y)
+                        if _d > VOXMEM_R:             # fuera de la banda: manda el barrido
+                            continue
+                        if scan_fresh and c in live:  # el barrido la ve: no hace falta memoria
+                            continue
+                        _add.append((ts, c))
+                    _add.sort(reverse=True)           # si hay tope, se quedan las mas recientes
+                    _keep = {c for _, c in _add[:VOXMEM_MAX]}
+                    vox_inj = len(_keep)
+                    confirmed |= _keep
             # --- PERCEPCION GPU (HILO APARTE): depth -> scan virtual (la MESA que el LiDAR no ve) + suelo despejado ---
             if perc_worker is not None and now - perc_t > PERC_PERIOD:
                 _fr = grab_cam(cdp)
