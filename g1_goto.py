@@ -1530,6 +1530,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     hg_log_t = 0.0; c0_hard = 9.9; hard_set = set()   # guardia de alta confianza
     door_seen = {}; door_sticky = set()               # FIX C: confirmaciones/celdas fijadas del marco
     vox_mem = {}; vox_seen = {}                       # memoria de voxels: celda -> t de ultima confirmacion sana
+    vox_peak = 0; vox_acc = []                        # (diag) pico y serie de celdas sostenidas
     vox_inj = 0                                       # (diag) celdas reinyectadas por memoria en el tick
     cb_hits = 0; cb_on = False                        # FIX B: persistencia del aviso de camara
     dg_on = False                                     # DOORGUARD: ya avisado en esta pasada de zona
@@ -1592,6 +1593,13 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 cdp.eval(g.STOP_JS); time.sleep(0.2); cdp.eval(g.STOP_JS)
                 print(f"\n  LLEGADO a '{label}' ({wx:+.2f},{wy:+.2f}); error={d_goal:.2f} m, colisiones={ncol}.")
                 lg.write(f"REACHED {label} err={d_goal:.2f} ncol={ncol} {time.strftime('%Y-%m-%d %H:%M:%S')}\n"); lg.flush()
+                if VOXMEM:                            # resumen de la memoria de voxels (auditoria del mecanismo)
+                    _vm = sorted(vox_acc)
+                    lg.write("VOXMEM ttl=%.1f r=%.2f ticks=%d celdas_med=%d celdas_pico=%d\n"
+                             % (VOXMEM_TTL, VOXMEM_R, len(vox_acc),
+                                (_vm[len(_vm) // 2] if _vm else 0), vox_peak)); lg.flush()
+                    print("  VOXMEM: sostuvo %d celdas de mediana (pico %d) en %d ticks"
+                          % ((_vm[len(_vm) // 2] if _vm else 0), vox_peak, len(vox_acc)))
                 T = now - t0; plen = _path_len(trail)
                 straight = math.hypot(wx - trail[0][0], wy - trail[0][1]) if trail else 0.0
                 rd.save_cloud("end", [round(x, 3), round(y, 3), round(yaw, 1)], grab_full_cloud(cdp))
@@ -1683,6 +1691,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     _add.sort(reverse=True)           # si hay tope, se quedan las mas recientes
                     _keep = {c for _, c in _add[:VOXMEM_MAX]}
                     vox_inj = len(_keep)
+                    if vox_inj > vox_peak: vox_peak = vox_inj
+                    vox_acc.append(vox_inj)
                     confirmed |= _keep
             # --- PERCEPCION GPU (HILO APARTE): depth -> scan virtual (la MESA que el LiDAR no ve) + suelo despejado ---
             if perc_worker is not None and now - perc_t > PERC_PERIOD:
@@ -1859,6 +1869,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 _cd = ",".join(f"{d.get('label')}@{(d.get('bearing_deg') or 0):+.0f}/{d.get('range_m')}m"
                                for d in perc_dets if str(d.get('label', '')).lower() in VIS_OBST_LABELS) or "-"
                 lg.write(f"COLISION #{ncol} [{ctype}] pos=({x:+.2f},{y:+.2f}) yaw={yaw:+.0f} c0={c0:.2f} obs={len(oset)} "
+                     f"vox={vox_inj if VOXMEM else -1} "
                          f"perc_n={len(perc_cells)} free_c={vis_center if vis_center is not None else '-'} dets=[{_cd}] "
                          f"-> {'VISION CIEGA (perc_n=0): mesa LiDAR-ciega no vista' if len(perc_cells) == 0 else 'vision aportaba celdas'}\n")
                 rd.event("collision", now - t0, x, y,
