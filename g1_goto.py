@@ -138,6 +138,19 @@ DOOR_CTR_HOLD_S = float(os.environ.get("G1_DOOR_CTR_HOLD_S", "6.0"))  # s maximo
 DOOR_YAW2 = os.environ.get("G1_DOOR_YAW2", "") == "1"
 DOOR_YAW_HARD = float(os.environ.get("G1_DOOR_YAW_HARD", "25.0"))   # deg: por encima, parar como antes
 DOOR_YAW_LAT = float(os.environ.get("G1_DOOR_YAW_LAT", "0.12"))     # m: solo si esta centrado
+# --- CENTRADO DE SALIDA (G1_DOOR_EXIT_CTR, 14-ago). La run 170557 cruzo por fin, pero el brazo
+# IZQUIERDO rozo el marco al salir. La traza lo explica: entra impecable (lat -0.01..+0.08) y se
+# descentra SALIENDO hasta -0.19 (negativo = su izquierda, el brazo que rozo). Y mientras se iba,
+# la fase era ENG-GO -- es decir, el robot se creia centrado.
+# POR QUE: el servo apunta al centro MEDIDO (door_c_meas), que sale de detectar las dos jambas.
+# Ya dentro del vano las jambas quedan a los lados, dentro de la banda ciega del laser, asi que la
+# medida se queda vieja o sesgada y el robot servoa a un centro que no existe.
+# QUE HACE: pasado el centro del vano, ignora la medida y servoa al eje del MAPA hasta haber
+# salido de verdad. No lleva direccion fija: empuja al lado que toque, asi que no puede meterlo
+# contra la jamba por equivocarse de signo.
+# OJO A LA METRICA: el detector de colisiones dio 0 en esa run y hubo contacto real. Va por
+# odometria e IMU y un roce de brazo no perturba la base. ncol=0 NO significa limpio.
+DOOR_EXIT_CTR = os.environ.get("G1_DOOR_EXIT_CTR", "") == "1"
 DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "-1"))  # DEFAULT -1 (2026-07-02): MEDIDO en runs
                                  # 123933 (46 ticks orden izq -> 38cm a la DERECHA) y 122857 (51 ticks, 98cm
                                  # contra lo ordenado): el mapeo fisico de lx esta INVERTIDO. DOOR-CTR centraba
@@ -2168,7 +2181,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                             pass
                                 elif abs(he) > DOOR_REALIGN:                  # deriva del bipedo: NO avanzar torcido
                                     _lr = -(x - DOOR_CX) * uy + (y - DOOR_CY) * ux
-                                    if door_c_meas is not None:
+                                    if door_c_meas is not None and not (DOOR_EXIT_CTR and srob * sgn < 0.0):
                                         _lr = _lr - door_c_meas
                                     if (DOOR_YAW2 and abs(_lr) < DOOR_YAW_LAT
                                             and abs(he) <= DOOR_YAW_HARD):     # centrado: girar SIN parar
@@ -2178,8 +2191,14 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                         eng.update(state="ALIGN", ok=0, ts=now); engcmd = ((0, 0, 0, 0), "ENG-RE")
                                 else:
                                     _latrob = -(x - DOOR_CX) * uy + (y - DOOR_CY) * ux
-                                    if door_c_meas is not None:
+                                    _sal = (srob * sgn < 0.0)                  # ya pasado el centro del vano
+                                    if door_c_meas is not None and not (DOOR_EXIT_CTR and _sal):
                                         _latrob = _latrob - door_c_meas       # servo al centro MEDIDO
+                                    elif DOOR_EXIT_CTR and _sal and door_c_meas is not None:
+                                        if not eng.get("salaviso"):
+                                            eng["salaviso"] = 1
+                                            lg.write("DOOR-EXIT-CTR saliendo: ignoro centro medido "
+                                                     "(%+.2f m) y servoo al eje del mapa\n" % door_c_meas)
                                     latL = _latrob * sgn                       # + = IZQ del eje
                                     if abs(latL) > DOOR_CTR_TOL and abs(srob) > DOOR_CTR_S:  # descentrado -> strafe al eje
                                         lx = DOOR_STRAFE_SIGN * (DOOR_STRAFE if latL < 0 else -DOOR_STRAFE)
