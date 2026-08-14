@@ -56,6 +56,43 @@ If performance recovers, battery is causal; if not, the degradation is cumulativ
   vs 0.030). Its apparent edge in arrivals sat inside the n=6 noise floor — two identical
   configurations differed by just as much.
 
+## ▷ NEXT BRANCH — voxel memory in the blind band (`feature/voxel-memory`)
+
+Renxi's suggestion (14 Aug): [spatio_temporal_voxel_layer](https://github.com/SteveMacenski/spatio_temporal_voxel_layer)
+— *"the robot is helpless if it is in the blind spots"*, and *"there is a setting to pay more
+attention to voxels observed a few seconds ago"*. His diagnosis is exactly our failure mode, and
+the data now puts a number on his "few seconds".
+
+**Evidence.** Of 193 real collisions, **107 (55%)** happened with the laser reporting clear beyond
+0.6 m. Isolating those where the laser *had* seen the obstacle and then lost it: **29 cases, median
+2.2 s of blindness before impact** (p90 4.1 s). A traverse on 13 Aug shows it cleanly — clearance
+0.62 → 0.98 → 1.59 → **1.67 m at the moment of impact**: the obstacle faded from the scan as the
+robot closed in, and the grid erased it in the same tick.
+
+**Where the gap is in our code.** `g1_goto.py` has a persistence filter, but only in the
+*confirming* direction (a cell must appear in ≥2 of the last 3 scans before it is trusted —
+anti-noise). The update loop iterates over the **current scan only**, so a cell that stops being
+observed vanishes immediately. There is no retention. That is precisely what STVL adds.
+
+**The package itself cannot be dropped in**: the G1 "Air" exposes no ROS and no DDS, so there is no
+Nav2 and no costmap_2d here — the obstacle grid is ours, built from the cloud read out of the
+vendor app's WebView. The *mechanism* is small and belongs in that grid.
+
+**Design (targeted, not blanket).** Retain a cell's confirmation **only while it sits inside the
+vendor blind band, after having been confirmed outside it** — that is exactly the region where
+absence of evidence is not evidence of absence, and it avoids trusting stale cells in open space.
+Measured starting point for the decay window: **3 s covers 69% of those collisions, 4 s covers 90%**.
+
+**Safety caution from our own history.** Naive retention is dangerous here: in July a bug that froze
+noisy door-mouth cells produced phantom obstacles and a nine-collision loop — the twin caught it.
+STVL solves this with ray-traced clearing; our version needs an equivalent (a cell is cleared when
+a ray demonstrably passes through it, or when the TTL expires), plus the usual env-gated default
+that reproduces current behaviour exactly.
+
+**Validation path.** Offline replay first, over every recorded collision (does it mark the obstacle
+before impact?) and over the clean runs (does it invent obstacles?) — `analysis/replay_msm.py` is
+the pattern. Then the twin, then the robot. Own branch, one change.
+
 ## ▷ Open engineering items
 
 | Item | Why it matters |
