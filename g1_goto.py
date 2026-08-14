@@ -101,6 +101,29 @@ DOOR_STRAFE = 0.34               # magnitud del strafe lateral (> deadzone ~0.3,
 # Ambas puertas quedan como variables; los DEFAULTS reproducen golden EXACTAMENTE.
 DOOR_CTR_TOL = float(os.environ.get("G1_DOOR_CTR_TOL", "0.14"))  # m de desvio tolerado
 DOOR_CTR_S = float(os.environ.get("G1_DOOR_CTR_S", "0.35"))      # m antes del vano donde deja de corregir
+# --- CENTRADO POR RITMO (14-ago). MEDIDO, no supuesto: en las 8 runs B->A de hoy las cuatro
+# que llegaron y las cuatro que fallaron entran al ultimo metro con el MISMO desvio lateral
+# (+1.02..+1.10 m a su izquierda). No es una deriva: es la geometria de la aproximacion. Lo que
+# las separa es el RITMO al que vuelven al eje, y separa perfecto, sin solape:
+#     llegan  0.027 0.028 0.072 0.082 m/s      fallan  0.016 0.017 0.022 0.023 m/s
+# Tiene que cerrar ~1.05 m antes del vano; por debajo de ~0.025 m/s no le da tiempo, entra a
+# +0.25 y engancha el marco. Por eso apretar G1_DOOR_CTR_TOL no sirvio (3/7 hoy): cambia CUANDO
+# se dispara la correccion, no a que velocidad mueve -- la run 153451 disparo 12 correcciones y
+# aun asi entro a +0.29.
+# LA CAUSA ESTA EN QUE STRAFE Y AVANCE SON EXCLUYENTES: ENG-C mueve de lado con avance 0 y
+# ENG-GO avanza sin corregir. Con 4 ticks de ENG-C contra 69 de ENG-GO, el ritmo lateral medio
+# es una fraccion minima del strafe real. No hay que correr mas de lado: hay que dejar de gastar
+# el 95% de los ticks sin corregir.
+# QUE HACE G1_DOOR_CTR2=1 (OFF por defecto):
+#   |lat| > HOLD          -> strafe PURO, avance 0: no se entra al vano descentrado.
+#   TOL < |lat| <= HOLD   -> strafe Y avance A LA VEZ, en el mismo comando.
+#   |lat| <= TOL          -> ENG-GO de siempre.
+# Con red de seguridad: si el hold no reduce el desvio en HOLD_S segundos, avanza igualmente,
+# porque un robot parado en la puerta es un run perdido y dispara el aborto por falta de progreso.
+DOOR_CTR2 = os.environ.get("G1_DOOR_CTR2", "") == "1"
+DOOR_CTR_HOLD = float(os.environ.get("G1_DOOR_CTR_HOLD", "0.25"))   # m: por encima, no avanza
+DOOR_CTR_VY = float(os.environ.get("G1_DOOR_CTR_VY", "0.28"))       # avance simultaneo (= el de ENG-GO)
+DOOR_CTR_HOLD_S = float(os.environ.get("G1_DOOR_CTR_HOLD_S", "6.0"))  # s maximos parado corrigiendo
 DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "-1"))  # DEFAULT -1 (2026-07-02): MEDIDO en runs
                                  # 123933 (46 ticks orden izq -> 38cm a la DERECHA) y 122857 (51 ticks, 98cm
                                  # contra lo ordenado): el mapeo fisico de lx esta INVERTIDO. DOOR-CTR centraba
@@ -2138,7 +2161,22 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                     latL = _latrob * sgn                       # + = IZQ del eje
                                     if abs(latL) > DOOR_CTR_TOL and abs(srob) > DOOR_CTR_S:  # descentrado -> strafe al eje
                                         lx = DOOR_STRAFE_SIGN * (DOOR_STRAFE if latL < 0 else -DOOR_STRAFE)
-                                        engcmd = ((lx, 0, 0, 0), "ENG-C")
+                                        if not DOOR_CTR2:
+                                            engcmd = ((lx, 0, 0, 0), "ENG-C")
+                                        else:                                  # corregir SIN dejar de avanzar
+                                            _fwd = 0.0 if abs(latL) > DOOR_CTR_HOLD else DOOR_CTR_VY
+                                            if _fwd == 0.0:                    # red de seguridad del hold
+                                                if "hold_t0" not in eng:
+                                                    eng["hold_t0"] = now; eng["hold_lat"] = abs(latL)
+                                                elif (now - eng["hold_t0"] > DOOR_CTR_HOLD_S
+                                                      and abs(latL) > eng["hold_lat"] - 0.05):
+                                                    _fwd = DOOR_CTR_VY         # no reduce: no bloquear el run
+                                                    lg.write("DOOR-CTR2 hold sin efecto %.1fs (lat %.2f->%.2f) -> avanzo\n"
+                                                             % (now - eng["hold_t0"], eng["hold_lat"], abs(latL)))
+                                                    eng.pop("hold_t0", None)
+                                            else:
+                                                eng.pop("hold_t0", None)
+                                            engcmd = ((lx, _fwd, 0, 0), "ENG-C" if _fwd == 0.0 else "ENG-CG")
                                     else:
                                         engcmd = ((0, 0.28, 0, 0), "ENG-GO")
                                         if "pt" not in eng or now - eng["pt"] > 1.2:   # avance real cada ~1.2s
@@ -2305,7 +2343,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     # parada COMANDADA (alinear/girar/strafe del engagement o de DOOR): progression=0
                     # es voluntaria -> el bridge la congela para no reportar estancamiento falso
                     _php = ph.strip().replace("AGR-", "").rstrip("!HM")
-                    _hold = _php.startswith(("ENG-T", "ENG-AL", "ENG-RE", "ENG-WT", "ENG-C",
+                    _hold = _php.startswith(("ENG-T", "ENG-AL", "ENG-RE", "ENG-WT", "ENG-C", "ENG-CG",
                                              "DOOR-AL", "DOOR-WT", "DOOR-CTR", "DWA-T", "SEEK-T"))
                     # canal de RESISTENCIA: velocidad real vs comandada en ~1.2s (None sin comando de avance)
                     m2trk.append((now, x, y, (cmd[1] if cmd else 0.0)))
