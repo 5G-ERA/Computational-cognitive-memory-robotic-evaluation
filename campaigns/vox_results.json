@@ -1,0 +1,134 @@
+[
+ {
+  "arm": "vxoff",
+  "file": "20260814_170842_ours_A.json",
+  "dur_s": 87.6,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 0
+ },
+ {
+  "arm": "vxon",
+  "file": "20260814_171017_ours_A.json",
+  "dur_s": 109.4,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 24
+ },
+ {
+  "arm": "vxon",
+  "file": "20260814_171214_ours_A.json",
+  "dur_s": 91.8,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 17
+ },
+ {
+  "arm": "vxoff",
+  "file": "20260814_171353_ours_A.json",
+  "dur_s": 88.4,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 0
+ },
+ {
+  "arm": "vxoff",
+  "file": "20260814_171529_ours_A.json",
+  "dur_s": 86.7,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 0
+ },
+ {
+  "arm": "vxon",
+  "file": "20260814_171702_ours_A.json",
+  "dur_s": 268.8,
+  "d_final": 6.15,
+  "reached": false,
+  "n_col": 7,
+  "retreats": 3,
+  "assists": 0,
+  "vox_inj_med": 41
+ },
+ {
+  "arm": "vxon",
+  "file": "20260814_172139_ours_A.json",
+  "dur_s": 92.5,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 18
+ },
+ {
+  "arm": "vxoff",
+  "file": "20260814_172319_ours_A.json",
+  "dur_s": 84.8,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 0
+ },
+ {
+  "arm": "vxoff",
+  "file": "20260814_172451_ours_A.json",
+  "dur_s": 98.9,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 0
+ },
+ {
+  "arm": "vxon",
+  "file": "20260814_172637_ours_A.json",
+  "dur_s": 90.0,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 19
+ },
+ {
+  "arm": "vxon",
+  "file": "20260814_172814_ours_A.json",
+  "dur_s": 89.8,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 17
+ },
+ {
+  "arm": "vxoff",
+  "file": "20260814_172952_ours_A.json",
+  "dur_s": 87.8,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "vox_inj_med": 0
+ }
+]
