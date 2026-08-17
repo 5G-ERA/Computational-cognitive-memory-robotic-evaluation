@@ -4,35 +4,17 @@
    "m_match": 0.5,
    "m_mismatch": 0.0,
    "m_theta": 0.5,
-   "runs": 7,
+   "runs": 8,
    "spills": 0
   },
   "Cautious_Nav": {
    "m_match": 0.9841618239879608,
    "m_mismatch": 0.0,
    "m_theta": 0.015838176012039185,
-   "runs": 18,
+   "runs": 21,
    "spills": 0
   },
   "_ful_hist": [
-   {
-    "ful": 0.345,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.737,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
-   {
-    "ful": 0.693,
-    "applied": "Cautious_Nav",
-    "pl": 1.0,
-    "spills": 0
-   },
    {
     "ful": 0.364,
     "applied": "Cautious_Nav",
@@ -74,16 +56,34 @@
     "applied": "Cautious_Nav",
     "pl": 1.0,
     "spills": 0
+   },
+   {
+    "ful": 0.823,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.567,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
+   },
+   {
+    "ful": 0.756,
+    "applied": "Cautious_Nav",
+    "pl": 1.0,
+    "spills": 0
    }
   ]
  },
  "_door": {
   "Door_Direct": {
-   "m_match": 0.9194185477915318,
-   "m_mismatch": 0.0410965406263183,
-   "m_theta": 0.03948491158214896,
-   "crossings": 7,
-   "fails": 2
+   "m_match": 0.9599074882580074,
+   "m_mismatch": 0.02634078021448804,
+   "m_theta": 0.013751731527502885,
+   "crossings": 10,
+   "fails": 3
   },
   "Door_Far": {
    "m_match": 0.537015602574193,
