@@ -15,7 +15,9 @@ door-crossing configuration, tag `golden-doorcross`, 14 Aug).
 
 Confirmed with the operator, 17 Aug 2026:
 
-- **One door**, in the mapped environment. This is the binding constraint.
+- **One environment: Renxi's office** — confirmed 17 Aug as both the intended venue and the space
+  where every test to date was run. There is no second environment. One door, one map, one set of
+  waypoints. See §8.2 for what this does and does not compromise.
 - **Obstacles: the environment's own.** Agreed with Renxi (17 Aug): boxes, sofa and door already
   make the space hard, and **no additional obstacles are needed**. A chair and the G1's transport
   crate remain available if a specific contrast is wanted — the chair has thin legs and a seat above
@@ -209,13 +211,12 @@ our instrumentation cannot see them (see §8).
 ## 8. Limitations declared in advance
 
 1. **Parameter tuning on the evaluation geometry.** The `golden-doorcross` configuration was tuned
-   on this door. Reserving cells does not undo that. What helps is that it was frozen and dated on
-   14 Aug, *before* this design existed, so it is a pre-existing artefact rather than something
-   adjusted in view of confirmatory outcomes. **Rule from here on: any further tuning happens only
-   on development cells.**
-2. **One door, one flat.** Geometry is varied by obstacle placement, which moves the dead region —
-   the factor that matters — but it is not the same as independent corridor layouts. No claim of
-   generalisation across environments can be made from this benchmark.
+   on this door. It was frozen and dated on 14 Aug, *before* this design existed, so it is a
+   pre-existing artefact rather than something adjusted in view of confirmatory outcomes.
+   **Rule from here on: any further tuning happens only on development cells.**
+2. **One environment (§8.2).** No claim of generalisation across environments can be made.
+   Geometry is varied by obstacle placement, which moves the dead region — the factor that matters —
+   but that is not the same as independent corridor layouts.
 3. **`ncol = 0` does not mean clean.** The collision detector runs on odometry and IMU and does not
    see a light arm scrape; on 14 Aug an arrival scored zero collisions and touched the frame. Until
    arm contact is instrumented, a human must watch every crossing and score it.
@@ -225,16 +226,41 @@ our instrumentation cannot see them (see §8).
 
 ---
 
+### 8.2 What a single environment does and does not compromise
+
+The venue is Renxi's office, and it is also where everything so far was developed and tuned. That
+is a real limitation, but it is narrower than it first appears, and the distinction matters enough
+to state precisely.
+
+**What it does not compromise: the four contrasts.** C4−C3, C4−C2, C3−C1 and C4−C1 are all
+*within-environment* comparisons. None of them requires generalisation to another space; they
+require that the four conditions face the *same* challenges, which a single environment guarantees
+by construction. And `golden-doorcross` is the **object-level** controller — it sits below the meta
+layer and is **identical in all four conditions**. A constant shared by every arm cannot bias the
+difference between arms. The tuning therefore contaminates *absolute* performance, not the
+contrasts the paper actually reports.
+
+**What it does compromise:**
+
+- Any claim that these success rates transfer to another building. None should be made.
+- The absolute stability and efficiency numbers, which are specific to this office and this door.
+- **The meta layer, if it is developed on confirmatory cells.** This is the live risk, and it is the
+  one thing reservation genuinely protects. The object-level controller is already frozen; the DCC
+  machinery is not yet written.
+
+**Operational rule that follows.** Freeze the object-level controller at `golden-doorcross` and do
+**all** meta-layer development — role resolution, C1's verifier, the interface fields, the voxel
+memory fix — on development cells only. The reserved cells are then untouched by the layer actually
+under test, which is what the protocol is protecting against. Stated plainly in the paper, this is
+a defensible position for a single-environment benchmark.
+
+---
+
 ## 9. Open decisions for Renxi
 
-1. **Which environment?** Renxi's message — *"my office is already very hard with boxes, sofa and
-   door"* — may mean the office is the intended venue, or may simply describe a hard space. This
-   needs settling before anything is built, because the consequences are large in both directions.
-   A second environment would be **the cleanest possible answer to limitation 2**: genuinely
-   independent layouts rather than obstacle rearrangement in one room. But it costs a new map, new
-   waypoints, and the `golden-doorcross` configuration would not transfer — it was tuned on the
-   current door. If both environments are available, the strongest design is to **develop in one
-   and confirm in the other**, which satisfies the reservation requirement outright.
+1. ~~Which environment?~~ **Settled 17 Aug: Renxi's office, the same space used throughout.**
+   Single environment; the consequences are worked through in §8.2 and the operational rule that
+   follows from it.
 2. Does obstacle-induced geometry variation satisfy the requirement to reserve *corridor layouts*,
    or must it be reported only as reserved *event combinations*? The protocol's wording admits
    both; the claim wording depends on the answer. (Moot if the answer to 1 is two environments.)
