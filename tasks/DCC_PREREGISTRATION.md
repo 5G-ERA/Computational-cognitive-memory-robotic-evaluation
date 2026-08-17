@@ -15,22 +15,60 @@ door-crossing configuration, tag `golden-doorcross`, 14 Aug).
 
 Confirmed with the operator, 17 Aug 2026:
 
-- **One door**, in the flat that is also the mapped environment. This is the binding constraint.
-- **Two obstacles**: a **chair** and the **G1's own transport crate**. They are not interchangeable
-  and that is useful — the chair has thin legs and a seat above the scan plane, so it is *hostile
-  to the LiDAR*; the crate is a large solid, *reliably detected*. One exercises the lidar-coverage
-  role, the other the object role.
+- **One door**, in the mapped environment. This is the binding constraint.
+- **Obstacles: the environment's own.** Agreed with Renxi (17 Aug): boxes, sofa and door already
+  make the space hard, and **no additional obstacles are needed**. A chair and the G1's transport
+  crate remain available if a specific contrast is wanted — the chair has thin legs and a seat above
+  the scan plane, so it is *hostile to the LiDAR*, while the crate is a large solid and *reliably
+  detected* — but the default is to use what is there.
+- **Glass and windows.** Raised by the operator and confirmed by Renxi as a real factor: LiDAR does
+  not see glass. This is the single best witness available to us and it is discussed in §2.1.
 - **Lighting switchable at any moment**, including mid-run. This is what makes the illumination
   role measurable at all.
 - **Battery**: measured over 83 real runs, **~1 percentage point per run**, median run 87 s.
 
-### Measured illumination baseline
+### 1.1 Glass: the paper's aliasing example, physically present
 
-From 1978 stored camera frames across 76 runs: mean frame luminance runs **92–116 per run**
-(global range 45–169). That narrow band is the *adequate* condition — it also shows illumination
-has never been manipulated, so no existing run contributes to the illumination witness. The
-baseline exists so that "inadequate" can be defined against a measured reference rather than by
-eye.
+The supplementary's canonical LiDAR witness is that *"a missing lidar return could represent either
+free space or a coverage-limited region"*. **A window is that sentence made physical**: glass
+returns nothing, so a pane and an open doorway are the same reading. Renxi's comment — *"they are
+the reasons that rgb camera is useful, but not reliable"* — states the complementarity exactly:
+
+| Condition | LiDAR | RGB |
+|---|---|---|
+| Glass / window | **fails** (no return, reads as free) | usable |
+| Darkness | usable | **fails** |
+| Both | fails | fails → the protocol's *joint insufficiency* family |
+
+The two failures are **dissociable**, which is what Semantic Locality demands: degraded coverage
+and inadequate illumination must stay distinct cognitive grounds even when both recommend slowing
+down. Glass gives us that dissociation without adding any equipment.
+
+### Illumination cannot be measured from the frames we have (corrected 17 Aug)
+
+An earlier draft of this document proposed mean frame luminance (92–116) as the "adequate"
+baseline. **That was wrong and is withdrawn.** Measured over 1978 stored frames, mean luminance is
+essentially flat across the whole working day — 09:00 → 18:00 gives 105, 103, 109, 107, 105, 104 —
+while contrast varies three times as much:
+
+| Statistic | Relative variation (σ/mean) |
+|---|---|
+| Mean luminance | 0.12 |
+| Contrast (frame σ) | **0.37** |
+| Grain (edge energy) | 0.19 |
+
+A mean that stays pinned near 105 under every condition is the signature of the camera's
+**auto-exposure**, not of constant room lighting. Mean luminance therefore measures the AGC target,
+not the illumination.
+
+**Consequence:** the illumination-adequacy interface field cannot be derived from existing data,
+and no image statistic should be adopted before it is calibrated. **Step 0 of the illumination work
+is a calibration session**: drive the lights through known, declared states, record frames, and
+determine which statistic actually tracks them (contrast and grain are the candidates; mean is
+not). Until that session exists, "illumination adequacy" would be invented rather than measured.
+
+This does not affect Ω_t, which takes the **switch state** — known to the operator, independent of
+the camera.
 
 ---
 
@@ -39,14 +77,18 @@ eye.
 **Fixed by condition (the 2×2 of the protocol):** decision process (temporal incumbent verification
 vs distributed meta-resolution) × interface (original `I⁰` vs revised `I¹`) → C1, C2, C3, C4.
 
-**Geometry variants** (chair = *Ch*, crate = *Cr*):
+**Geometry variants**, built from what the room already contains:
 
-| | Layout |
-|---|---|
-| G0 | Clear approach |
-| G1 | Crate narrowing the approach on one side |
-| G2 | Chair in the approach |
-| G3 | Both, staggered |
+| | Layout | Sensing character |
+|---|---|---|
+| G0 | Clear approach | Both senses adequate |
+| G1 | Narrowed by an existing solid (boxes, sofa) | Reliably detected → *object* ground |
+| G2 | LiDAR-hostile element in the approach: **glazing**, or the chair's thin legs | Reads as free space → *coverage* ground |
+| G3 | Both, staggered | Two grounds present at once |
+
+G2 has **two mechanisms that must be recorded separately** — glass (no return at all) and thin legs
+(returns below the scan plane, intermittent). They fail the LiDAR differently and should not be
+pooled.
 
 **Lighting schedules:**
 
@@ -71,12 +113,12 @@ fixed — they are what makes the family that family — and are not randomised.
 | Family | Geo | Light | Battery | What it presents |
 |---|---|---|---|---|
 | F1 stable | G0 | L0 | high | No role degraded; motion/payload stays active |
-| F2 lidar degradation | G2 | L0 | high | Chair: dead region without a confirmed object |
+| F2 lidar degradation | G2 | L0 | high | Dead region without a confirmed object. **Two mechanisms, recorded apart: F2a glazing, F2b thin legs** |
 | F3 illumination | G0 | L1 | high | RGB unusable, LiDAR healthy |
-| F4 joint insufficiency | G2 | L1 | high | Neither sensor suffices → review/defer, **never a forced object conclusion** |
-| F5 reliable object | G1 | L0 | high | Crate: solid and well detected |
+| F4 joint insufficiency | G2 | L1 | high | Glazing *and* darkness: neither sense suffices → review/defer, **never a forced object conclusion** |
+| F5 reliable object | G1 | L0 | high | Existing solid (boxes/sofa): well detected |
 | F6 low battery | G0 | L0 | low | Energy limits available capability |
-| F7 recovery and return | G2 | L2 | high | Light returns *and* the chair is removed mid-run |
+| F7 recovery and return | G2 | L2 | high | Light returns *and* the obstacle is removed mid-run |
 | F8 no-use control | G3 | L0 | high | Passage blocked: no preserved role applies |
 
 **Randomised within each family** (the free factors): direction (A→B / B→A), initial lateral offset
@@ -185,11 +227,19 @@ our instrumentation cannot see them (see §8).
 
 ## 9. Open decisions for Renxi
 
-1. Does obstacle-induced geometry variation satisfy the requirement to reserve *corridor layouts*,
+1. **Which environment?** Renxi's message — *"my office is already very hard with boxes, sofa and
+   door"* — may mean the office is the intended venue, or may simply describe a hard space. This
+   needs settling before anything is built, because the consequences are large in both directions.
+   A second environment would be **the cleanest possible answer to limitation 2**: genuinely
+   independent layouts rather than obstacle rearrangement in one room. But it costs a new map, new
+   waypoints, and the `golden-doorcross` configuration would not transfer — it was tuned on the
+   current door. If both environments are available, the strongest design is to **develop in one
+   and confirm in the other**, which satisfies the reservation requirement outright.
+2. Does obstacle-induced geometry variation satisfy the requirement to reserve *corridor layouts*,
    or must it be reported only as reserved *event combinations*? The protocol's wording admits
-   both; the claim wording depends on the answer.
-2. Are the stability and efficiency definitions in §7 the ones intended for the paper's frozen
+   both; the claim wording depends on the answer. (Moot if the answer to 1 is two environments.)
+3. Are the stability and efficiency definitions in §7 the ones intended for the paper's frozen
    criteria?
-3. Given limitation 1, should the confirmatory runs use `golden-doorcross` as-is, or a
+4. Given limitation 1, should the confirmatory runs use `golden-doorcross` as-is, or a
    deliberately untuned configuration, accepting a lower absolute success rate in exchange for a
    cleaner claim?
