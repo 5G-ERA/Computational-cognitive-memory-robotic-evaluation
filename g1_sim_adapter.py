@@ -152,6 +152,29 @@ class RosBridge:
 # (el codigo del robot no se toca): rayo laser gaussiano + dropout, y deriva de odometria
 # random-walk por metro; la loc_conf baja de forma EMERGENTE via el relocalizador real.
 SIM_NOISE = os.environ.get("G1_SIM_NOISE", "") == "1"
+# --- CRISTAL SIMULADO (G1_SIM_GLASS, 17-ago): el par testigo W1 en el gemelo -----------------
+# Un lidar no ve el vidrio. Aqui se reproduce donde de verdad ocurre -- en el sensor -- y no
+# tocando el mundo: los retornos que caen dentro de un rectangulo declarado se DESCARTAN, mientras
+# la pared sigue existiendo en el mundo de Gazebo (el robot choca con ella) y en el mapa de
+# referencia (el planificador la conoce). Eso es exactamente un cristal, y monta las dos mitades
+# de W1 con la misma geometria:
+#     cristal      -> el mapa predice retorno y el barrido NO lo da  -> cov_def alto
+#     vano abierto -> el mapa tampoco predice retorno                -> cov_def ~0
+# Formato: "x0,y0,x1,y1" en coordenadas del mapa; varios rectangulos separados por ';'.
+def _rects(sv):
+    out = []
+    for r in (sv or "").split(";"):
+        v = [t for t in r.replace(" ", "").split(",") if t]
+        if len(v) == 4:
+            try:
+                x0, y0, x1, y1 = (float(t) for t in v)
+                out.append((min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)))
+            except ValueError:
+                pass
+    return out
+
+
+SIM_GLASS = _rects(os.environ.get("G1_SIM_GLASS", ""))
 NZ_SIG_R = float(os.environ.get("G1_SIM_NOISE_R", "0.09"))        # sigma por rayo (m)
 NZ_P_DROP = float(os.environ.get("G1_SIM_NOISE_DROP", "0.01"))    # prob. dropout por rayo
 NZ_DRIFT = float(os.environ.get("G1_SIM_NOISE_DRIFT", "0.07"))    # deriva pos (m por m) [calibrado 31-jul]
@@ -310,8 +333,11 @@ class SimCDP:
             if not math.isfinite(r) or r <= sc.get("range_min", 0.15) or r >= rmax * 0.98:
                 continue
             th = yaw + a + i * inc
-            flat.extend((round(po[0] + r * math.cos(th), 3),
-                         round(po[1] + r * math.sin(th), 3), 0.0))
+            _px = po[0] + r * math.cos(th); _py = po[1] + r * math.sin(th)
+            if SIM_GLASS and any(x0 <= _px <= x1 and y0 <= _py <= y1
+                                 for x0, y0, x1, y1 in SIM_GLASS):
+                continue                           # el vidrio no devuelve: el rayo lo atraviesa
+            flat.extend((round(_px, 3), round(_py, 3), 0.0))
         self._cloud = flat
         self._cloud_t = self.b.scan_t
 
