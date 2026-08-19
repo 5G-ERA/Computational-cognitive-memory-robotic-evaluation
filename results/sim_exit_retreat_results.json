@@ -1,0 +1,98 @@
+[
+ {
+  "arm": "onx",
+  "file": "20260731_114114_ours_A.json",
+  "dur_s": 93.5,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "door_t": 36.0,
+  "door_vis": 0
+ },
+ {
+  "arm": "onx",
+  "file": "20260731_114255_ours_A.json",
+  "dur_s": 188.1,
+  "d_final": 5.88,
+  "reached": false,
+  "n_col": 2,
+  "retreats": 3,
+  "assists": 0,
+  "door_t": null,
+  "door_vis": 0
+ },
+ {
+  "arm": "onx",
+  "file": "20260731_114610_ours_A.json",
+  "dur_s": 265.8,
+  "d_final": 5.65,
+  "reached": false,
+  "n_col": 1,
+  "retreats": 3,
+  "assists": 0,
+  "door_t": null,
+  "door_vis": 0
+ },
+ {
+  "arm": "onx",
+  "file": "20260731_115044_ours_A.json",
+  "dur_s": 100.5,
+  "d_final": 0.36,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "door_t": 36.8,
+  "door_vis": 0
+ },
+ {
+  "arm": "onx",
+  "file": "20260731_115232_ours_A.json",
+  "dur_s": 86.4,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "door_t": 33.0,
+  "door_vis": 0
+ },
+ {
+  "arm": "onx",
+  "file": "20260731_115406_ours_A.json",
+  "dur_s": 99.6,
+  "d_final": 0.36,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "door_t": 34.8,
+  "door_vis": 0
+ },
+ {
+  "arm": "onx",
+  "file": "20260731_115553_ours_A.json",
+  "dur_s": 91.9,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "door_t": 35.2,
+  "door_vis": 0
+ },
+ {
+  "arm": "onx",
+  "file": "20260731_115732_ours_A.json",
+  "dur_s": 94.6,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "door_t": 39.1,
+  "door_vis": 0
+ }
+]

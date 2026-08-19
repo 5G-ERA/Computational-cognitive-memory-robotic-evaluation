@@ -1,210 +1,153 @@
-# G1 Unitree — Autonomous Navigation & Meta-Reasoning (consumer "Air", no EDU/DDS)
+# Meta-Reasoning on a Stock Unitree G1
 
-Autonomous exploration and obstacle avoidance on a **stock Unitree G1 "Air"** humanoid — a
-consumer unit that exposes **only a single WebRTC session through the official app** (no ROS 2, no
-DDS, no SSH, no low-level SDK). Everything here is built **on top of that one channel**, by tapping
-the app's own WebView over USB.
+> A consumer humanoid — no ROS on board, no SDK, and a LiDAR that goes blind below one metre —
+> carrying an open cup of water through a narrow door, while reasoning about **how much to trust
+> its own senses**.
 
-> The robot maps and navigates while we read its LiDAR/odometry and drive it — all without EDU
-> hardware — and learns from its own collisions. The longer-term goal is **meta-reasoning**: a robot
-> that reasons about the reliability of its own perception and adapts.
+![Real recorded trajectories: five clean crossings, and one run where the laser lied](docs/img/mission.png)
 
----
+<sub>Real recorded data, no retouching. **Left:** the golden window — five consecutive clean
+crossings. **Right:** the same robot, the same door, 512 s and 70 m walked, seven collisions
+against a frame its laser could not see. The gap between those two panels is what this research
+is about.</sub>
 
-## TL;DR — what this does
+PhD research (University of Bedfordshire) on **meta-reasoning by analogy** for autonomous robots.
+The robot is a stock Unitree G1 “Air”: the only way in is the vendor app, so the whole stack is
+built on top of that single channel. Above navigation sits a meta level that decides *which sense
+to believe*, recovers when it gets stuck, and asks a human for help when it cannot.
 
-- **Reads the robot's SLAM live** (point cloud + odometry) from Python, over USB, by hooking the
-  app's WebView with `ios-webkit-debug-proxy` (no second WebRTC session needed).
-- **Drives the robot** (walk / turn / strafe) by **injecting `rt/wirelesscontroller` velocity
-  commands into the app's existing WebRTC datachannel** — the only way to move it programmatically
-  without a 2nd session.
-- **Autonomous explore mode**: wanders a room, builds coverage, avoids obstacles fusing **LiDAR +
-  camera (floor segmentation, edge, YOLOv8s, MiDaS depth) + odometry collision detection**, and
-  **remembers obstacles it bumps into**.
-- **Live visualizer** of the LiDAR cloud (2D/3D) + robot pose + path + camera with YOLO boxes.
-
-This was reverse-engineered against the owner's **own** robot/app for interoperability. The APK,
-keys and proprietary assets are **not** redistributed here.
+> **Picking this up? Go to [`tasks/`](tasks/)** — it says what happens next and what to take to
+> the lab.
 
 ---
 
-## CURRENT PIPELINE (July 2026) — A↔B navigation + DCE governance
+## Why this is interesting
 
-The project has moved from reactive exploration to a **validated A↔B door-crossing pipeline**
-used as the real-robot testbed for the DCA/DCE evaluation (see the tutor's paper *Decentralised
-MetaReasoning Through Capability Abstraction* and `docs/META2_GOVERNANCE.md`):
+The G1's laser is cut below ~1 m by design. Measured over 193 real collisions: **55 % happened
+while the laser was reporting clear ground**. A robot that trusts its sensors blindly walks into
+the same door frame forever — so the real problem is not navigation, it is **self-assessment**:
+knowing when your perception is lying, and what to do about it.
 
-- **Global plan on the full static map** (`G1_GLOBALMAP=static`): walls = hard cost (uninflated,
-  the real ~0.8 m door survives), known furniture from `nav_map.json` = soft cost + wall halo.
-  Deterministic plan; the local DWA keeps using the live laser. Export/inspect the map with
-  `g1_get_static_map.py` (local | webview | pcd).
-- **Door ENGAGEMENT** (`G1_DOOR_ENGAGE=1`): pre-entry point on the door axis (from the static
-  map), stop, rotate until |yaw−axis| ≤ 8°, cross straight with re-align on biped drift.
-  Works both directions (A→B and B→A).
-- **META2 governance** (`G1_META2=1` shadow / `=2` active): Meta-Reasoner 2.0 (the tutor's
-  configuration-first DCE runtime, package `meta-reasoner-2.0/`) fed each tick with the robot's
-  shared experience — safety←clearance, progression, **mobility** (resistance channel:
-  achieved/commanded speed), reliability/uncertainty with a **few-shot historical margin**.
-  Outputs KEEP/SWITCH/FALLBACK/HELP; active mode applies per-analogy speed ceilings and the
-  **experience escalation** aborts the run when sustained experience says no analogy is valid.
-- **Everything is measured**: per-tick dataset (`dataset/<run>.json`) with SEI metrics, META2
-  decisions, collisions with pre-impact camera frames; `summarize_runs.py` → `runs_summary.csv`
-  (one row per run: governance, env sim/real, times, collisions, META2 aggregates) — the raw
-  results table for the paper. `autopsy.py` renders a full HTML report per run.
-- **Reproducible experiments**: every change is env-revertible, validated by offline replay
-  against all logged runs before touching the robot (`g1_replay.py`, `sim_globalplan.py`,
-  bridge replay), and the frozen git branch **`baseline`** holds the validated navigation
-  config without governance for fair comparison.
+| | Meta level ON | OFF |
+|---|---|---|
+| Runs reached (under calibrated sensor noise) | **6 / 6** | 3 / 6 |
+| Collisions in those runs | **0** | 27 |
+| False interventions on clean runs | 1.0 % | — |
+| Time cost | +8.6 % | — |
 
-Quick start (on the Ubuntu machine driving the robot):
+Closed-loop A/B in the digital twin, interleaved arms. Full problem → solution → evidence map:
+[`docs/img/problem_solution_evidence.png`](docs/img/problem_solution_evidence.png).
+
+---
+
+## How it works, in one minute
+
+![System architecture](docs/img/architecture.png)
+
+**Control path.** The robot exposes nothing but its own iOS app. A Python stack on the laptop
+attaches to the app's WebView over USB (Chrome DevTools Protocol), reads the live LiDAR cloud and
+camera frames, and drives the robot by injecting joystick commands ~10 times a second.
+
+**Navigation.** Global plan over a reference map → DWA local planner → a door-crossing state
+machine that steers on a *vision-measured* door bearing → an ordered guard chain that can only
+ever remove speed.
+
+**Meta level.** Renxi Qiu's Meta-Reasoner 2.0 selects navigation analogies with Dempster–Shafer
+trust; a four-layer bridge feeds it evidence and applies its verdict. Above that runs an explicit
+state machine — `NORMAL · DEGRADED · BLIND · RECOVERY · ASSIST` — driven by retrospective laser
+validity, door-centre contradictions and interface quality. Out of options, the robot stops and
+asks the operator for help, remembers the rescue, and recalls it when it passes there again.
+
+**Digital twin.** The same code, unmodified, runs against a Gazebo world built from a laser scan
+of the real flat, in the same map frame — so real waypoints, map and door are reused untranslated.
+Sensor noise is calibrated against real distributions, so the twin fails the way reality does.
+
+---
+
+## Repository layout
+
+| Path | What lives there |
+|---|---|
+| `g1_goto.py` | The robot brain: navigation, door FSM, guard chain, meta level, run recording |
+| `g1_meta2_bridge.py`, `meta-reasoner-2.0/` | Meta-reasoning layer (the reasoner itself is **never modified**; its 11 tests must stay green) |
+| `g1_nav_v2.py`, `g1_metrics.py`, `g1_perception.py`, `g1_particle_filter.py` | Navigation primitives, sensing self-assessment, vision client, shadow estimator |
+| `g1_sim_adapter.py`, `sim/` | Digital twin: adapter, Docker recipe, worlds, launch files — see the [twin guide](sim/RUN_AND_REBUILD.md) |
+| `perception_server.py` | Off-board vision service (metric depth + object detection) |
+| `spill_mark.py` | Ground-truth marker the operator uses during real sessions |
+| `analysis/` | Per-run analysis, autopsy reports, and shadow replay of the meta level over past runs |
+| `campaigns/` | Automated experiment campaigns in the twin |
+| `dataset/`, `data/` | Every run ever recorded (samples, events, collision snapshots), and the maps and waypoints the robot navigates with |
+| `config/`, `state/`, `results/` | Reasoner configurations, per-experiment trust state, campaign results |
+| **`tasks/`** | **What to do next — start here if you are picking the project up** |
+| `docs/` | Protocols, plans and reports — start with the runbook below |
+| `logs/`, `tools/`, `attic/` | Historical campaign logs, utilities (plots, figures, calibration) and old probes kept for provenance |
+| `docs/notes/` | Dated engineering records from earlier phases, including how the robot's SLAM stream was reached at all — see its [index](docs/notes/README.md) |
+
+---
+
+## Getting started
+
+**If you are new, read in this order:**
+
+1. [`docs/G1_Test_Protocol_Operator_Runbook.pdf`](docs/G1_Test_Protocol_Operator_Runbook.pdf) —
+   the operating manual: every command, for the twin and for the real robot.
+2. [`sim/RUN_AND_REBUILD.md`](sim/RUN_AND_REBUILD.md) — launch, rebuild and back up the
+   digital twin. Everything here runs without touching the robot.
+3. [`docs/G1_Disciplined_Session_Protocol.pdf`](docs/G1_Disciplined_Session_Protocol.pdf) — the
+   method. Not optional: one undisciplined session once destroyed a week of results.
+4. [`docs/G1_Branch_Strategy_and_New_Stack_Case.pdf`](docs/G1_Branch_Strategy_and_New_Stack_Case.pdf) —
+   which code to run for which experiment, and what the newest work buys you.
+
+> Configurations and trust state live in `config/` and `state/`, but every documented command
+> still passes a bare filename — the loader resolves it. Nothing in the protocols had to change.
+
+**Fastest useful thing you can do** — replay the meta level over a recorded session, with no robot
+and no simulator:
 
 ```bash
-git pull                                   # ALWAYS first
-# T1: perception server
-G1_FLOORCOLOR=1 python perception_server.py --host 0.0.0.0 --port 8008 \
-    --fx 300 --fy 300 --cx 160 --cy 120 --cam-h 1.10 --cam-pitch -10
-# T2: navigation with governance active
-G1_META2=2 G1_PERC=127.0.0.1:8008 python g1_goto.py gotoviz B
+python3 analysis/replay_msm.py dataset/<run>.json
 ```
 
-Key env flags: `G1_META2` (0/1/2) · `G1_M2_ABORT` (experience escalation) · `G1_M2_HIST_K`
-(few-shot margin; 0 = one-shot ablation) · `G1_GLOBALMAP` (static/hard/ref/live) ·
-`G1_DOOR_ENGAGE` · `G1_ENV=real|sim` + `G1_SIM_ID` (simulation campaign tagging) ·
-`G1_AGGR_R`, `G1_HARDGUARD`, `G1_ESCAPE`, `G1_RELOCGUARD` (safety layers).
+---
 
-Project memory lives in **`HANDOFF.md`** (session-by-session state) and **`PROBLEMS.md`**
-(the tutor's problem list, one fix per run, with evidence). Read those first.
+## Branches
+
+| Ref | Purpose |
+|---|---|
+| `golden-doorvis` *(tag)* | Frozen baseline: the session with five clean runs in a row. **Every re-baseline measurement uses this.** |
+| `main` | Mainline development |
+| `tutor-feedback-metareasoner-sim` | Newest work: meta state machine, human channel, calibrated twin noise, synthetic camera |
+
+Rule of thumb: **golden = measure · main = the plan · the `-sim` branch = the new work.** Nothing
+new goes on the robot before a fresh baseline exists to compare it against.
 
 ---
 
-## Why it's hard (the constraints)
+## Ground rules
 
-The G1 Air is **not** the EDU/developer unit:
+Learned the expensive way, enforced every session:
 
-| Want | Air reality |
-|------|-------------|
-| ROS 2 / DDS / CycloneDDS | ❌ internal bus not exposed on the WiFi AP (EDU-only) |
-| SSH / low-level SDK (`rt/arm_sdk`, `lowcmd`) | ❌ forwarded but **not actuated** |
-| Raw LiDAR cloud over WebRTC | ❌ only `odom` + `slam_info` reach a 3rd-party client; the dense cloud is decoded **only inside the app's WebView** |
-| Two WebRTC sessions (one app, one ours) | ❌ robot allows **one** peer — the app holds it |
+- **One change per batch**, validated in the twin with the new path actually exercised.
+- **No code edits during a real session.** None.
+- Defaults reproduce previous behaviour exactly — every new behaviour sits behind a flag.
+- Instrumentation down = run invalid, repeat it.
+- Noise-lane results are their own baseline; never compared against clean or real timings.
 
-So the trick is: **don't fight the app — live inside it.** We attach to the WebView's JS over USB
-(immune to the robot AP's client isolation), read the decoded cloud + odom, and publish velocity on
-the app's own datachannel.
-
----
-
-## Architecture
-
-```
- iPhone (Unitree app, WebView)  ──WebRTC──  G1 robot
-        │   ▲
-   USB  │   │  ios-webkit-debug-proxy (CDP over USB)
-        ▼   │
-   Mac (Python)
-     ├─ Perception
-     │    ├─ LiDAR clean grid  (cloud → world-frame voxel grid: near-field exclusion + persistence + decay)
-     │    ├─ Camera vision     (floor-color seg · edge · YOLOv8s · MiDaS depth — class-agnostic "obstacle ahead")
-     │    └─ Collision sensor  (odometry stall = bumped something no sensor saw)
-     ├─ Control     (inject rt/wirelesscontroller {lx,ly,rx,ry} @20Hz, in-page driver + dead-man)
-     └─ Exploration (reactive wander + coverage novelty + redirection to unexplored)
-```
-
-Coordinate note: the cloud is in **Three.js Y-up** frame (the app's renderer), the odometry is in
-**ROS Z-up** frame — they are reconciled in code (`cloud_x≈odom_x`, height=idx1, `cloud_z=-odom_y`).
-
----
-
-## The scripts
-
-**Navigation / autonomy**
-- `g1_nav.py` — **the main program.** Unified capture + control + exploration. Modes:
-  - `watch` — live odom + cloud point count (read-only)
-  - `clr` — read-only obstacle clearances around the robot (LiDAR grid)
-  - `vsee` — read-only camera vision readout (floor fractions, YOLO label, MiDaS depth_ratio)
-  - `forward N` / `turn DEG` / `gorel F L` / `goto X Y` — closed-loop primitives (odom feedback)
-  - `nav X Y` / `navrel F L` — go to a point **with reactive obstacle avoidance**
-  - `vsee` / `clr` — read-only camera & LiDAR readouts (now show **metric distance** in meters)
-  - `floorcal auto` — **calibrate** the camera's metric depth against the LiDAR (no tape measure; see below)
-  - `explore [secs]` — **reactive** autonomous mapping/exploration (wander + coverage novelty)
-  - `frontier [secs] [viz]` — **deliberative** exploration: arcs to the nearest reachable **frontier**
-    with A* path planning. `viz` opens a live window (**map + robot camera**, great for screen-recording).
-    Saves `map_latest.png` + `map_latest.json` every 30 s for later inspection.
-- `g1_nav_v2.py` — **experimental** fork of `g1_nav.py` (stable one untouched). Adds: stronger models for
-  Apple-Silicon (`G1_YOLO=yolov8m.pt`, `G1_DEPTH=DPT_Hybrid`), **information-gain frontiers** (heads for
-  wide openings/doors, not the nearest nook), **analogy from past collisions** (avoids obstacles that
-  *look like* something it hit before), confidence-aware speed, and an IMU-discovery scaffold (`imu` cmd).
-- `g1_inject_teleop.py` — option-C teleop injection (sniff/capture/drive) — proof that we can move the robot via the app's datachannel
-- `g1_teleop.py` — direct walking via `rt/wirelesscontroller` (app closed)
-
-**Perception / viz**
-- `g1_inspector_bridge.py` — live LiDAR cloud (2D/3D) + pose + path + **camera window with YOLO boxes**
-- `g1_cam_probe.py` — probe the app's `<video>` element (camera)
-- `slam_g1_mapping.py` — start/stop/save SLAM from Python (app closed)
-- `g1_slam_viz.py`, `g1_map_viz.py` — odometry / saved-map visualizers
-
-**Reverse-engineering / diagnostics**
-- `dump_services.py`, `discover_slam_api.py`, `query_api.py`, `g1_slaminfo_dump.py`, … — how the API was mapped
-
-**Docs**
-- `AUTONOMOUS_NAVIGATION.md` — perception/control/exploration **algorithm** + a roadmap of
-  improvements (incl. the meta-reasoning direction)
-- `G1_Air_SLAM_SOLVED.md` / `.pdf` — the SLAM/WebRTC reverse-engineering writeup
-
----
-
-## Quick start
-
-Prereqs (on the Mac, in a venv):
-```bash
-brew install ios-webkit-debug-proxy
-pip install websocket-client requests numpy matplotlib pillow ultralytics timm
-# (MiDaS depth pulls its weights on first run; runs on Apple-GPU/MPS automatically)
-```
-
-Bring-up:
-1. iPhone: Unitree app connected to the robot, **standing**, on the **SLAM/map screen**, **camera on**.
-   iPhone Web Inspector ON; **don't** open Safari's inspector on that page (one debugger per page).
-2. USB-connect the iPhone to the Mac (trust).
-3. Terminal 1: `ios_webkit_debug_proxy`
-4. Terminal 2:
-   ```bash
-   python g1_nav.py watch        # confirm odometry is live (x/y/yaw change when you move the robot)
-   python g1_nav.py explore 90   # autonomous exploration
-   ```
-
-**Safety:** keep the physical remote in hand as a kill switch (L2+B = damping/stop), clear 2–3 m of
-space, and start with the robot freshly charged (>80%) and standing in walk mode.
-
----
-
-## Learning from failure (toward meta-reasoning)
-
-Each real collision is treated as a perception signal:
-- **Memory:** the bumped obstacle (which the LiDAR couldn't see) is *injected into the obstacle grid*
-  so the robot doesn't hit it again.
-- **Dataset:** every collision saves a camera snapshot + a `.txt` of *what each sensor reported at
-  that instant* (`crashes/`) — i.e. *why* it failed (LiDAR blind, camera saw floor, …). This is the
-  raw material for improving the visual model and for the robot to reason about its own blind spots.
-
-The repo's name — *meta reasoning* — points at where this goes: a robot that knows the LiDAR misses
-tables/glass and the camera confuses same-colour walls, **weights its sensors by context**, slows
-down when its perception is uncertain or degraded, and **transfers** an avoidance learned on one
-chair to an identical chair elsewhere (analogy). See `AUTONOMOUS_NAVIGATION.md`.
+**Safety when driving the real robot:** keep the physical remote in hand as a kill switch
+(L2 + B = damping/stop), clear 2–3 m around the robot, and start freshly charged and standing in
+walk mode.
 
 ---
 
 ## Status
 
-Working (validated on the robot, July 2026): SLAM read, teleop injection, closed-loop motion,
-**A↔B door crossing on a static global plan with door engagement** (best runs: A→B 54.9 s /
-0 collisions, B→A 108 s / 0 collisions), GPU perception with floor-color channel, **DCE
-governance in shadow and active modes with experience-abort escalation**, full per-run
-instrumentation for the paper's evaluation. Historical exploration modes (`g1_nav.py explore/
-frontier`) still work. Current state, open problems and next steps: `HANDOFF.md` + `PROBLEMS.md`;
-governance architecture: `docs/META2_GOVERNANCE.md`.
+The meta-reasoning stack is **validated in the digital twin**: closed-loop A/B under calibrated
+noise, plus a shadow replay over 309 recorded real runs. Its **real-robot trial follows the next
+re-baseline session and its decision gate.** Results, caveats and open items are tracked in the
+documents above.
 
 ## Disclaimer
 
-Research/interoperability work on the author's own hardware. Not affiliated with Unitree. Moving a
-bipedal robot autonomously is inherently risky — supervise it, keep a kill switch, use a clear space.
+Research and interoperability work on the author's own hardware. Not affiliated with Unitree.
+Moving a 35 kg humanoid programmatically carries real risk — reproduce at your own risk, with the
+kill switch in hand.

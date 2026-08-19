@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>R1 Re-baseline — Real Robot Runbook</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 9.8pt;
+         color: #16202b; line-height: 1.44; }
+  .bar { background: #16233a; color: #fff; padding: 9px 14px; border-radius: 5px;
+         display: flex; justify-content: space-between; font-size: 8.4pt; letter-spacing: 1.1px;
+         font-weight: 700; margin-bottom: 20px; }
+  h1 { font-size: 20pt; text-align: center; margin: 0 0 4px; }
+  .sub { text-align: center; color: #5a6675; font-size: 10pt; margin-bottom: 18px; }
+  h2 { font-size: 12.5pt; margin: 20px 0 7px; border-bottom: 1.6px solid #16233a; padding-bottom: 3px; }
+  h3 { font-size: 10.6pt; margin: 13px 0 4px; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8.1pt; }
+  pre { background: #f3f5f8; border: 1px solid #dbe2ea; border-radius: 4px; padding: 7px 10px;
+        white-space: pre-wrap; word-break: break-all; margin: 5px 0 9px; }
+  code { background: #eef1f5; padding: 0 3px; border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: 9pt; }
+  th { background: #16233a; color: #fff; text-align: left; padding: 6px 9px; font-size: 8.3pt;
+       letter-spacing: 0.8px; text-transform: uppercase; }
+  td { border-bottom: 1px solid #e2e8f0; padding: 6px 9px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .box { border-left: 4px solid #16233a; background: #eef2f8; padding: 10px 14px; margin: 10px 0;
+         border-radius: 0 4px 4px 0; font-size: 9.3pt; }
+  .warn { border-left-color: #a8321f; background: #fdf0ec; }
+  .ok { border-left-color: #1a7a2e; background: #eef7f0; }
+  .chg { border-left-color: #b45309; background: #fff8ec; }
+  li { margin-bottom: 3px; }
+  .pb { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<div class="bar"><span>G1 · R1 RE-BASELINE · REAL ROBOT ONLY</span><span>13 AUG 2026 · REV. 2</span></div>
+
+<h1>R1 Re-baseline — Real Robot Runbook</h1>
+<div class="sub">Ten runs on the golden checkout, Gate 1 decided at the lab · every command paste-ready</div>
+
+<div class="box chg">
+<b>What changed in rev. 2, and why.</b> Rev. 1 was checked against the repository, the golden-window
+datasets and the lab machine itself. Six things moved; five of them change what you type.
+<ol style="margin:6px 0 0 16px">
+<li><b>The runs happen ON THE LAB MACHINE, not on the laptop.</b> Every golden dataset carries
+    <code>G1_PERC=127.0.0.1:8008</code>, the runs are stored there, and the USB proxy is installed there.
+    Rev. 1 had it backwards (§0, §5).</li>
+<li><b>Three abort flags must NOT be passed.</b> The golden window ran on the binary's defaults
+    (75&nbsp;s / 0.4&nbsp;m / 8&nbsp;s). Rev. 1's line passed 150 / 0.25 / 16, making the supervisor twice as
+    patient — which inflates the arrival rate Gate 1 measures (§5).</li>
+<li><b>The perception line starts with <code>G1_FLOORCOLOR=1</code></b>, missing from every previous
+    version of this document (§2.4).</li>
+<li><b>The shared-log sync is already done</b> (13 Aug). The lab machine had nothing to push (§2.1).</li>
+<li><b>Check GPU memory before launching perception</b>: a local LLM service holds ~20&nbsp;GB per card
+    on that box (§2.4).</li>
+<li><b>Golden is not byte-exact</b> and cannot be — the five clean runs span four commits, all with a
+    dirty tree (§0).</li>
+</ol>
+</div>
+
+<div class="box">
+<b>Scope.</b> Real robot only; the twin lane is deliberately out of this document.
+<b>The three iron rules.</b> One change per batch · No code edits during the session ·
+Instrumentation down = run invalid, repeat it.
+</div>
+
+<h2>0. Choices this runbook already makes</h2>
+
+<table>
+<tr><th>Question</th><th>Choice</th><th>Because</th></tr>
+
+<tr><td><b>Which machine drives the robot</b></td><td><b>The lab machine</b> (repo at
+<code>~/Documents/G1_UNITREE_ROBOT_META_REASONING</code>), iPhone by USB into it</td>
+<td><b>Resolved by evidence.</b> All nine golden-window datasets record
+<code>G1_PERC=127.0.0.1:8008</code>; the 24 Jul runs are stored on that machine (57 of them); the USB
+proxy is installed there and its shell history holds the exact run line. Driving from the laptop
+instead would introduce a new variable into the one batch whose whole purpose is comparability.</td></tr>
+
+<tr><td><b>Water or dry</b></td><td><b>Dry</b> — empty cup in the hand</td>
+<td>The Disciplined Protocol states it outright: <i>"DRY (no water) … Next batch: WATER at 200 g on
+this exact binary"</i>. Gate 1 measures arrivals, collisions and times — water contributes nothing to
+today's decision, and the QoE contract is not frozen yet.</td></tr>
+
+<tr><td><b>Perception intrinsics</b></td><td><b>Resolved</b>: <code>--cx 160 --cy 90</code>, with
+<code>G1_FLOORCOLOR=1</code></td>
+<td>The frames are 16:9 at 320×180, so <code>--cy 90</code> is the geometrically correct half-height;
+<code>--cy 120</code> is the older 4:3 assumption and appears earlier in the history. The
+<code>G1_FLOORCOLOR=1</code> prefix is in every line that box actually ran.</td></tr>
+
+<tr><td><b><code>--self-mask 0.25</code></b></td><td><b>Off</b> for this batch</td>
+<td>A judgement, so write it down. It appears only in the most recent history line, and the apron work
+it belongs to came out of the post-collapse analysis — after the golden window. Reproducing golden
+argues for leaving it off. Server flags are not recorded in the datasets, so this cannot be proven
+either way.</td></tr>
+
+<tr><td><code>goto</code> or <code>gotoviz</code></td><td><code>gotoviz</code></td>
+<td>Same code path plus the visualisation window. The golden runs used <code>gotoviz</code> — it is in
+that machine's history verbatim.</td></tr>
+</table>
+
+<div class="box warn">
+<b>Golden is a reference, not a byte-exact target.</b> The five clean crossings span four commits
+(<code>2522c11 → 53740e4 → 1e1904d → f312dd4 → 019ec85</code>) and <b>every one of them ran with a
+dirty working tree</b>. <code>019ec85</code> is the code of the last four runs, which makes it the best
+available reference — but exact reproduction is impossible by construction. That is precisely why this
+batch is ten runs and a threshold, not one run and an impression.
+</div>
+
+<h3>Pre-register the hypothesis (write it down before the first run)</h3>
+<div class="box ok">
+<b>H0:</b> with the golden binary, cup in hand, no apron — B→A success ≥ 70%, A→B ≥ 90%, times
+50–110 s. If the batch does not reproduce this, the golden window was luck or something physical
+changed, and we will know it with <i>n</i>, not with vibes.
+</div>
+
+<h2>1. Who does what</h2>
+<table>
+<tr><th>Role</th><th>Owns</th></tr>
+<tr><td><b>Console</b></td><td>Launches each run, watches the run console, confirms the marker
+heartbeat line is there, calls REACHED/FAILED, pushes after each pair.</td></tr>
+<tr><td><b>Marker &amp; observer</b></td><td>Runs <code>spill_mark.py</code>: presses <code>i</code>
+the moment instrumentation drops, and keeps the per-run sheet — arrival or failure, time, collisions,
+near-misses. On a dry batch this seat is above all <b>the honest witness for what the robot does not
+register</b>: those events have no other record (§5).</td></tr>
+<tr><td><b>Both</b></td><td>Nobody touches the robot during a run. A failed run is data, not a bug to
+fix live.</td></tr>
+</table>
+
+<h2>2. Pre-flight — before the robot is switched on</h2>
+
+<h3>2.1 Shared-log sync — <span style="color:#1a7a2e">already done, 13 Aug 2026</span></h3>
+<div class="box ok">
+The lab machine was four commits behind with a 48 MB <code>goto.log</code> and <b>nothing of its own to
+push</b>. It has been pulled onto current <code>main</code>, its log is the rotated 4 KB one, and its old
+copy was archived compressed on that machine (4.8 MB) on top of the git history. <b>Nothing to do
+here today.</b> If a future session rotates again: the machine that rotated pushes first, the other
+pulls before its next run; conflicts in <code>goto.log</code> or the stats CSV are resolved by
+<b>union of both sides</b>, never by discarding lines.
+</div>
+
+<h3>2.2 Golden checkout — on the lab machine</h3>
+<pre>cd ~/Documents/G1_UNITREE_ROBOT_META_REASONING && git status</pre>
+<p>Working tree must be clean (untracked scratch files are fine). Then:</p>
+<pre>git checkout golden-doorvis && git log --oneline -1</pre>
+<p>Expect <code>019ec85 "shakedown B-&gt;A con DOOR-VIS"</code>. Detached HEAD is fine for the session.
+The golden binary <b>includes</b> DOOR-VIS, DOOR-GUARD, DOOR-CENTER, REALCAL, marker v2 with heartbeat
+and the per-run config snapshot; it <b>does not include</b> RETREAT, SELF-MASK, ENV-CHANGE or OMNI.
+Those come back one at a time, twin-validated, after Gate 1.</p>
+
+<h3>2.3 Meta-reasoner sanity check</h3>
+<pre>cd meta-reasoner-2.0 && python3 -m unittest discover -q</pre>
+<p>Must print OK. The Meta-Reasoner 2.0 is never modified; its 11 unit tests staying green is the
+guarantee.</p>
+
+<h3>2.4 Perception server — same machine</h3>
+<p><b>First, check the GPUs are free.</b> A local LLM service lives on that box and can hold ~20 GB on
+<i>each</i> card, leaving too little for the depth model:</p>
+<pre>nvidia-smi --query-gpu=memory.used,memory.total --format=csv</pre>
+<p>If both cards are near full, stop that service before launching perception. Discovering this
+mid-session, with the robot on the floor, is the expensive way to find out.</p>
+<p>Then launch it — this is the line that machine actually ran, with the two decisions from §0
+applied (<code>--cy 90</code>, no self-mask):</p>
+<pre>source ~/g1env/bin/activate
+G1_FLOORCOLOR=1 python perception_server.py --host 0.0.0.0 --port 8008 --fx 300 --fy 300 --cx 160 --cy 90 --cam-h 1.10 --cam-pitch -10 --debug</pre>
+<p>Verify:</p>
+<pre>curl -s http://127.0.0.1:8008/health</pre>
+<div class="box warn">
+<b>PASS = <code>ok: true</code> and MODE gpu.</b> If detections come back empty on the smoke test, the
+camera frame or the intrinsics are wrong. Stop and fix it before any run — a session recorded through
+a blind perception server is a wasted session.
+</div>
+
+<h3>2.5 Physical setup — frozen, and it goes into the manifest</h3>
+<ul>
+<li><b>Cup in the hand</b>, campaign-1 geometry (<code>ARM_R=0.25</code>). This keeps the cup out of the
+camera frame and the spill model calibrated. The chest mount broke both at once.</li>
+<li><b>No apron</b> for the baseline batch. Water protection, if it comes back, is its own experiment.</li>
+<li><b>Empty cup.</b> Scale and water stay at hand anyway: if the session goes well and the QoE contract
+gets frozen, the water batch is the immediate next step on this same binary.</li>
+<li>Phone with the vendor app, Bluetooth ON.</li>
+</ul>
+
+<h2 class="pb">3. Robot bring-up (every boot)</h2>
+<p>Three terminals stay open all session: the USB proxy · the perception server ·
+<code>spill_mark.py</code>.</p>
+<ol>
+<li>On the phone, <b>"Forget This Network"</b> first. Then robot on → open the vendor app <b>with
+Bluetooth ON</b> → pair <b>from the app</b>: it reads the rotating key over BLE and joins the phone
+itself. Joining from iPhone Settings will say "incorrect password" — that is expected, do not fight it.</li>
+<li>iPhone to the <b>lab machine</b> by USB → <code>ios_webkit_debug_proxy</code> sees the WebView →
+confirm the robot actually moves, in-app teleop or <code>g1_teleop.py</code>.</li>
+<li>Localisation check:
+<pre>python3 g1_goto.py reloccheck</pre>
+The session ritual also runs <code>noisecheck</code> before this one.</li>
+<li>Marker up in <b>its own terminal, before the first run</b>:
+<pre>python3 spill_mark.py</pre>
+Then verify its <b>heartbeat line appears in the run console</b>. The heartbeat is still unvalidated on
+hardware, so check it every session, not once. Leave the marker running <i>between</i> runs. If it dies
+mid-run that run is invalid: Ctrl-C, relaunch, redo the run.</li>
+</ol>
+
+<div class="box">
+If the robot <b>reboots mid-session</b> the phone link breaks and the whole ritual starts again — and it
+must be <b>logged between runs</b>, because it is a session event. Same for the <b>app version</b>: it is
+an experiment variable. Note it, keep auto-updates off, keep a spare device on the old version.
+</div>
+
+<div class="box warn">
+<b>Marker keys on the golden code (v2):</b> <code>ENTER</code> = spill · <code>w &lt;g&gt;</code> = weigh ·
+<code>i</code> = invalid. The human-support keys <code>c</code> and <code>m &lt;cm&gt;</code>
+<b>do not exist here</b> — they are v3, on the feedback branch, and that branch is not part of R1. If
+someone expects them, they will be pressing keys that do nothing.
+</div>
+
+<h2>4. Shakedown — one or two runs, not scored</h2>
+<p>Before the batch starts, run the whole chain once end to end and <b>throw the result away</b>. It is
+the first real session in weeks and there are several things that can be quietly broken; finding them
+inside a scored run costs a run.</p>
+<table>
+<tr><th>Check on the shakedown run</th><th>What a failure looks like</th></tr>
+<tr><td>Marker heartbeat in the run console</td><td>No heartbeat line → every subsequent run would be
+uninstrumented and invalid</td></tr>
+<tr><td>Perception returning detections</td><td>Empty detections → wrong camera frame or intrinsics</td></tr>
+<tr><td>Localisation holding</td><td>It was lost at the end of session 2 — <code>reloccheck</code>
+passing once is not the same as holding through a traverse</td></tr>
+<tr><td>Door crossing at all</td><td><code>door_crossed</code> never appears → DOOR-VIS is not doing what
+it did on 24 Jul</td></tr>
+<tr><td>Nothing physical moved</td><td>Furniture, lighting, the B start pose. These are the H0-failure
+suspects, and they are cheaper to notice now</td></tr>
+</table>
+<p>Log the shakedown as a shakedown. It is not run 1, it does not enter Gate 1, and it does not count
+towards the stop rule.</p>
+
+<h2>5. The run loop — 10 runs, 5× A→B and 5× B→A, alternating</h2>
+<p>Same command every single run. Any change mid-batch voids the batch.</p>
+<ol>
+<li>Empty cup in the hand. The marker stays running for its heartbeat and for <code>i</code>.</li>
+<li>Launch the run. This is the golden-window line, reconstructed from that machine's own history and
+from the environment snapshot stored inside the golden datasets, plus the physical manifest:</li>
+</ol>
+<pre>cd ~/Documents/G1_UNITREE_ROBOT_META_REASONING && source ~/g1env/bin/activate
+G1_SETUP="cup=hand,apron=off,fill=dry" G1_ARM=REBASELINE G1_META2=2 G1_M2_CFG=config_meta2_g1payload.json G1_M2_STATE=meta2_state_r1.json G1_M2_STATE_INIT=meta2_state_twin_explored.json G1_M2_REALCAL=1 G1_M2_L3=1 G1_M2_L4=1 G1_M2_PROFILES=1 G1_M2_DOORLIB=1 G1_M2_FRAGSPEED=1 G1_DOOR_VIS=1 G1_PERC=127.0.0.1:8008 python3 g1_goto.py gotoviz B</pre>
+
+<div class="box warn">
+<b>Do not add <code>G1_M2_ABORT_WIN</code>, <code>G1_M2_ABORT_PROG</code> or <code>G1_M2_HELP_S</code>.</b>
+Earlier drafts of this runbook passed 150 / 0.25 / 16. The golden window ran on the binary's
+<b>defaults — 75 s, 0.4 m, 8 s</b> — because those variables were simply not in its environment. Passing
+the larger values makes the supervisor roughly twice as patient, which turns runs that golden would have
+aborted into runs that continue: it inflates the very arrival rate Gate 1 is measuring. Leave them out.
+</div>
+
+<p><code>G1_SETUP</code> is not read by any code; the recorder snapshots every <code>G1_*</code> variable,
+so it lands in the dataset as the physical manifest of the batch. <code>G1_ARM=REBASELINE</code> is what
+separates these runs from the July ones in the analysis.</p>
+
+<ol start="3">
+<li><b>During the run:</b> nobody touches the robot. Watch and note collisions and near-misses,
+especially against low furniture — see the table below.</li>
+<li><b>Run ends:</b> record arrival or failure, time, and collisions. A run that ends in a HELP stop is a
+<b>valid result</b>, not a failed run.</li>
+<li>Anything wrong with the instruments → <code>i &lt;reason&gt;</code> and <b>repeat that run</b>. It is
+not a data point.</li>
+<li><b>Reverse leg:</b> exactly the same line, ending <code>g1_goto.py gotoviz A</code>.</li>
+<li>Push after each pair and report the pair's outcomes: arrivals, times, collisions. Live accounting
+without touching the robot.</li>
+</ol>
+
+<div class="box warn">
+<b>Stop rule.</b> Three consecutive failures of the same mode → <b>stop the session</b>. Data goes home,
+autopsy offline. No lab improvisation, no code edits. The 24 Jul collapse — five code edits and three
+physical changes in one afternoon — is exactly what this rule exists to prevent, and it cost an
+unattributable session.
+</div>
+
+<h3>What to expect, so nobody panics mid-session</h3>
+<table>
+<tr><th>Signal</th><th>Normal on the real robot</th></tr>
+<tr><td>B→A leg time</td><td>52–60 s in the golden window; band ~50–110 s</td></tr>
+<tr><td>Collisions</td><td>Median 0 per run</td></tr>
+<tr><td>Spills</td><td>None to count on a dry batch. For the water batch that follows: <b>~12 per run at
+247 g is NORMAL</b> — REALCAL handles it, and the twin's 0.5 is the simulator's physics, not a target</td></tr>
+<tr><td>The B pocket</td><td>B starts ~0.3 m from a solid, "nose to sofa". Expect trouble on that side; it
+is a known waypoint problem, not a stack regression</td></tr>
+<tr><td>Laser reading clear</td><td>Not evidence of clear space: 107 of 193 real collisions in replay
+happened with the laser reading clear beyond 0.6 m</td></tr>
+</table>
+
+<h3>What the robot physically cannot see</h3>
+<p>All ten collisions of an earlier session were attributed from the logs. Three mechanisms, and none of
+them is "the software had a bad day" — knowing them tells the observer where to stand and what to write
+down.</p>
+<table>
+<tr><th>Mechanism</th><th>What actually happens</th></tr>
+<tr><td><b>Body model too thin</b><br>6 of 10</td><td>The planner assumes a half-width of 0.22 m
+(shoulders), but with arm swing the real robot is <b>0.28–0.30 m</b>. Door-jamb hits had the jamb
+correctly in the map and the planner advanced anyway.</td></tr>
+<tr><td><b>Height-band blindness</b><br>2–3 of 10</td><td>The obstacle map only accepts laser returns in
+a band of roughly <b>0.7–1.8 m above the floor</b>. A couch arm or a low cabinet is simply invisible —
+the map read empty for 0.87 m around the impact point. The camera saw it the whole time and contributes
+almost no cells.</td></tr>
+<tr><td><b>Thin jamb at a grazing angle</b><br>1–2 of 10</td><td>At grazing incidence the jamb returns too
+few points and the noise-persistence filter drops it intermittently — the hard-obstacle distance flapped
+between 0.7 and 2.5 m over the final three seconds before a hit.</td></tr>
+</table>
+<p><b>For the observer:</b> low furniture is the blind spot. If the robot is heading for a couch arm or a
+low cabinet, it does not know. Note it as an observed near-miss even when nothing is logged — that
+observation is the only record that will exist.</p>
+
+<h2>6. Gate 1 — decided at the lab, before packing up</h2>
+<table>
+<tr><th>Check</th><th>Pass</th></tr>
+<tr><td>A→B reached</td><td>≥ 90% (≥ 5/5, or 9/10 counting both directions)</td></tr>
+<tr><td>B→A reached</td><td>≥ 70% (≥ 4/5)</td></tr>
+<tr><td>Collisions</td><td>Median 0 per run</td></tr>
+<tr><td>Times</td><td>Golden band ~50–110 s (24 Jul reference: 52–65 s on B→A legs)</td></tr>
+</table>
+<p><b>PASS</b> → the baseline is re-established; the next sessions follow the Results Acquisition Plan
+(R2 water GOV/BASE ABBA → R3 → R4), and the meta-state-machine branch earns its own real trial,
+mirrored 1:1 against this batch.</p>
+<p><b>FAIL</b> → data home, autopsy offline with the analysis tools. Change nothing until the cause has
+a name. The suspects, in order: something physical moved, perception intrinsics, the B pocket.</p>
+
+</body>
+</html>

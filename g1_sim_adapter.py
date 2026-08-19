@@ -32,6 +32,7 @@ USO (desde el Mac, carpeta G1 ROBOT):
 import json
 import math
 import os
+import random
 import re
 import sys
 import threading
@@ -145,11 +146,117 @@ class RosBridge:
             pass
 
 
+# --- RUIDO DE SENSORES (G1_SIM_NOISE=1; calibrado contra runs reales del 24-jul) ---
+# Objetivo medido: laser_noise real p50=0.147 (gemelo limpio 0.058), c0_std real p50=0.072
+# (gemelo 0.030), loc_conf real p50=0.90 (gemelo 1.0 constante). El ruido va SOLO aqui
+# (el codigo del robot no se toca): rayo laser gaussiano + dropout, y deriva de odometria
+# random-walk por metro; la loc_conf baja de forma EMERGENTE via el relocalizador real.
+SIM_NOISE = os.environ.get("G1_SIM_NOISE", "") == "1"
+NZ_SIG_R = float(os.environ.get("G1_SIM_NOISE_R", "0.09"))        # sigma por rayo (m)
+NZ_P_DROP = float(os.environ.get("G1_SIM_NOISE_DROP", "0.01"))    # prob. dropout por rayo
+NZ_DRIFT = float(os.environ.get("G1_SIM_NOISE_DRIFT", "0.07"))    # deriva pos (m por m) [calibrado 31-jul]
+NZ_DYAW = math.radians(float(os.environ.get("G1_SIM_NOISE_DYAW", "1.5")))  # deriva yaw (rad por m) [calibrado]
+NZ_BIAS_S = float(os.environ.get("G1_SIM_NOISE_BIAS", "0.03"))    # sesgo comun AR(1) por barrido (m)
+NZ_BURST_P = float(os.environ.get("G1_SIM_NOISE_BURST_P", "0.05"))   # prob. de rafaga por barrido
+NZ_BURST_LEN = int(os.environ.get("G1_SIM_NOISE_BURST_LEN", "3"))    # barridos que dura la rafaga
+NZ_BURST_GAIN = float(os.environ.get("G1_SIM_NOISE_BURST_GAIN", "4.0"))  # sigma x gain en rafaga
+# --- CAMARA SINTETICA (G1_SIM_PERC=1): habilita DOOR-VIS en el gemelo ---
+# g1_goto exige un frame real (CAM_JS) y un servidor /perceive vivos. Aqui: SimCDP sirve un
+# JPEG dummy 320x180 y un hilo HTTP responde /health + /perceive con la deteccion 'door'
+# calculada desde la pose VERDADERA del sim (una camara real mide el bearing FISICO), con
+# realismo medido en runs reales: latencia ~0.28s, dropout 4%, bearing +-1.5deg, rango 5%.
+# El codigo del robot NO se toca: para g1_goto es un perception_server normal.
+SIM_PERC = os.environ.get("G1_SIM_PERC", "") == "1"
+SIM_PERC_PORT = int(os.environ.get("G1_SIM_PERC_PORT", "8010"))
+SP_DOOR = (float(os.environ.get("G1_DOOR_X", "-3.90")),
+           float(os.environ.get("G1_DOOR_Y", "1.25")))     # mismo centro que usa g1_goto
+SP_LAT = float(os.environ.get("G1_SIM_PERC_LAT", "0.28"))  # latencia media (s)
+SP_DROP = float(os.environ.get("G1_SIM_PERC_DROP", "0.04"))  # dropout de respuesta
+SP_BNOISE = float(os.environ.get("G1_SIM_PERC_BDEG", "1.5"))  # ruido de bearing (deg)
+
+
+def _dummy_frame():
+    """JPEG 320x180 gris-moqueta como data URI (frame neutro: todo 'suelo' para el canal de color)."""
+    try:
+        from PIL import Image
+        import io, base64
+        buf = io.BytesIO()
+        Image.new("RGB", (320, 180), (126, 116, 104)).save(buf, format="JPEG", quality=50)
+        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    except Exception:
+        return ""
+
+
+def start_sim_perc(bridge):
+    """Servidor de percepcion FALSO (hilo demonio). Bearing de puerta desde la pose verdadera."""
+    import http.server, socketserver
+
+    def true_pose():
+        od = bridge.odom
+        if not od:
+            return None
+        p = od["pose"]["pose"]["position"]; q = od["pose"]["pose"]["orientation"]
+        yaw = math.atan2(2 * (q["w"] * q["z"] + q["x"] * q["y"]),
+                         1 - 2 * (q["y"] * q["y"] + q["z"] * q["z"]))
+        return p["x"], p["y"], yaw
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _send(self, obj):
+            body = json.dumps(obj).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            self._send({"ok": True, "mode": "sim", "self_mask": 0.0})
+
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length", 0) or 0)
+            if n:
+                self.rfile.read(n)
+            time.sleep(max(0.10, random.gauss(SP_LAT, 0.05)))
+            dets = []; door = None
+            tp = true_pose()
+            if tp and random.random() > SP_DROP:
+                dx = SP_DOOR[0] - tp[0]; dy = SP_DOOR[1] - tp[1]
+                rng = math.hypot(dx, dy)
+                b = (math.degrees(math.atan2(dy, dx) - tp[2]) + 180) % 360 - 180
+                if 0.6 < rng < 2.8 and abs(b) < 28:    # vision realista: el vano solo se ve CERCA y DE FRENTE
+                    b = b + random.gauss(0.0, SP_BNOISE)
+                    rng = max(0.3, rng * (1.0 + random.gauss(0.0, 0.05)))
+                    dets = [{"label": "door", "bearing_deg": round(b, 1), "range_m": round(rng, 2)}]
+                    door = {"bearing_deg": round(b, 1), "range_m": round(rng, 2)}
+            out = {"detections": dets, "scan": []}
+            if door:
+                out["door"] = door
+            self._send(out)
+
+    class S(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    srv = S(("127.0.0.1", SIM_PERC_PORT), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+_DUMMY_URI = _dummy_frame() if SIM_PERC else ""
+
+
 class SimCDP:
     """Suplanta al CDP del WebView: resuelve los snippets JS de g1_goto/g1_nav_v2 contra ROS."""
 
     def __init__(self, bridge):
         self.b = bridge
+        self._nz_last = None      # ultima pos REAL vista (para la deriva por metro)
+        self._nz_dx = 0.0; self._nz_dy = 0.0; self._nz_dyaw = 0.0
+        self._nz_bias = 0.0       # sesgo comun del barrido (AR1: reflejos/inclinacion)
+        self._nz_burst = 0        # barridos restantes de la rafaga actual
         self._cloud = []          # nube plana [x,y,z,...] en frame mapa (z=0: banda de torso)
         self._cloud_t = 0.0
 
@@ -159,7 +266,20 @@ class SimCDP:
         if not od:
             return None
         p = od["pose"]["pose"]["position"]; q = od["pose"]["pose"]["orientation"]
-        return [p["x"], p["y"], p["z"], q["x"], q["y"], q["z"], q["w"]]
+        if not SIM_NOISE:
+            return [p["x"], p["y"], p["z"], q["x"], q["y"], q["z"], q["w"]]
+        # deriva random-walk proporcional a la distancia recorrida (odometria imperfecta)
+        if self._nz_last is not None:
+            dtrav = math.hypot(p["x"] - self._nz_last[0], p["y"] - self._nz_last[1])
+            if dtrav > 1e-4:
+                self._nz_dx += random.gauss(0.0, NZ_DRIFT * dtrav)
+                self._nz_dy += random.gauss(0.0, NZ_DRIFT * dtrav)
+                self._nz_dyaw += random.gauss(0.0, NZ_DYAW * dtrav)
+        self._nz_last = (p["x"], p["y"])
+        yaw = math.atan2(2 * (q["w"] * q["z"] + q["x"] * q["y"]),
+                         1 - 2 * (q["y"] * q["y"] + q["z"] * q["z"])) + self._nz_dyaw
+        return [p["x"] + self._nz_dx, p["y"] + self._nz_dy, p["z"],
+                0.0, 0.0, math.sin(yaw / 2.0), math.cos(yaw / 2.0)]
 
     def _refresh_cloud(self):
         sc = self.b.scan; po = self._pose7()
@@ -168,10 +288,25 @@ class SimCDP:
         yaw = math.atan2(2 * (po[6] * po[5] + po[3] * po[4]),
                          1 - 2 * (po[4] * po[4] + po[5] * po[5]))
         a = sc["angle_min"]; inc = sc["angle_increment"]; rmax = sc.get("range_max", 12.0)
+        if SIM_NOISE:
+            # sesgo comun del barrido (AR1) + rafagas correlacionadas (girando/reflejos:
+            # el laser_noise real vive de ESTO, no del ruido blanco por rayo)
+            self._nz_bias = 0.9 * self._nz_bias + random.gauss(0.0, NZ_BIAS_S)
+            if self._nz_burst > 0:
+                self._nz_burst -= 1
+            elif random.random() < NZ_BURST_P:
+                self._nz_burst = NZ_BURST_LEN
+            _burst = self._nz_burst > 0
+            _sig = NZ_SIG_R * (NZ_BURST_GAIN if _burst else 1.0)
+            _drop = NZ_P_DROP * (8.0 if _burst else 1.0)
         flat = []
         for i, r in enumerate(sc["ranges"]):
             if r is None or not isinstance(r, (int, float)):
                 continue
+            if SIM_NOISE:
+                if random.random() < _drop:
+                    continue                       # dropout de rayo
+                r = r + self._nz_bias + random.gauss(0.0, _sig)
             if not math.isfinite(r) or r <= sc.get("range_min", 0.15) or r >= rmax * 0.98:
                 continue
             th = yaw + a + i * inc
@@ -195,6 +330,8 @@ class SimCDP:
             self.b.publish_cmd(K_FWD * ly, -K_LAT * lx, -K_YAW * rx)
             self.b.last_cmd_t = time.time()
             return "ok"
+        if "__camc" in e:                                 # CAM_JS: frame de camara
+            return _DUMMY_URI if SIM_PERC else ""
         if "__relocbuf||[]).length" in e:
             self._refresh_cloud()
             return len(self._cloud)
@@ -385,6 +522,15 @@ def main():
                            "frame": "map", "hband": [-0.5, 0.6]}, open(nm_lab, "w"))
         g1_goto.MAP_FILE = nm_lab
         print("  escenario LAB: mapa/waypoints/puerta REALES (lab.world solo-paredes, frame G1)")
+        if SIM_NOISE:
+            print("  RUIDO DE SENSORES ON: laser sigma=%.3fm drop=%.1f%% | odom deriva=%.3fm/m yaw=%.2fdeg/m"
+                  % (NZ_SIG_R, 100 * NZ_P_DROP, NZ_DRIFT, math.degrees(NZ_DYAW)))
+        if SIM_PERC:
+            start_sim_perc(bridge)
+            print("  CAMARA SINTETICA ON: /perceive en 127.0.0.1:%d (puerta %.2f,%.2f; lat %.2fs drop %.0f%%)"
+                  % (SIM_PERC_PORT, SP_DOOR[0], SP_DOOR[1], SP_LAT, 100 * SP_DROP))
+            if not _DUMMY_URI:
+                print("  !! PIL no disponible: frame dummy vacio -> la vision NO pasara el test de arranque")
     else:
         g1_goto.WP_FILE = wp_file                              # escenario sintetico (no toca lo del lab)
         g1_goto.MAP_FILE = os.path.join(SIM_DIR, "nav_map_sim.json")

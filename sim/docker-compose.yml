@@ -1,0 +1,22 @@
+services:
+  g1sim:
+    platform: linux/amd64        # Gazebo Classic has no arm64 build -> run amd64 (Rosetta/QEMU)
+    build:
+      context: .
+    image: g1sim:humble
+    container_name: g1sim
+    security_opt:
+      - seccomp:unconfined       # required by the Jammy-based desktop image
+    ports:
+      - "6080:80"      # noVNC web desktop  ->  http://localhost:6080  (or /vnc_lite.html)
+      - "5900:5900"    # raw VNC -> connect a native client at vnc://localhost:5900 (pass: ubuntu)
+      - "8765:8765"    # foxglove_bridge (optional)
+    environment:
+      - LIBGL_ALWAYS_SOFTWARE=1
+    volumes:
+      # The workspace lives on the HOST and is bind-mounted. Set G1_WS to its path.
+      # As of 2026-08-07 the live one is ~/Downloads/g1_sim_docker/g1_ws (219 MB) —
+      # move it somewhere safer; Downloads is not a home for the digital twin.
+      - ${G1_WS:-./g1_ws}:/home/ubuntu/g1_ws
+    shm_size: "1gb"
+    restart: unless-stopped

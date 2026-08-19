@@ -102,6 +102,30 @@ DOOR_VARIANTS = {
 }
 
 
+# --- RESOLVEDOR DE RUTAS (reorg 2026-08-07) -----------------------------------
+# Los ficheros de configuracion y de estado se guardan ahora en config/ y state/
+# en vez de la raiz del repo. Los comandos documentados (y los PDFs de protocolo)
+# pasan solo el NOMBRE del fichero, asi que aqui se resuelve: si el nombre tal cual
+# no existe, se busca en la subcarpeta; y los ficheros NUEVOS se crean ya dentro de
+# ella. Asi la raiz queda limpia sin invalidar ni un comando de la documentacion.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _resolve_path(name, subdir):
+    """<name> tal cual si existe; si no, <subdir>/<name> (creando la carpeta)."""
+    if not name:
+        return name
+    if os.path.isabs(name) or os.sep in name or os.path.exists(name):
+        return name
+    d = os.path.join(_HERE, subdir)
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, os.path.basename(name))
+
+
+def _resolve(env_var, subdir):
+    return _resolve_path(os.environ.get(env_var, ""), subdir)
+
+
 class Meta2Bridge:
     """Suavizado + persistencia BRIDGE-SIDE (el reasoner de Renxi no se toca):
     - lecturas = MEDIANA de las últimas 5 muestras (~2.5 s): la progression SEI instantánea
@@ -127,14 +151,14 @@ class Meta2Bridge:
     # La plausibilidad Pl(match)=m_match+m_theta gobierna (bridge-side, reasoner intacto):
     #   Pl < PL_MIN   -> la analogia NO se despliega (se fuerza la mas conservadora desplegable)
     #   Pl < BLEND_PL -> su techo de velocidad se FUNDE hacia el conservador (blend tesis 5.3.4)
-    STATE_FILE = os.environ.get("G1_M2_STATE", "")
+    STATE_FILE = _resolve("G1_M2_STATE", "state")
     # EXTENSION C (rama analogy-profiles): TRANSFERENCIA SIM->REAL del trust analogico.
     # G1_M2_STATE_INIT=<estado_aprendido_en_el_gemelo.json>: si el STATE_FILE del robot aun
     # no tiene evidencia para esta tarea, se SIEMBRA desde el estado del gemelo, remapeando
     # su task_id al de la config actual (p.ej. g1_door_crossing_A_B_sim -> ..._A_B) y
     # trayendo tambien las confianzas de variantes de puerta (_door). El robot real arranca
     # con los priors aprendidos en simulacion = zero-shot con experiencia transferida.
-    STATE_INIT = os.environ.get("G1_M2_STATE_INIT", "")
+    STATE_INIT = _resolve("G1_M2_STATE_INIT", "state")
     # FILTRO DE PARTICULAS de regimen (Renxi 2026-07-21, Manager POMDP): estimador de estado
     # en MODO SOMBRA — calcula y loguea el posterior (meta2_pf) sobre {tapa, llenado, salud
     # sensorial, bateria, atasco}; NO altera ninguna decision (la politica sigue siendo el

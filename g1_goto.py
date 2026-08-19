@@ -25,6 +25,7 @@ except Exception:
     g1_perception = None
 import g1_metrics                            # metricas SEI: clearance (percepcion) + progression (rendimiento)
 try:
+    import g1_meta2_bridge                   # (para _resolve_path: config/ y state/ tras la reorg)
     from g1_meta2_bridge import Meta2Bridge  # DCE runtime (Meta-Reasoner 2.0 de Renxi), opcional
 except Exception:
     Meta2Bridge = None
@@ -57,9 +58,35 @@ M2_ABORT_BAD = float(os.environ.get("G1_M2_ABORT_BAD", "0.6"))  # fraccion de de
 M2_ABORT_PROG = float(os.environ.get("G1_M2_ABORT_PROG", "0.4"))  # m de acercamiento minimo al goal en la ventana
 M2_HELP_S = float(os.environ.get("G1_M2_HELP_S", "8"))          # s de HELP firme CONTINUO -> abort directo
 
-WP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "waypoints.json")
-MAP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nav_map.json")
+_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")   # reorg 2026-08-07
+WP_FILE = os.path.join(_DATA, "waypoints.json")
+MAP_FILE = os.path.join(_DATA, "nav_map.json")
 GOTO_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "goto.log")
+GOTO_LOG_MAX_MB = float(os.environ.get("G1_GOTO_LOG_MAX_MB", "25"))  # umbral de rotacion; GitHub avisa a partir de 50 MB por fichero
+
+def _open_goto_log():
+    """Abre goto.log en append, rotando ANTES si supera G1_GOTO_LOG_MAX_MB (MB).
+    La rotacion comprime el log a archive/goto_hasta_<ts>.log.gz (gitignored, queda
+    solo en esta maquina) y arranca un goto.log nuevo con una linea de cabecera.
+    OJO: goto.log es append-only compartido Mac/GPUEDGE (merge=union en
+    .gitattributes). Tras una rotacion, commitea el goto.log pequeno y haz pull
+    en la OTRA maquina antes de que vuelva a escribir, o el union-merge lo
+    re-mezclara con su copia grande. Protocolo: docs/GOTO_LOG_ROTATION.md"""
+    try:
+        if os.path.exists(GOTO_LOG) and os.path.getsize(GOTO_LOG) >= GOTO_LOG_MAX_MB * 1024 * 1024:
+            import gzip, shutil
+            adir = os.path.join(os.path.dirname(GOTO_LOG), "archive")
+            os.makedirs(adir, exist_ok=True)
+            dst = os.path.join(adir, f"goto_hasta_{time.strftime('%Y%m%d_%H%M%S')}.log.gz")
+            with open(GOTO_LOG, "rb") as fin, gzip.open(dst, "wb") as fout:
+                shutil.copyfileobj(fin, fout)
+            with open(GOTO_LOG, "w") as f:
+                f.write(f"=== ROTADO {time.strftime('%Y-%m-%d %H:%M:%S')} -> archive/{os.path.basename(dst)} ===\n")
+            print(f"  [goto.log] >{GOTO_LOG_MAX_MB:.0f} MB: rotado a archive/{os.path.basename(dst)}")
+            print("  [goto.log] AVISO: commitea la rotacion y haz pull en la otra maquina (Mac/GPUEDGE) antes de su proximo run")
+    except Exception as e:
+        print(f"  [goto.log] rotacion fallida (sigo con el log actual): {e!r}")
+    return open(GOTO_LOG, "a")
 
 # --- nube 'location' (frame del MAPA, Z-up): idx0=x, idx1=y, idx2=altura. CONFIRMADO con reloc_cloud.json ---
 HBAND_LO = float(os.environ.get("G1_HBAND_LO", "-0.5"))   # borde INFERIOR banda de altura (m) para OBSTACULOS.
@@ -97,7 +124,8 @@ DOOR_STRAFE = 0.34               # magnitud del strafe lateral (> deadzone ~0.3,
 # El servo de strafe al eje ya existia con dos puertas que se comen el margen: solo corrige
 # con desvio > 0.14 m y DEJA de corregir a 0.35 m del vano. Medido en 30 travesias reales:
 # todas llegan a ~0.35 m del eje a 2 m; las limpias se recentran a ~0.01, las que fallan se
-# quedan en 0.19 -- y el margen fisico es +-0.20 m (vano 0.99, semiancho real 0.29).
+# quedan en 0.19 -- y el margen fisico es +-0.20 m (vano 0.99, semiancho real 0.29), asi que
+# una zona muerta de 0.14 se come el 70% del margen. Confirmado tambien en el gemelo.
 # Ambas puertas quedan como variables; los DEFAULTS reproducen golden EXACTAMENTE.
 DOOR_CTR_TOL = float(os.environ.get("G1_DOOR_CTR_TOL", "0.14"))  # m de desvio tolerado
 DOOR_CTR_S = float(os.environ.get("G1_DOOR_CTR_S", "0.35"))      # m antes del vano donde deja de corregir
@@ -202,6 +230,36 @@ DOORGUARD_R = float(os.environ.get("G1_DOORGUARD_R", "1.2"))
 # 50s culebreando, mientras door_b veia el vano limpio (103 muestras, +-0.9..3.5 grados).
 # Opt-in: G1_DOOR_VIS=1.
 DOOR_VIS = os.environ.get("G1_DOOR_VIS", "") == "1"
+# RETREAT v2 (portado de main, donde esta VALIDADO en gemelo: 6/6 sin falsos + trampa
+# determinista con 3 retiradas y P9 pausado). Doctrina de Renxi: "reverse back using the
+# EXACT SAME TRAJECTORY as they enter". Disparo SOLO con atasco seguro (>=2 col/20s o
+# col+atasco), edad minima 12s, migas >=0.5m, max 3/run; pausa el reloj HELP del P9.
+RETREAT = os.environ.get("G1_RETREAT", "1") == "1"
+RETREAT_D = float(os.environ.get("G1_RETREAT_D", "0.9"))
+RETREAT_V = float(os.environ.get("G1_RETREAT_V", "0.22"))
+# MAQUINA DE ESTADOS META (feedback Renxi: "state machine in the meta level" + "is my
+# perception reliable" + "quality of the interface" + "human assistance if still stuck").
+# Estados: NORMAL -> DEGRADED (laser_trust<0.6 o door_contra>=3 o iface_q<0.5: percepcion
+# poco fiable -> techo 0.24) | BLIND (obstaculo conocido a <1.0m, la frontera del robot
+# hipermetrope -> techo 0.28) | RECOVERY (retirada en curso) | ASSIST (presupuesto de
+# retiradas agotado y aun atascado -> PARAR y esperar 'm <cm>' del humano; al recibirla,
+# presupuestos re-armados y vuelta a NORMAL). Transiciones = evento meta_state{de,a};
+# estado por muestra. G1_METASM=0 lo apaga (queda todo en NORMAL).
+# INTEGRACION 17-ago: el DEFAULT pasa de "1" a "0". En la rama -sim venia encendido porque
+# alli la maquina META era el objeto del trabajo; aqui convive con el nivel objeto CONGELADO
+# (tag golden-doorcross), y si viniera encendida la rama fusionada dejaria de reproducir esa
+# conducta -- rompiendo la regla del proyecto (los defaults reproducen lo anterior) y la premisa
+# de la preregistracion (el nivel objeto es constante e identico en las cuatro condiciones).
+# Sin riesgo: todas las campanas pasan G1_METASM explicitamente, nada dependia del implicito.
+METASM = os.environ.get("G1_METASM", "0") == "1"
+# RETREAT-EN-SALIDA (ataque al bolsillo de B, 31-jul): los encajes del bolsillo nacen EN el
+# arranque (run 113617: 1a colision a t=1.1s, dmax 0.44m) y la guardia de span >=0.5m del
+# RETREAT (correcta contra el desastre v1) le impedia armarse justo ahi -> molienda sin
+# recuperacion. Diseno: si el encaje es a <1.5m del punto de ARRANQUE, el span minimo baja
+# a 0.15m (retroceder hacia la pose de arranque es seguro: era valida hace un segundo).
+# El techo de salida 0.22 se PROBO Y SE DESCARTO (empeoro el encaje: sin momento, el giro
+# del engagement arrastra el hombro contra la pared). G1_EXIT_RETREAT=0 lo desactiva.
+EXIT_RT = os.environ.get("G1_EXIT_RETREAT", "1") == "1"
 # Cadencia de laser_snapshots (s). Para sesiones de CALIBRACION DE COVARIANZA: G1_LASER_SNAP=0.5
 # (el fabricante no expone covarianza del lidar; la estimamos offline de estos snapshots, que
 # desde 2026-07-21 llevan pose+fase de movimiento para separar parado/andando/girando).
@@ -395,6 +453,38 @@ class RunRecorder:
                         self.rec["summary"]["valid"] = False
                         self.rec["summary"]["invalid_reason"] = why
                         print(f"  [spill-GT] RUN MARCADA INVALIDA ({why or 'sin motivo'})")
+                        continue
+                    if msg == "hcol":
+                        # HUMANO reporta colision que el robot NO detecto (Renxi: "human can
+                        # tell the robot for feedback"). Alimenta la maquinaria de colision
+                        # existente via flag consumido por el bucle de control.
+                        self._h_col_t = time.time()
+                        self.event("human_collision", t, lx, ly, extra={"src": "human"})
+                        print(f"  [HUMANO] COLISION reportada por el operador t={t:.1f}s")
+                        continue
+                    if msg.startswith("hmove:"):
+                        # HUMANO movio el robot a mano (Renxi: "move the robot 10 cm... it
+                        # should remember I was asked to move 10 cm. Event recorded.")
+                        try:
+                            _cm = float(msg.split(":", 1)[1])
+                        except Exception:
+                            _cm = 0.0
+                        self._h_assist_t = time.time()
+                        self.event("human_assist", t, lx, ly, extra={"cm": _cm, "src": "human"})
+                        try:
+                            _amf = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                "assist_memory.json")
+                            try:
+                                _am = json.load(open(_amf))
+                            except Exception:
+                                _am = []
+                            _am.append({"x": round(lx, 2), "y": round(ly, 2), "cm": _cm,
+                                        "when": time.strftime("%Y-%m-%d %H:%M:%S"),
+                                        "run": os.path.basename(self.fname)})
+                            json.dump(_am[-200:], open(_amf, "w"))
+                        except Exception:
+                            pass
+                        print(f"  [HUMANO] asistencia registrada: movido {_cm:g} cm en ({lx:+.2f},{ly:+.2f}) — MEMORIZADO")
                         continue
                     if not msg.startswith("spill"):
                         # anti-falsos (trampa cazada por el verificador: antes CUALQUIER
@@ -979,7 +1069,7 @@ def cmd_cloudgrab():
     cdp = g.get_cdp()
     cdp.eval(RELOC_CLOUD_JS)
     cdp.eval(RELOC_JS)
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reloc_cloud.json")
+    out = os.path.join(_DATA, "reloc_cloud.json")
     print(">>> CLOUDGRAB. Con el mapa cargado y los puntos visibles, espero a capturar una nube...")
     try:
         for _ in range(40):
@@ -1493,6 +1583,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
         else:
             try:
                 m2cfg = os.environ.get("G1_M2_CFG") or None      # config alternativa (p.ej. payload agua)
+                if m2cfg:                                        # config/ tras la reorg (ver bridge)
+                    m2cfg = g1_meta2_bridge._resolve_path(m2cfg, "config")
                 meta2 = Meta2Bridge(m2cfg)
                 print(f"  META2 {'ACTIVO (techo por analogia)' if META2_MODE == '2' else 'SHADOW (solo log)'}: "
                       f"Meta-Reasoner 2.0, analogia inicial {meta2.applied}")
@@ -1560,6 +1652,26 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     hg_log_t = 0.0; c0_hard = 9.9; hard_set = set()   # guardia de alta confianza
     door_seen = {}; door_sticky = set()               # FIX C: confirmaciones/celdas fijadas del marco
     cb_hits = 0; cb_on = False                        # FIX B: persistencia del aviso de camara
+    # --- FEEDBACK RENXI (rama tutor-feedback): canal humano + validez retrospectiva ---
+    h_col_seen = 0.0                                  # ultimo reporte humano de colision consumido
+    laser_trust = 1.0; c0_prev = 2.5; lt_prev_ncol = 0   # "use the past data to calculate the
+                                                      # validity of the laser reading"
+    assist_mem = []                                   # memoria episodica de asistencias humanas
+    try:
+        assist_mem = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                 "assist_memory.json")))
+    except Exception:
+        pass
+    assist_recall_t = 0.0
+    dc_contra = []                                    # timestamps de sugerencias CONTRADICTORIAS
+    dc_last = None                                    # ultima sugerencia de centro de puerta
+    crumbs = []; retreat = None; retreat_cool = 0.0   # RETREAT v2 (portado de main)
+    rt_prev_ncol = 0; rt_col_ts = []; rt_count = 0
+    stk_hist = []
+    meta_state = "NORMAL"; ms_ev_t = 0.0; iface_q = 1.0   # maquina de estados META
+    exit_p0 = None                                    # punto de arranque del run (EXIT-CAUTION)
+    h_assist_seen = 0.0                               # ultima asistencia humana consumida
+    cdp_lat = 0.05                                    # latencia del ultimo envio CDP (iface_q)
     dg_on = False                                     # DOORGUARD: ya avisado en esta pasada de zona
     vis_lost_t = 0.0; vis_lost = False                # watchdog de vision en caliente
     door_side = None; door_geom_t = 0.0               # detector GEOMETRICO de cruce (independiente del FSM)
@@ -2095,6 +2207,13 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                         _med = sorted(_h)[len(_h) // 2]
                                         if eng.get("cused") is not None and abs(_med - eng["cused"]) > 0.08:
                                             _med = eng["cused"]              # hold: salto sospechoso
+                                        # META-PARAMETRO de recuperacion (Renxi): "number of
+                                        # contradictory center suggestions" — sugerencia nueva
+                                        # que contradice a la anterior (salto >0.10m) = contradiccion
+                                        if dc_last is not None and abs(_c - dc_last) > 0.10:
+                                            dc_contra.append(now)
+                                        dc_last = _c
+                                        del dc_contra[:len(dc_contra) - 20]
                                         eng["cused"] = _med
                                         door_c_meas = _med
                                         if eng.get("cseen") is None:
@@ -2454,6 +2573,34 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                 rd.event("meta2_abort_shadow", now - t0, x, y,
                                          {"why": why, "badf": round(badf, 2), "prog": round(prog, 2)})
                                 m2win.clear(); m2_help_t0 = None   # re-arma la ventana para el siguiente aviso
+            # --- FEEDBACK RENXI: canal humano + validez retrospectiva del laser ---
+            _hct = getattr(rd, "_h_col_t", 0.0)
+            if _hct and _hct > h_col_seen:
+                h_col_seen = _hct
+                ncol += 1                              # el reporte humano ES una colision: alimenta
+                lg.write(f"COLISION reportada por HUMANO t={now - t0:.0f}s pos=({x:+.2f},{y:+.2f})\n")
+            if ncol > lt_prev_ncol:
+                # colision (IMU o humana) con el laser diciendo "libre" el tick anterior ->
+                # el laser MINTIO: penalizar su validez (Renxi: "use the past data to
+                # calculate the validity of the laser reading"). Recupera despacio.
+                if c0_prev > 0.6:
+                    laser_trust = max(0.2, laser_trust - 0.25)
+                    rd.event("laser_lied", now - t0, x, y,
+                             extra={"c0_prev": round(c0_prev, 2), "trust": round(laser_trust, 2)})
+                    lg.write(f"LASER-VALIDEZ: colision con c0_prev={c0_prev:.2f} -> trust={laser_trust:.2f}\n")
+            lt_prev_ncol = ncol
+            laser_trust = min(1.0, laser_trust + 0.001)
+            c0_prev = c0
+            # recall de asistencias humanas pasadas cerca de aqui (memoria episodica)
+            if assist_mem and now - assist_recall_t > 30.0:
+                for _a in assist_mem:
+                    if math.hypot(x - _a.get("x", 99), y - _a.get("y", 99)) < 0.5:
+                        assist_recall_t = now
+                        rd.event("assist_recall", now - t0, x, y,
+                                 extra={"cm": _a.get("cm"), "cuando": _a.get("when")})
+                        lg.write(f"[HUMANO] RECUERDO: aqui me movieron {_a.get('cm')}cm ({_a.get('when')})\n")
+                        print(f"  [HUMANO] recuerdo episodico: en esta zona me asistieron ({_a.get('cm')} cm)")
+                        break
             rd.sample(now - t0, x, y, yaw, d_goal, math.hypot(x - prog_pos[0], y - prog_pos[1]) if prog_pos else 0.0,
                       c0, len(oset), cmd=cmd, phase=ph.strip(),
                       extra={"err": hh.get("err"), "bat": h.get("bat"), "cpuT": h.get("cpuT"),
@@ -2486,6 +2633,10 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "meta2_unc": (m2o or {}).get("unc"),              # incertidumbre DST por parametro (dispersion empirica -> intervalos)
                              "meta2_pf": (m2o or {}).get("pf"),                # posterior del PF de regimen (SOMBRA): tapa/llenado/sensado/bateria/atasco
                              "sent": [round(last_sent[1], 3), round(last_sent[2], 3)],   # lo ENVIADO el tick anterior (post-guardas/rampa; 'cmd' es pre-guardas)
+                             "laser_trust": round(laser_trust, 2),             # validez retrospectiva del laser (Renxi)
+                             "meta_state": (meta_state if METASM else None),   # estado de la MAQUINA META
+                             "iface_q": (iface_q if METASM else None),         # calidad de la interfaz (Renxi)
+                             "door_contra": sum(1 for t_ in dc_contra if now - t_ <= 10.0),   # contradicciones del centro de puerta en 10s
                              "meta2_active": (m2o or {}).get("active"),
                              "meta2_tens": (m2o or {}).get("tension"),
                              "meta2_ful": (m2o or {}).get("fulfillment"),
@@ -2551,6 +2702,107 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # robot de puertas pasables) pero SI limitamos la velocidad de avance: acercarse con cuidado.
             if cmd[1] > 0.24 and isinstance(perc_raw.get("color_near"), (int, float)) and perc_raw["color_near"] >= 8:
                 cmd = (cmd[0], 0.24, cmd[2], 0)
+            # --- RETREAT v2 POR MIGAS (portado de main; ver consts) ---
+            if RETREAT:
+                stk_hist.append((now, x, y))
+                while stk_hist and now - stk_hist[0][0] > 4.5:
+                    stk_hist.pop(0)
+                if retreat is None and (not crumbs or math.hypot(x - crumbs[-1][0], y - crumbs[-1][1]) >= 0.15):
+                    crumbs.append((x, y)); del crumbs[:-30]
+                if ncol > rt_prev_ncol:
+                    rt_col_ts.append(now); del rt_col_ts[:-6]
+                if retreat is None and now > retreat_cool and len(crumbs) >= 3:
+                    _ncol_20s = sum(1 for t_ in rt_col_ts if now - t_ <= 20.0)
+                    _old = next((p for p in stk_hist if now - p[0] >= 3.8), None)
+                    _stuck = (_old is not None and math.hypot(x - _old[1], y - _old[2]) < 0.08
+                              and c0 < 0.42)
+                    _colhit = (_ncol_20s >= 2) or (ncol > rt_prev_ncol and _stuck)
+                    _span = math.hypot(x - crumbs[0][0], y - crumbs[0][1])
+                    _near_start = (EXIT_RT and exit_p0 is not None
+                                   and math.hypot(x - exit_p0[0], y - exit_p0[1]) < 1.5)
+                    _span_min = 0.15 if _near_start else 0.5
+                    if (_colhit or _stuck) and (now - t0) > 12.0 and _span >= _span_min and rt_count < 3:
+                        retreat = {"trail": list(reversed(crumbs[:-1])), "d": 0.0,
+                                   "lx": x, "ly": y, "t0": now}
+                        rt_count += 1
+                        eng.update(state=None, cool=now + 10.0)
+                        lg.write(f"RETREAT start ({'colision' if _colhit else 'atasco'}, c0={c0:.2f}) "
+                                 f"pos=({x:+.2f},{y:+.2f}) t={now - t0:.0f}s n={rt_count}/3\n")
+                        rd.event("retreat_start", now - t0, x, y,
+                                 {"por": "col" if _colhit else "atasco", "c0": round(c0, 2), "n": rt_count})
+                rt_prev_ncol = ncol
+                if retreat is not None:
+                    m2_help_t0 = None                    # la retirada PAUSA el reloj HELP del P9
+                    tr = retreat["trail"]
+                    while tr and math.hypot(tr[0][0] - x, tr[0][1] - y) < 0.22:
+                        tr.pop(0)
+                    retreat["d"] += math.hypot(x - retreat["lx"], y - retreat["ly"])
+                    retreat["lx"], retreat["ly"] = x, y
+                    if retreat["d"] >= RETREAT_D or not tr or now - retreat["t0"] > 14.0:
+                        lg.write(f"RETREAT fin: deshecho {retreat['d']:.2f}m en {now - retreat['t0']:.1f}s\n")
+                        rd.event("retreat_end", now - t0, x, y, {"d": round(retreat["d"], 2)})
+                        retreat = None; retreat_cool = now + 6.0
+                        crumbs = crumbs[:max(1, len(crumbs) - 6)]
+                        m2win.clear(); m2_help_t0 = None
+                    else:
+                        _tx, _ty = tr[0]
+                        _b = math.degrees(math.atan2(_ty - y, _tx - x))
+                        _back = (_b - (yaw + 180.0) + 180.0) % 360.0 - 180.0
+                        _rx = max(-0.18, min(0.18, -_back * 0.02))
+                        cmd = (0.0, -RETREAT_V, _rx, 0)
+                        ph = "RETREAT"
+            # --- MAQUINA DE ESTADOS META (feedback Renxi; ver consts) ---
+            if METASM:
+                _dcn = sum(1 for t_ in dc_contra if now - t_ <= 10.0)
+                _pfresh = None
+                if perc_rx_t is not None:
+                    _pfresh = 1.0 if (now - perc_rx_t) < 1.5 else 0.0
+                _hb = None
+                if getattr(rd, "_gt_hb_seen", False):
+                    _hb = 1.0 if (time.time() - (rd._gt_hb_t or 0)) < 6.0 else 0.0
+                _cdp_ok = 1.0 if cdp_lat < 0.20 else 0.0
+                _comps = [c_ for c_ in (_pfresh, _hb, _cdp_ok) if c_ is not None]
+                iface_q = round(sum(_comps) / len(_comps), 2) if _comps else 1.0
+                _near_known = c0                     # distancia al obstaculo mas cercano (ya en metros)
+                # asistencia humana recibida -> re-armar presupuestos y reanudar
+                _hat = getattr(rd, "_h_assist_t", 0.0)
+                if _hat and _hat > h_assist_seen:
+                    h_assist_seen = _hat
+                    rt_count = 0; rt_col_ts = []; retreat = None
+                    stk_hist = []; crumbs = []           # borron y cuenta nueva: parado en ASSIST no es atasco
+                    m2win.clear(); m2_help_t0 = None
+                    lg.write(f"[HUMANO] asistencia RECIBIDA t={now - t0:.0f}s -> presupuestos re-armados, reanudando\n")
+                _stuck_now = False
+                _oldp = next((p for p in stk_hist if now - p[0] >= 3.8), None)
+                if _oldp is not None:
+                    _stuck_now = math.hypot(x - _oldp[1], y - _oldp[2]) < 0.10
+                if retreat is not None:
+                    _ms = "RECOVERY"
+                elif rt_count >= 3 and (_stuck_now or c0 < 0.45):
+                    _ms = "ASSIST"
+                elif laser_trust < 0.6 or _dcn >= 3 or iface_q < 0.5:
+                    _ms = "DEGRADED"
+                elif _near_known < 1.0 or now < retreat_cool + 4.0:
+                    _ms = "BLIND"           # zona ciega O cautela post-recuperacion (~10s tras retirada)
+                else:
+                    _ms = "NORMAL"
+                if _ms != meta_state and now - ms_ev_t > 1.0:
+                    ms_ev_t = now
+                    rd.event("meta_state", now - t0, x, y, {"de": meta_state, "a": _ms})
+                    lg.write(f"META-SM: {meta_state} -> {_ms} (trust={laser_trust:.2f} contra={_dcn} "
+                             f"iface={iface_q:.2f} near={_near_known:.2f}) t={now - t0:.0f}s\n")
+                meta_state = _ms
+                # actuacion conservadora por estado (solo QUITA velocidad, jamas anade)
+                if _ms == "DEGRADED" and cmd[1] > 0.24:
+                    cmd = (cmd[0], 0.24, cmd[2], 0); ph = ph.strip() + "!S"
+                elif _ms == "BLIND" and cmd[1] > 0.28:
+                    cmd = (cmd[0], 0.28, cmd[2], 0); ph = ph.strip() + "!S"
+                elif _ms == "ASSIST":
+                    cmd = (0.0, 0.0, 0.0, 0); ph = "ASSIST"
+                    if now - ms_ev_t > 8.0 and int(now) % 10 == 0:
+                        print("  [META-SM] ASISTENCIA: parado esperando al humano ('m <cm>' en el marcador)")
+            if exit_p0 is None:
+                exit_p0 = (x, y)                     # punto de arranque (lo usa RETREAT-en-salida)
             # --- HARD-GUARD (G1_HARDGUARD=1): las paredes/persistentes NO se rozan ni en agresivo.
             # Frena el avance segun la holgura contra lo DURO; lo blando/ruidoso sigue negociable.
             if HARD_GUARD and cmd[1] > 0.05:
@@ -2651,7 +2903,9 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 if (_f, _w) != (cmd[1], cmd[2]):
                     cmd = (cmd[0], _f, _w, 0); ph = ph.strip() + "~"
             prev_fwd = (cmd[1] > 0.1)
+            _t_send = time.time()
             cdp.eval(g.set_cmd_js(*cmd))
+            cdp_lat = time.time() - _t_send            # componente CDP de iface_q
             last_sent = cmd
             time.sleep(0.1)
         rd.finish("aborted", {"time_s": round(time.time() - t0, 2), "path_m": round(_path_len(trail), 2),
@@ -2702,7 +2956,7 @@ def cmd_goto(label=None):
         print("Sin waypoints. Captura primero: python g1_goto.py waypoint A"); return
     cdp = g.get_cdp()
     _install(cdp)
-    lg = open(GOTO_LOG, "a")
+    lg = _open_goto_log()
     lg.write(f"\n=== GOTO {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
 
     def go(lbl):
@@ -3045,7 +3299,7 @@ def cmd_turntest():
         print("\n  VEREDICTO:", ">>> SIGNO DE GIRO INVERTIDO: hay que invertir rx en el control <<<"
               if inverted else ("OK: el modelo del DWA coincide con el giro real (el spin viene de otra cosa)"
                                  if r1[2] and r2[2] else "MIXTO/RUIDOSO: repite con mas espacio y robot quieto al inicio"))
-        with open(GOTO_LOG, "a") as lg:
+        with _open_goto_log() as lg:
             lg.write(f"\n=== TURNTEST {time.strftime('%H:%M:%S')} ===\n")
             lg.write(f"  rx=+0.35 -> {r1[0]:+.0f}deg/s (exp {r1[1]:+.0f}) ok={r1[2]}\n")
             lg.write(f"  rx=-0.35 -> {r2[0]:+.0f}deg/s (exp {r2[1]:+.0f}) ok={r2[2]}\n")
@@ -3223,7 +3477,7 @@ def cmd_goto_viz(label):
         try:
             cdp = get_live_cdp()
             _install(cdp)
-            lg = open(GOTO_LOG, "a")
+            lg = _open_goto_log()
             lg.write(f"\n=== GOTOVIZ {label} {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
             navigate_to(cdp, lg, w["x"], w["y"], label, vshare=vshare, lock=lk, stop_event=stop_event)
             lg.write("FIN\n"); lg.close()
