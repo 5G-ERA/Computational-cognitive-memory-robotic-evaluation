@@ -179,6 +179,30 @@ DOOR_YAW_LAT = float(os.environ.get("G1_DOOR_YAW_LAT", "0.12"))     # m: solo si
 # OJO A LA METRICA: el detector de colisiones dio 0 en esa run y hubo contacto real. Va por
 # odometria e IMU y un roce de brazo no perturba la base. ncol=0 NO significa limpio.
 DOOR_EXIT_CTR = os.environ.get("G1_DOOR_EXIT_CTR", "") == "1"
+# --- COBERTURA DE LIDAR: el campo prospectivo que faltaba en la interfaz (17-ago) --------------
+# POR QUE HACE FALTA. La interfaz revisada de Renxi exige "lidar coverage or health state", y
+# ninguna senal existente sirve. Medido antes de escribir esto:
+#   laser_trust      -> SOLO baja tras colisionar (-0.25 por colision, +0.001/tick de recuperacion):
+#                       es validez RETROSPECTIVA, vale 1.00 en toda run limpia y no puede activar
+#                       un rol que debe encenderse ANTES del fallo. En el vocabulario del paper es
+#                       preservacion de consecuencia, no reconstruccion del rol actual.
+#   meta_state=BLIND -> mide PROXIMIDAD, no ceguera: el 97-99% de sus muestras son solo c0<1.0.
+#                       Usarlo confundiria "hay algo cerca" con "no puedo ver" -> viola Semantic
+#                       Locality, que exige mantener esos fundamentos separados.
+#   c0 - c0_hard     -> sin discriminacion: mediana 0.00 y p90 0.00 sobre 214k muestras reales.
+# QUE MIDE. Para el sector frontal se trazan rayos sobre el MAPA de referencia; en cada rumbo
+# donde el mapa predice retorno dentro de alcance se comprueba si el barrido vivo lo dio. La
+# fraccion de retornos PREDICHOS Y AUSENTES es el deficit de cobertura.
+#   cristal      -> el mapa dice pared y el barrido no devuelve nada: deficit alto y localizado
+#   vano abierto -> el mapa tampoco predice retorno: sin deficit
+# Eso separa las dos mitades del par W1 (cristal vs vano), que es exactamente la distincion que el
+# Teorema 1 obliga a restaurar en la interfaz.
+# SOLO OBSERVA: no entra en ninguna decision de control. La particion de autoridad del paper exige
+# que la evidencia no se convierta en permiso de mando por si sola.
+COV = os.environ.get("G1_COV", "1") == "1"                      # G1_COV=0 lo apaga
+COV_SECT = float(os.environ.get("G1_COV_SECT", "40.0"))         # grados a cada lado del rumbo
+COV_R = float(os.environ.get("G1_COV_R", "3.0"))                # m de alcance del trazado
+COV_NRAY = int(os.environ.get("G1_COV_NRAY", "25"))             # rayos en el sector
 DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "-1"))  # DEFAULT -1 (2026-07-02): MEDIDO en runs
                                  # 123933 (46 ticks orden izq -> 38cm a la DERECHA) y 122857 (51 ticks, 98cm
                                  # contra lo ordenado): el mapeo fisico de lx esta INVERTIDO. DOOR-CTR centraba
@@ -1487,6 +1511,46 @@ def global_plan(sx, sy, gx, gy, oset):
     return [(sx, sy), (gx, gy)]    # fallback: recta origen->destino
 
 
+def _cov_deficit(x, y, yaw, live, refmap, oc, near_blind):
+    """Deficit de cobertura del sector frontal (ver cabecera COV).
+
+    Devuelve (deficit, n_predichos, ciego): 'deficit' es la fraccion de rumbos en los que el
+    MAPA predice retorno y el barrido vivo NO lo da; 'ciego' la fraccion de esos rumbos cuyo
+    retorno predicho cae dentro de la banda que el fabricante recorta, o sea inobservable por
+    construccion y no por una perdida de cobertura. Se separan a proposito: son fundamentos
+    distintos y agregarlos volveria a confundir "no puedo ver aqui" con "aqui no hay cobertura".
+    Sin mapa devuelve (None, 0, None) -- ausencia de referencia no es ausencia de obstaculo."""
+    if not refmap:
+        return (None, 0, None)
+    paso = oc * 0.5
+    pred = falt = ciego = 0
+    for k in range(COV_NRAY):
+        off = -COV_SECT + (2.0 * COV_SECT * k / max(1, COV_NRAY - 1))
+        a_ = math.radians(yaw + off)
+        ca, sa = math.cos(a_), math.sin(a_)
+        r_map = r_live = None
+        r = paso
+        while r <= COV_R:
+            c = (int(round((x + ca * r) / oc)), int(round((y + sa * r) / oc)))
+            if r_map is None and c in refmap:
+                r_map = r
+            if r_live is None and c in live:
+                r_live = r
+            if r_map is not None and r_live is not None:
+                break
+            r += paso
+        if r_map is None:                      # el mapa no predice retorno: este rumbo no informa
+            continue
+        pred += 1
+        if r_map < near_blind:
+            ciego += 1
+        elif r_live is None or r_live > r_map + oc:
+            falt += 1                          # predicho y AUSENTE -> cobertura perdida
+    if not pred:
+        return (None, 0, None)
+    return (round(falt / pred, 3), pred, round(ciego / pred, 3))
+
+
 def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None):
     """NAVEGA A->B sobre el mapa cargado: A* (firmware-like) + DWA local, obstaculos de la nube 'location',
     contacto por IMU/odom y desatasco (reusados del frontier explorer). Para al llegar. Ctrl+C aborta.
@@ -1651,6 +1715,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     film_t = 0.0                                  # ultimo frame de la pelicula guardado
     hg_log_t = 0.0; c0_hard = 9.9; hard_set = set()   # guardia de alta confianza
     door_seen = {}; door_sticky = set()               # FIX C: confirmaciones/celdas fijadas del marco
+    cov_def = None; cov_n = 0; cov_blind = None; cov_ms = None   # cobertura de lidar (cabecera COV)
     cb_hits = 0; cb_on = False                        # FIX B: persistencia del aviso de camara
     # --- FEEDBACK RENXI (rama tutor-feedback): canal humano + validez retrospectiva ---
     h_col_seen = 0.0                                  # ultimo reporte humano de colision consumido
@@ -1756,6 +1821,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     lg.write(f"SCAN-STALE nube 'location' sin refrescar {stale_streak} ticks (mapa congelado)\n")
             else:
                 stale_streak = 0; fresh_times.append(now)
+            if COV and scan_fresh:                # una vez por BARRIDO, no por tick de control
+                _t_cov = time.time()
+                cov_def, cov_n, cov_blind = _cov_deficit(x, y, yaw, live, refmap,
+                                                         g.OCELL, g.NEAR_BLIND)
+                cov_ms = round((time.time() - _t_cov) * 1000.0, 2)   # coste real (diag)
             if live:
                 cloud_ok = True
             elif not cloud_ok and not cloud_warned and now - t0 > 4.0:
@@ -2634,6 +2704,9 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "meta2_pf": (m2o or {}).get("pf"),                # posterior del PF de regimen (SOMBRA): tapa/llenado/sensado/bateria/atasco
                              "sent": [round(last_sent[1], 3), round(last_sent[2], 3)],   # lo ENVIADO el tick anterior (post-guardas/rampa; 'cmd' es pre-guardas)
                              "laser_trust": round(laser_trust, 2),             # validez retrospectiva del laser (Renxi)
+                             "cov_def": cov_def,                               # cobertura: predichos por el mapa y AUSENTES
+                             "cov_blind": cov_blind,                           # ...y los inobservables por el recorte del fabricante
+                             "cov_n": cov_n,                                   # rumbos que informan (0 = sin mapa)
                              "meta_state": (meta_state if METASM else None),   # estado de la MAQUINA META
                              "iface_q": (iface_q if METASM else None),         # calidad de la interfaz (Renxi)
                              "door_contra": sum(1 for t_ in dc_contra if now - t_ <= 10.0),   # contradicciones del centro de puerta en 10s
