@@ -210,8 +210,8 @@ performance, not the contrasts. The meta layer is the thing under test and is no
 
 ## 8. Build order
 
-1. **Merge the two halves** — the door fixes and the META interface fields are on different
-   branches, and nothing is measurable until they are one.
+1. ~~**Merge the two halves**~~ — **done 17 Aug, branch `feature/dcc-integration`.** See §9.
+
 2. **Emit `role`, `role_reason`, `authority`** — without an explicit resolved role there is no `Z_t`
    and the primary outcome cannot be computed.
 3. **Illumination calibration session** → write and freeze the visual-quality contract (§2.2).
@@ -221,3 +221,61 @@ performance, not the contrasts. The meta layer is the thing under test and is no
    interface-restricted variants.
 6. **Record the witness episodes** for the replay tier, including unresolved controls.
 7. Freeze the analysis model; run replay; then the 72 physical runs.
+
+---
+
+## 9. Integration record — 17 Aug
+
+`feature/dcc-integration` = `feature/door-centring-rate` (object level, tag `golden-doorcross`)
+merged with `tutor-feedback-metareasoner-sim` (META interface fields).
+
+**One real conflict:** both branches had independently added the same `DOOR_CTR_TOL` /
+`DOOR_CTR_S` parameterisation with different wording. Resolved in favour of the door branch, which
+is a superset, keeping one measurement the other comment recorded and this one did not: a 0.14 dead
+zone consumes 70% of the ±0.20 m physical margin. The `CROSS` block was auto-merged by git without
+being flagged, so it was reviewed by hand — all three door fixes survive intact.
+
+**Deliberate change: `METASM` default `"1"` → `"0"`.** It shipped enabled on the `-sim` branch,
+where the META machine was the object of the work. Here it coexists with a frozen object level, and
+enabled-by-default would mean the merged branch no longer reproduces `golden-doorcross` — breaking
+both the project rule and this document's premise that the object level is a constant, identical
+across all four conditions. Verified first that every campaign passes the flag explicitly.
+
+**Not merged:** the voxel memory. It stays on `feature/voxel-memory` until ray-traced clearing is
+implemented (5/6 neutral, 1/6 catastrophic in the twin).
+
+### Verification
+
+*Static.* Of 214 added code lines, three touch the control path without naming a flag — the META
+speed caps (0.24, 0.28) and the ASSIST stop. All three sit inside `if METASM:`, so with the flag off
+the object level is untouched.
+
+*Twin regression*, same door configuration in both arms, `METASM` the only variable:
+
+| Arm | Runs | Arrived | Crossed | Collisions | Lateral offset at the gap |
+|---|---|---|---|---|---|
+| `merge_off` (must reproduce golden) | 3 | 3 | 3 | 0 | +0.061, +0.013, +0.030 |
+| `merge_on` (META active) | 3 | 3 | 3 | 0 | +0.033, +0.015, +0.016 |
+
+Interleaved order, calibrated noise, `METASM` the only variable. Every offset sits inside the
+success band measured on the real robot (|lat| ≤ 0.14; the runs that failed on 14 Aug crossed at
+−0.23). The META arm is marginally tighter, which is not a claim — n=3 per arm, and the twin is not
+the robot.
+
+Field emission confirmed: with `METASM=0` only the always-computed diagnostics appear; with
+`METASM=1` all four DCA fields carry values and the machine transitions NORMAL ↔ BLIND. The META
+layer active does not degrade the crossing.
+
+### Operational caveat when switching branches
+
+The merge brings the file reorganisation: **`waypoints.json` and `nav_map.json` move from the repo
+root into `data/`**. Contents were compared before accepting the merge and are byte-identical, so
+the robot navigates to the same waypoints — but any script or command referencing the old root path
+will break after checkout.
+
+### Observation to follow up
+
+With `METASM=1`, `BLIND` occupies 39–50% of samples in the twin. That may be legitimate under
+calibrated noise, or the predicate may be too eager. It matters because `meta_state` will feed role
+resolution: a state that is on half the time discriminates little. To be checked against real runs
+when the roles are implemented.
