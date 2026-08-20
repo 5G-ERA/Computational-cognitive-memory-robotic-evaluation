@@ -93,3 +93,30 @@ findings, all now versioned:
    reference cells of the staged surface inside the sensing sector" changes the window edges
    (N=1 gave t2–26, N=3 gave t13–21 on the same run). Decision for Renxi alongside the
    object-question threshold.
+
+## Vision findings from tonight's frame audit (251 frames re-queried) — changes for the dark block
+
+1. **The capture channel, not the light, dominates frame quality during navigation.** Traverse
+   frames run at ~4 KB / sharpness 52 whether moving or stopped; static sampling gives 7 KB /
+   sharpness 476 at the same 320×180. The WebRTC stream collapses under navigation load.
+   Consequences:
+   - **The visual-quality contract is defined on STATIC declared samples only**
+     (`vision_sample`), never on navigation frames. Grain on nav frames does not discriminate
+     light at all (lit 6 vs "dark" 5 on 20-Aug runs).
+   - `vision_sample` now also saves an **HQ frame** (native resolution, JPEG 0.85) plus the
+     stream's actual `videoWidth×Height` per sample — capture both halves of every pair.
+   - Record film frames (`G1_FILM=1`) during the REAL dark traverses: whether any statistic
+     separates lit from truly-dark **on nav-quality frames** is an open question tonight's
+     material could not answer (the 20-Aug "dark" runs had daylight).
+2. **`free_center` ≡ 1.00 during runs is an instrument artifact, not a measurement**: soft
+   frames → floor mask everywhere → empty virtual scan → server emits `None` → the client
+   falls back to a local heuristic that reads mush as "all clear". The resolver does not
+   consume it (verified), so no condition is contaminated; do not cite it as evidence. Fix
+   (server: emit an explicit empty-scan reason; client: treat None as unknown) is queued for
+   AFTER the W2 pair — it changes the instrument.
+3. **Chair range ground truth holds**: 26 detections, median returned range 2.00 m vs 2.0
+   declared — the intrinsics warning was noise (cx=160, cy=90 is the exact centre of the
+   320×180 frames actually processed).
+4. **Detection persistence is worth deploying after W2**: a 3-frame window doubles effective
+   recall on the weak class during traverses (couch 18→36%, 33→67%, 25→50%; chair already
+   100% inside its window). Client-side derived evidence; the perception server stays frozen.

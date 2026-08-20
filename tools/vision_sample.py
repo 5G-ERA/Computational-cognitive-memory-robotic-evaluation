@@ -34,6 +34,22 @@ sys.path.insert(0, RAIZ)
 
 PERC = os.environ.get("G1_PERC", "127.0.0.1:8008")
 
+# Captura ADICIONAL de alta calidad: resolucion NATIVA del <video> y JPEG 0.85, frente a los
+# 320px/0.5 de CAM_JS (medido 20-ago: los frames de navegacion salen a ~4KB con nitidez 52
+# frente a 476 en reposo -- el canal WebRTC colapsa el bitrate durante la navegacion). Esta
+# captura NO toca la ruta de navegacion: solo la usa este muestreador, y se guarda JUNTO a la
+# estandar para no romper la comparabilidad con las muestras del 20-ago. La sonda devuelve
+# ademas videoWidth/Height: el estado real del stream (ABR) en el momento de la muestra.
+CAM_HQ_JS = (
+    "(function(){var v=document.querySelector('video');"
+    "if(!v||!v.videoWidth)return '';"
+    "var c=window.__camhq||(window.__camhq=document.createElement('canvas'));"
+    "c.width=v.videoWidth;c.height=v.videoHeight;"
+    "c.getContext('2d').drawImage(v,0,0);"
+    "try{return JSON.stringify({w:v.videoWidth,h:v.videoHeight,"
+    "d:c.toDataURL('image/jpeg',0.85)});}catch(e){return '';}})()"
+)
+
 
 def stats(jpg_bytes):
     """Estadisticos de la imagen. El brillo medio va incluido a proposito aunque se sepa que no
@@ -120,6 +136,17 @@ def main():
 
         fila = {"hora": time.strftime("%Y-%m-%d %H:%M:%S"), "etiqueta": etiqueta,
                 "fichero": nom, "imagen": stats(raw)}
+        try:
+            hq = cdp.eval(CAM_HQ_JS)
+            if hq:
+                o = json.loads(hq)
+                braw = base64.b64decode(o["d"].split(",", 1)[1])
+                nomhq = "%s_%03d_hq.jpg" % (ts, i + 1)
+                open(os.path.join(dst, nomhq), "wb").write(braw)
+                fila["hq"] = {"fichero": nomhq, "video_wh": [o["w"], o["h"]],
+                              "imagen": stats(braw)}
+        except Exception as e:
+            fila["hq"] = {"error": str(e)[:60]}
         try:
             fila["percepcion"] = perceive(b64)
         except Exception as e:
