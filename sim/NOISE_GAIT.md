@@ -61,3 +61,32 @@ the validation runs.
 ## Validation results
 
 (to be appended after the calibration runs)
+
+**Run on the G1 compute station, 20 Aug (night). Twin live there (image tar verified
+byte-identical, sha ce4e729f); rosbridge is NOT in the preserved image (the 7-Aug audit
+finding) — hand-installed in the container, now an idempotent step of `arranca_gemelo.sh`.**
+
+Substrate finding first: **the Mac noise calibration does not transfer.** Baseline
+(noise on, gait off) on the station: `c0_std` 0.079 (Mac-era twin: 0.035), `filt_rej` 0.076,
+durations 34–46 s vs 86–110 s (native x86 vs Rosetta real-time factor). Noise statistics are
+substrate-dependent; per-machine baselines are mandatory, as REPRODUCIBILITY.md anticipated
+for durations.
+
+| field | baseline (no gait) | gait v1 defaults | **gait frozen (AP .04 AR .03 AY .025 AW .015)** | real target |
+|---|---|---|---|---|
+| `laser_noise` | 0.196 | 0.232 | **0.181** | 0.173 |
+| `c0_std` | 0.079 | 0.102 | **0.080** (p90 0.388) | 0.087 (p90 0.364) |
+| `scan_churn` | 0.429 | 0.497 | 0.468 | 0.400 |
+| `filt_rej` | 0.076 | 0.110 | 0.094 | 0.054 |
+| `loc_conf` | 0.994 | 0.986 | 0.993 | 0.964 |
+
+Behaviour: baseline 3/3 reached (one collision in one run), gait arms 6/6 reached, 0
+collisions, door crossed every run — no regression under the golden configuration.
+
+Verdict: with the frozen amplitudes the two *continuous* signatures the gait was built for
+(`laser_noise`, `c0_std`) sit on target within 5–8%, medians and p90 both. The remaining
+deviations (`filt_rej` 0.094 vs 0.054, `scan_churn` 0.468 vs 0.400, `loc_conf` 0.993 vs
+0.964) are already present in the no-gait baseline on this substrate — they belong to the
+old burst component and the perfect sim walls, not to the gait layer. **Pending, flagged:**
+recalibrate the burst/dropout component on the station (one variable at a time), and revisit
+`loc_conf` realism (sim walls relocalise too well).

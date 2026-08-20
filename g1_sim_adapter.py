@@ -196,12 +196,14 @@ NZ_BURST_GAIN = float(os.environ.get("G1_SIM_NOISE_BURST_GAIN", "4.0"))  # sigma
 # los muebles) NO es representable, asi que las amplitudes son PARAMETROS EFECTIVOS en metros,
 # calibrados contra los estadisticos de barrido reales -- no angulos fisicos. La frecuencia no
 # es identificable con muestras a 0.32 s (aliasing): va declarada (zancada ~0.7 Hz del G1).
+# Amplitudes por defecto CONGELADAS el 20-ago (noche) tras validar en la estacion (ver
+# sim/NOISE_GAIT.md): laser_noise 0.181 vs 0.173 real, c0_std 0.080 vs 0.087, 6/6 sin colision.
 SIM_GAIT = os.environ.get("G1_SIM_GAIT", "") == "1"
 GAIT_F = float(os.environ.get("G1_SIM_GAIT_F", "0.7"))            # zancada (Hz); paso = 2x
-GAIT_AP = float(os.environ.get("G1_SIM_GAIT_AP", "0.05"))         # rango proa/popa (m, efectivo)
+GAIT_AP = float(os.environ.get("G1_SIM_GAIT_AP", "0.04"))         # rango proa/popa (m, efectivo)
 GAIT_AR = float(os.environ.get("G1_SIM_GAIT_AR", "0.03"))         # rango babor/estribor (m)
-GAIT_AW = float(os.environ.get("G1_SIM_GAIT_AW", "0.022"))        # vaiven de yaw (rad)
-GAIT_AY = float(os.environ.get("G1_SIM_GAIT_AY", "0.05"))         # bamboleo lateral pose (m)
+GAIT_AW = float(os.environ.get("G1_SIM_GAIT_AW", "0.015"))        # vaiven de yaw (rad)
+GAIT_AY = float(os.environ.get("G1_SIM_GAIT_AY", "0.025"))         # bamboleo lateral pose (m)
 GAIT_VMIN = 0.02                                                  # m/s: por debajo, parado
 # --- CAMARA SINTETICA (G1_SIM_PERC=1): habilita DOOR-VIS en el gemelo ---
 # g1_goto exige un frame real (CAM_JS) y un servidor /perceive vivos. Aqui: SimCDP sirve un

@@ -23,6 +23,8 @@ def main():
     runs = 0
     resultados = []
     for f in sys.argv[1:]:
+        if "_col" in f or "_end" in f:
+            continue                      # ficheros laterales del run, no travesias
         try:
             d = json.load(open(f))
         except Exception:
