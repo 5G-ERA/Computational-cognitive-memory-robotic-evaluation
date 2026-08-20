@@ -183,6 +183,26 @@ NZ_BIAS_S = float(os.environ.get("G1_SIM_NOISE_BIAS", "0.03"))    # sesgo comun 
 NZ_BURST_P = float(os.environ.get("G1_SIM_NOISE_BURST_P", "0.05"))   # prob. de rafaga por barrido
 NZ_BURST_LEN = int(os.environ.get("G1_SIM_NOISE_BURST_LEN", "3"))    # barridos que dura la rafaga
 NZ_BURST_GAIN = float(os.environ.get("G1_SIM_NOISE_BURST_GAIN", "4.0"))  # sigma x gain en rafaga
+# --- MARCHA BIPEDA (G1_SIM_GAIT=1, 21-ago): el bamboleo que el gemelo rigido no tiene ---------
+# El G1 real CAMINA: la IMU en marcha (8 runs, 20-ago) da pitch mediana 0.028 rad (p90 0.057),
+# roll 0.019, acel lateral 0.98 m/s2 (p90 2.4) y vaiven de yaw 0.098 rad/s -- y su firma en el
+# barrido es RUIDO CONTINUO Y CORRELADO: c0_std real 0.087 vs 0.035 del gemelo (2.5x), con
+# loc_conf real 0.964 vs 1.000. El modelo blanco+rafagas no puede producir eso.
+# Aqui: oscilador de ZANCADA cuya fase avanza solo en movimiento. Cuatro efectos coherentes:
+#   - modulacion de rango proa/popa a frecuencia de PASO (2x zancada): el cabeceo,
+#   - modulacion babor/estribor a frecuencia de zancada: el balanceo,
+#   - vaiven de yaw y bamboleo lateral de la pose reportada.
+# El gemelo es 2D: el mecanismo fisico real (el plano del laser barriendo bandas de altura de
+# los muebles) NO es representable, asi que las amplitudes son PARAMETROS EFECTIVOS en metros,
+# calibrados contra los estadisticos de barrido reales -- no angulos fisicos. La frecuencia no
+# es identificable con muestras a 0.32 s (aliasing): va declarada (zancada ~0.7 Hz del G1).
+SIM_GAIT = os.environ.get("G1_SIM_GAIT", "") == "1"
+GAIT_F = float(os.environ.get("G1_SIM_GAIT_F", "0.7"))            # zancada (Hz); paso = 2x
+GAIT_AP = float(os.environ.get("G1_SIM_GAIT_AP", "0.05"))         # rango proa/popa (m, efectivo)
+GAIT_AR = float(os.environ.get("G1_SIM_GAIT_AR", "0.03"))         # rango babor/estribor (m)
+GAIT_AW = float(os.environ.get("G1_SIM_GAIT_AW", "0.022"))        # vaiven de yaw (rad)
+GAIT_AY = float(os.environ.get("G1_SIM_GAIT_AY", "0.05"))         # bamboleo lateral pose (m)
+GAIT_VMIN = 0.02                                                  # m/s: por debajo, parado
 # --- CAMARA SINTETICA (G1_SIM_PERC=1): habilita DOOR-VIS en el gemelo ---
 # g1_goto exige un frame real (CAM_JS) y un servidor /perceive vivos. Aqui: SimCDP sirve un
 # JPEG dummy 320x180 y un hilo HTTP responde /health + /perceive con la deteccion 'door'
@@ -280,6 +300,10 @@ class SimCDP:
         self._nz_dx = 0.0; self._nz_dy = 0.0; self._nz_dyaw = 0.0
         self._nz_bias = 0.0       # sesgo comun del barrido (AR1: reflejos/inclinacion)
         self._nz_burst = 0        # barridos restantes de la rafaga actual
+        self._gait_ph = random.uniform(0.0, 2.0 * math.pi)   # fase de zancada (avanza andando)
+        self._gait_t = None       # t del ultimo avance de fase
+        self._gait_xy = (0.0, 0.0)  # ultima pos para estimar velocidad
+        self._gait_v = 0.0        # velocidad estimada (para congelar la fase parado)
         self._cloud = []          # nube plana [x,y,z,...] en frame mapa (z=0: banda de torso)
         self._cloud_t = 0.0
 
@@ -301,7 +325,24 @@ class SimCDP:
         self._nz_last = (p["x"], p["y"])
         yaw = math.atan2(2 * (q["w"] * q["z"] + q["x"] * q["y"]),
                          1 - 2 * (q["y"] * q["y"] + q["z"] * q["z"])) + self._nz_dyaw
-        return [p["x"] + self._nz_dx, p["y"] + self._nz_dy, p["z"],
+        gx = gy = gw = 0.0
+        if SIM_GAIT:
+            now = time.time()
+            if self._gait_t is not None:
+                dt = min(0.5, now - self._gait_t)
+                if dt > 1e-3:
+                    v = math.hypot(p["x"] - self._gait_xy[0], p["y"] - self._gait_xy[1]) / dt
+                    self._gait_v = 0.7 * self._gait_v + 0.3 * v
+                if self._gait_v > GAIT_VMIN:      # la fase solo avanza ANDANDO
+                    self._gait_ph = (self._gait_ph + 2.0 * math.pi * GAIT_F * dt) % (2.0 * math.pi)
+            self._gait_t = now; self._gait_xy = (p["x"], p["y"])
+            if self._gait_v > GAIT_VMIN:
+                s = math.sin(self._gait_ph)
+                gw = GAIT_AW * s                  # vaiven de rumbo (zancada)
+                gx = -GAIT_AY * s * math.sin(yaw)  # bamboleo lateral, perpendicular al rumbo
+                gy = GAIT_AY * s * math.cos(yaw)
+        yaw += gw
+        return [p["x"] + self._nz_dx + gx, p["y"] + self._nz_dy + gy, p["z"],
                 0.0, 0.0, math.sin(yaw / 2.0), math.cos(yaw / 2.0)]
 
     def _refresh_cloud(self):
@@ -330,6 +371,12 @@ class SimCDP:
                 if random.random() < _drop:
                     continue                       # dropout de rayo
                 r = r + self._nz_bias + random.gauss(0.0, _sig)
+            if SIM_GAIT and self._gait_v > GAIT_VMIN:
+                # coherente con la fase de marcha: cabeceo a frec. de PASO en proa/popa,
+                # balanceo a frec. de ZANCADA en babor/estribor (beta = angulo en el cuerpo)
+                _beta = a + i * inc
+                r = r + (GAIT_AP * math.sin(2.0 * self._gait_ph) * math.cos(_beta)
+                         + GAIT_AR * math.sin(self._gait_ph) * math.sin(_beta))
             if not math.isfinite(r) or r <= sc.get("range_min", 0.15) or r >= rmax * 0.98:
                 continue
             th = yaw + a + i * inc
