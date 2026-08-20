@@ -48,13 +48,19 @@ LOGPATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "g1_nav.log")
 # ---- VISION (cámara + YOLO) como capa de obstáculos complementaria al láser ----
 vlock = threading.Lock()
 vision = {"jpg": None, "n": 0, "block": False, "label": "", "side": 1, "cf": 1.0, "ts": 0, "dump": 0}
+# Rama vision-quality: calidad JPEG y ancho de captura parametrizables por env. Los DEFAULTS
+# son los historicos (320 px, 0.5) a proposito: subirlos engorda cada eval por el MISMO canal
+# congestionado que ya degrada el video (frames de navegacion ~4KB nitidez 52 vs 476 en
+# reposo, auditoria 20-ago) -- se cambia solo en experimento A/B declarado, no por defecto.
+CAM_W = int(os.environ.get("G1_CAM_W", "320"))
+CAM_Q = float(os.environ.get("G1_CAM_Q", "0.5"))
 CAM_JS = (
     "(function(){var v=document.querySelector('video');"
     "if(!v||!v.videoWidth)return '';"
-    "var W=320,H=Math.round(W*v.videoHeight/v.videoWidth);"
+    "var W=%d,H=Math.round(W*v.videoHeight/v.videoWidth);"
     "var c=window.__camc||(window.__camc=document.createElement('canvas'));"
     "c.width=W;c.height=H;c.getContext('2d').drawImage(v,0,0,W,H);"
-    "try{return c.toDataURL('image/jpeg',0.5);}catch(e){return '';}})()"
+    "try{return c.toDataURL('image/jpeg',%.2f);}catch(e){return '';}})()" % (CAM_W, CAM_Q)
 )
 
 
