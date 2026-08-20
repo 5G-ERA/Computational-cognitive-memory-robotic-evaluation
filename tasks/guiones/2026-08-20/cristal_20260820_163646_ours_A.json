@@ -1,0 +1,30 @@
+{
+ "episodio": "dia20-cristal-sintetico",
+ "run": "20260820_163646_ours_A",
+ "cristal": [
+  -3.75,
+  -0.55,
+  -2.65,
+  0.75
+ ],
+ "tramos": [
+  {
+   "t0": 0,
+   "t1": 0.1,
+   "delta": "motion",
+   "nota": "aproximacion"
+  },
+  {
+   "t0": 0.1,
+   "t1": 30.2,
+   "delta": "lidar_coverage",
+   "nota": "el sector encara el tramo de pared borrado (cristal declarado)"
+  },
+  {
+   "t0": 30.2,
+   "t1": 99999,
+   "delta": "motion",
+   "nota": "ya paso"
+  }
+ ]
+}

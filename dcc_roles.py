@@ -39,7 +39,8 @@ I0_CAMPOS = frozenset((
 ))
 # --- I1 = I0 + historia seleccionada, calidad, incertidumbre y autoridad.
 I1_EXTRA = frozenset((
-    "cov_def", "cov_blind", "cov_n",            # cobertura de lidar (prospectiva)
+    "cov_def", "cov_blind", "cov_n",            # cobertura de lidar (fraccion legada; ver cov_missing)
+    "cov_missing",                              # celdas predichas y AUSENTES >=2 snapshots seguidos
     "laser_trust", "laser_noise", "scan_churn", "scan_fresh", "filt_rej",   # calidad e historia
     "iface_q", "door_contra", "perc_age", "map_add", "map_del",
     "illum_q", "illum_state",                   # calidad visual (pendiente del contrato)
@@ -50,7 +51,15 @@ I1_CAMPOS = I0_CAMPOS | I1_EXTRA
 # Umbrales. Son parametros del RESOLUTOR (capa bajo prueba), no del robot: se calibran en
 # material de desarrollo y se congelan antes de lo confirmatorio.
 UMBRAL = {
-    "cov_def": 0.20,        # deficit de cobertura que basta para invocar el rol (twin: p90 sano 0.07)
+    # cov_def 0.20 (twin) RETIRADO como disparador el 21-ago: en el robot real la fraccion satura
+    # (mediana 0.96 contra el mapa Summit -- solape de celdas ~50% -- y ~0.45 incluso contra un
+    # mapa de visibilidad propio, porque cambia de golpe al girar y el mobiliario deriva entre
+    # semanas). El disparador pasa a cov_missing: celdas del mapa de visibilidad predichas y
+    # ausentes en >=2 snapshots consecutivos -- localizado y con persistencia. Validado con
+    # cristal sintetico sobre las 8 runs reales del 20-ago: deteccion 8/8 con K=4, ~3 eventos
+    # falsos/run atribuibles a la deriva del mapa historico; en confirmatorio la referencia se
+    # congela POR SESION (vueltas de calibracion). cov_def se sigue EMITIENDO como evidencia.
+    "cov_missing": 4,       # celdas persistentemente ausentes que invocan el rol
     "bat_baja": 45.0,       # % de bateria que hace relevante la energia
     "det_conf": 0.50,       # confianza minima para "objeto fiablemente identificado"
     "obj_cerca": 2.5,       # m: mas alla, un objeto no gobierna la marcha
@@ -110,9 +119,9 @@ def resolve_distributed(v):
 
     # 2) Cobertura degradada. SOLO visible con I1: con I0 este rol es literalmente inalcanzable,
     #    y esa imposibilidad es el resultado que el experimento quiere medir, no un defecto.
-    cd = v.get("cov_def")
-    if isinstance(cd, (int, float)) and cd >= UMBRAL["cov_def"]:
-        return ("lidar_coverage", "cov_def %.2f >= %.2f" % (cd, UMBRAL["cov_def"]))
+    cm = v.get("cov_missing")
+    if isinstance(cm, (int, float)) and cm >= UMBRAL["cov_missing"]:
+        return ("lidar_coverage", "cov_missing %d >= %d" % (cm, UMBRAL["cov_missing"]))
 
     # 3) Iluminacion. Requiere el contrato de calidad visual, que AUN NO EXISTE (la luminancia
     #    media no vale: la aplana la auto-exposicion). Mientras no exista, una deteccion negativa
@@ -149,8 +158,8 @@ def verify_incumbent(v):
     b = v.get("bat")
     if isinstance(b, (int, float)) and b <= UMBRAL["bat_baja"]:
         return ("reject", "la capacidad disponible ya no sostiene el plan")
-    cd = v.get("cov_def")
-    if isinstance(cd, (int, float)) and cd >= UMBRAL["cov_def"]:
+    cm = v.get("cov_missing")
+    if isinstance(cm, (int, float)) and cm >= UMBRAL["cov_missing"]:
         return ("unresolved", "cobertura degradada: aplicabilidad no verificable")
     if _pregunta_de_objeto(v):
         if v.get("illum_state") == "inadequate":
@@ -172,8 +181,8 @@ def grounds(v):
     b = v.get("bat")
     if isinstance(b, (int, float)) and b <= UMBRAL["bat_baja"]:
         g.append("energy")
-    cd = v.get("cov_def")
-    if isinstance(cd, (int, float)) and cd >= UMBRAL["cov_def"]:
+    cm = v.get("cov_missing")
+    if isinstance(cm, (int, float)) and cm >= UMBRAL["cov_missing"]:
         g.append("lidar_coverage")
     if v.get("illum_state") == "inadequate" and _pregunta_de_objeto(v):
         g.append("illumination")

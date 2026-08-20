@@ -21,7 +21,13 @@ Formato del guion (JSON), tramos por tiempo de run:
 'delta' es lo prescrito: un rol, o una salida gobernada (review/defer/no_use). Para los CONTROLES
 NO RESUELTOS se pone "review" o "defer": ahi responder con confianza es FALLO, no casi-acierto.
 
-Uso:  python3 analysis/dcc_score.py guion.json [guion2.json ...]
+El guion admite ademas dos claves opcionales:
+    "cristal": [x0, y0, x1, y1]  -- borra los retornos de ese rectangulo del mundo ANTES de
+               recomputar cobertura: el cristal sintetico con que se valido cov_missing.
+    (con --covmap MAPA.json los campos cov_* de cada muestra se SUSTITUYEN por los del snapshot
+     recomputado mas cercano contra ese mapa de visibilidad; los ficheros del dataset no se tocan)
+
+Uso:  python3 analysis/dcc_score.py [--covmap dataset/visibilidad_g1.json] guion.json [...]
 """
 import json
 import os
@@ -29,7 +35,11 @@ import sys
 import collections
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dcc_roles as R                                            # noqa: E402
+import cov_g1                                                    # noqa: E402
+
+COVMAP = None                                                    # celdas del mapa --covmap
 
 CONDS = ("C1", "C2", "C3", "C4")
 # PRIMARIO: A_meta = 1[Z = delta], identidad estricta, tal como lo define el protocolo.
@@ -71,7 +81,10 @@ def prescrito_en(tramos, t):
 
 def puntua(guion):
     d = carga_run(guion["run"])
-    ss = d.get("samples") or []
+    if COVMAP is not None:
+        ss = cov_g1.aplica(d, COVMAP, borra=guion.get("cristal"))
+    else:
+        ss = d.get("samples") or []
     ac = {c: [0, 0] for c in CONDS}                  # [aciertos, total]
     sec = {c: [0, 0] for c in ("C1", "C3")}          # secundario: juicio responsable
     detalle = collections.defaultdict(lambda: collections.Counter())
@@ -94,10 +107,16 @@ def puntua(guion):
 
 
 def main():
-    if len(sys.argv) < 2:
+    global COVMAP
+    args = sys.argv[1:]
+    if "--covmap" in args:
+        i = args.index("--covmap")
+        COVMAP = cov_g1.celdas(args[i + 1])
+        del args[i:i + 2]
+    if not args:
         raise SystemExit(__doc__)
     tot = {c: [0, 0] for c in CONDS}
-    for g in sys.argv[1:]:
+    for g in args:
         guion = json.load(open(g))
         ac, det, n, sec = puntua(guion)
         print("\n=== %s  (%s, %d muestras) ===" % (guion.get("episodio", "?"), guion["run"], n))
