@@ -460,6 +460,12 @@ def perceive(payload):
                     dct["range_m"] = min(scan, key=lambda s: abs(s[0] - dct["bearing_deg"]))[1]
             out = {"scan": scan, "free_center": free_center, "near_run": near_run,
                    "detections": dets, "mode": "gpu"}
+            # DIAGNOSTICO (rama vision-quality): fraccion del frame clasificada suelo. En frames
+            # blandos de navegacion segformer marca suelo casi todo -> scan virtual vacio ->
+            # free_center None; sin este campo, "todo es suelo" y "no veo nada" son indistinguibles
+            # desde fuera (auditoria de 251 frames, 20-ago).
+            if floor is not None:
+                out["floor_pct"] = round(float(floor.mean()), 3)
             if ARGS.floorcolor:
                 out["color_pts"] = ncolor           # diagnostico: cuantos puntos aporto el color
                 if cmask is not None:

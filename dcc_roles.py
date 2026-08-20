@@ -48,6 +48,7 @@ I1_EXTRA = frozenset((
     "illum_q", "illum_state",                   # calidad visual (pendiente del contrato)
     "authority",                                # autoridad aplicable
     "phase_sent",                               # fase ACTUADA (tick anterior) CON marcadores de guardia
+    "dets_p3",                                  # detecciones agregadas en ventana de 3 respuestas
 ))
 I1_CAMPOS = I0_CAMPOS | I1_EXTRA
 
@@ -103,7 +104,23 @@ def _pregunta_de_objeto(v):
 
 
 def _det_fiable(v):
-    """Hay un objeto identificado con suficiente confianza y suficientemente cerca?"""
+    """Hay un objeto identificado con suficiente confianza y suficientemente cerca?
+
+    Rama vision-quality: con I1 se prefiere dets_p3 (ventana de 3 respuestas, formato
+    [label, conf, bearing, rango, n_respuestas]) exigiendo n>=2 -- presencia sostenida, no un
+    parpadeo de un frame. Medido offline (20-ago): la ventana dobla el recall de la clase
+    debil en travesia (sofa 18->36, 33->67, 25->50%). En I0 el campo no existe (historia) y
+    se cae a la deteccion instantanea, como siempre."""
+    for d in (v.get("dets_p3") or []):
+        try:
+            conf = float(d[1]); rng = d[3]; n = int(d[4])
+        except (TypeError, IndexError, ValueError):
+            continue
+        if n >= 2 and conf >= UMBRAL["det_conf"] and rng is not None \
+                and float(rng) <= UMBRAL["obj_cerca"]:
+            return True
+    if v.get("dets_p3"):
+        return False                        # la ventana existe y NO sostiene el objeto
     for d in (v.get("dets") or []):
         try:
             conf = float(d[1]); rng = d[3]

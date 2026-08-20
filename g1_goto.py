@@ -17,6 +17,7 @@ import time
 import json
 import math
 import threading
+import collections
 from collections import deque
 import g1_nav_v2 as g                      # reusa conexion + A* + DWA + costmap + camara + helpers
 try:
@@ -1557,6 +1558,27 @@ def _cov_deficit(x, y, yaw, live, refmap, oc, near_blind):
     return (round(falt / pred, 3), pred, round(ciego / pred, 3))
 
 
+def _dets_persist(hist):
+    """Detecciones agregadas sobre la ventana de respuestas: por etiqueta, mejor confianza,
+    ultimo bearing/rango y en CUANTAS respuestas de la ventana aparecio. n>=2 separa un
+    parpadeo de una presencia."""
+    mejor = {}
+    for dets in hist:
+        vistos = set()
+        for d in dets or []:
+            lab = d.get("label")
+            if not lab:
+                continue
+            e = mejor.setdefault(lab, {"conf": 0.0, "b": None, "r": None, "n": 0})
+            if lab not in vistos:
+                e["n"] += 1
+                vistos.add(lab)
+            if (d.get("conf") or 0) >= e["conf"]:
+                e["conf"] = round(float(d.get("conf") or 0), 2)
+                e["b"], e["r"] = d.get("bearing_deg"), d.get("range_m")
+    return [[lab, e["conf"], e["b"], e["r"], e["n"]] for lab, e in mejor.items()]
+
+
 def _cov_missing_celdas(x, y, yaw, live, covref, oc, near_blind, prev):
     """(n_persistentes, celdas_de_este_barrido) contra la referencia de visibilidad de SESION.
 
@@ -1767,6 +1789,12 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             lg.write(f"PERC-GATE BLOCKED: {why} {time.strftime('%Y-%m-%d %H:%M:%S')}\n"); lg.flush()
             return False
     perc_t = 0; perc_cells = set(); perc_dets = []; nperc = 0; perc_raw = {}
+    det_hist = collections.deque(maxlen=3)   # ultimas 3 respuestas de percepcion (rama vision-
+                                             # quality): la deteccion cruda en travesia es
+                                             # intermitente (sofa 18-33% de los frames con el
+                                             # objeto A LA VISTA); una ventana de 3 respuestas
+                                             # la dobla (medido offline, 20-ago). Evidencia I1:
+                                             # historia seleccionada, igual que cov_missing.
     perc_rx_t = None; perc_seen = -1              # edad de la ULTIMA respuesta real del server (diag P3)
     cambuf = deque(maxlen=20)                     # (t, jpg) ultimos ~6s de camara (autopsia pre-colision)
     film_t = 0.0                                  # ultimo frame de la pelicula guardado
@@ -1960,6 +1988,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     perc_rx_t = now; perc_seen = nperc
                 perc_cells = res.cells
                 perc_dets = res.detections or []
+                if nperc != 0 and perc_rx_t == now:            # respuesta NUEVA -> entra a la ventana
+                    det_hist.append(perc_dets)
                 perc_raw = res.raw if isinstance(res.raw, dict) else {}   # telemetria del canal de color/puerta
                 if res.free_center is not None:                # VISION basada en depth/seg (mejor que la heuristica)
                     vis_center, vis_nearrun = res.free_center, (res.near_run or 0); vis_t = now
@@ -2779,7 +2809,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "clearL_m": round(cl_left, 2), "clearR_m": round(cl_right, 2),
                              "balance": round(m_cl - m_cr, 3),                # +izq libre / -dcha libre (0 = centrado)
                              "dets": ([[d.get("label"), round(d.get("conf", 0), 2),
-                                        d.get("bearing_deg"), d.get("range_m")] for d in perc_dets] or None)})
+                                        d.get("bearing_deg"), d.get("range_m")] for d in perc_dets] or None),
+                             "dets_p3": (_dets_persist(det_hist) or None)})   # ventana de 3 respuestas (I1)
             rd.maybe_laser(now - t0, op, ctx={"x": round(x, 3), "y": round(y, 3),
                                               "yaw": round(yaw, 1),
                                               "fwd": round(prev_cmd[1], 2), "wz": round(prev_cmd[2], 2),
