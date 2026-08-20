@@ -1681,6 +1681,12 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     prev_yaw = None; prev_cmd = (0, 0, 0, 0); prev_lt = None; prev_xy = None; strafecal = []
     last_sent = (0.0, 0.0, 0.0, 0)   # lo REALMENTE publicado el tick anterior (prev_cmd se
                                      # reasigna ANTES de las guardas con el cmd de ESTE tick)
+    last_ph_sent = ""                # la FASE tal como se ACTUO el tick anterior, CON los
+                                     # marcadores de guardia (!H !D !C !c !S !M ~). La muestra
+                                     # se graba antes de la cadena de guardas, asi que 'phase'
+                                     # jamas lleva marcadores (0 en 33.026 muestras revisadas
+                                     # el 20-ago) y W4 quedaba sin campo de autoridad. Espejo
+                                     # exacto de 'sent': el tick anterior, post-guardas.
     spin_acc = 0.0; prog_pos = None; prog_t = t0; turncal = []; phcount = {}
     minc0 = 9.9
     rd = RunRecorder("ours", label, (wx, wy))
@@ -2757,6 +2763,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "meta2_unc": (m2o or {}).get("unc"),              # incertidumbre DST por parametro (dispersion empirica -> intervalos)
                              "meta2_pf": (m2o or {}).get("pf"),                # posterior del PF de regimen (SOMBRA): tapa/llenado/sensado/bateria/atasco
                              "sent": [round(last_sent[1], 3), round(last_sent[2], 3)],   # lo ENVIADO el tick anterior (post-guardas/rampa; 'cmd' es pre-guardas)
+                             "phase_sent": (last_ph_sent or None),             # fase ACTUADA el tick anterior, con marcadores de guardia (autoridad; W4)
                              "laser_trust": round(laser_trust, 2),             # validez retrospectiva del laser (Renxi)
                              "cov_def": cov_def,                               # cobertura: predichos por el mapa y AUSENTES
                              "cov_blind": cov_blind,                           # ...y los inobservables por el recorte del fabricante
@@ -3035,6 +3042,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             cdp.eval(g.set_cmd_js(*cmd))
             cdp_lat = time.time() - _t_send            # componente CDP de iface_q
             last_sent = cmd
+            last_ph_sent = ph
             time.sleep(0.1)
         rd.finish("aborted", {"time_s": round(time.time() - t0, 2), "path_m": round(_path_len(trail), 2),
                               "collisions": ncol, "c0min": round(minc0, 2), **diag_summary()})

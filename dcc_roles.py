@@ -47,6 +47,7 @@ I1_EXTRA = frozenset((
     "iface_q", "door_contra", "perc_age", "map_add", "map_del",
     "illum_q", "illum_state",                   # calidad visual (pendiente del contrato)
     "authority",                                # autoridad aplicable
+    "phase_sent",                               # fase ACTUADA (tick anterior) CON marcadores de guardia
 ))
 I1_CAMPOS = I0_CAMPOS | I1_EXTRA
 
@@ -223,7 +224,11 @@ def authority_of(m):
     """
     if m.get("meta_state") == "ASSIST":
         return ("operator", "mando cedido al operador")
-    ph = str(m.get("phase", ""))
+    # Desde el 20-ago (noche) el robot EMITE phase_sent: la fase actuada el tick anterior con
+    # los marcadores puestos por cada guardia (espejo de 'sent'). Es campo I1: en I0 la vista
+    # lo borra y la derivacion cae a 'phase' sin marcadores -> 'nav' siempre, que es EXACTAMENTE
+    # el aliasing que W4 escenifica (evidencia ausente y autoridad no resuelta se ven igual).
+    ph = str(m.get("phase_sent") or m.get("phase", ""))
     for marca, motivo in (("!H", "guardia duro por holgura"),
                           ("!D", "guardia de puerta"),
                           ("!C", "bloqueo por camara"),
