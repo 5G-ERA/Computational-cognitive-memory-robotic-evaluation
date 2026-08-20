@@ -87,12 +87,22 @@ def acumula(fs):
 
 
 def main():
-    desde, hasta = "20260701", "20269999"
+    global MIN_OPP, MIN_RUNS, MIN_RATIO
+    desde, hasta, salida = "20260701", "20269999", None
     for i, a in enumerate(sys.argv):
         if a == "--desde" and i + 1 < len(sys.argv):
             desde = sys.argv[i + 1]
         if a == "--hasta" and i + 1 < len(sys.argv):
             hasta = sys.argv[i + 1]
+        if a == "--salida" and i + 1 < len(sys.argv):
+            salida = sys.argv[i + 1]
+        # referencia de SESION (pocas vueltas de calibracion): relajar las guardas a mano
+        if a == "--min-opp" and i + 1 < len(sys.argv):
+            MIN_OPP = int(sys.argv[i + 1])
+        if a == "--min-runs" and i + 1 < len(sys.argv):
+            MIN_RUNS = int(sys.argv[i + 1])
+        if a == "--ratio" and i + 1 < len(sys.argv):
+            MIN_RATIO = float(sys.argv[i + 1])
     barrido = "--barrido" in sys.argv
 
     fs = sorted(glob.glob(os.path.join(RAIZ, "dataset", "2026*_ours_[AB].json")))
@@ -120,7 +130,7 @@ def main():
                   "opp>=%d runs>=%d ratio>=%g" % (usados, desde, hasta, COV_SECT, COV_R,
                                                   MIN_OPP, MIN_RUNS, MIN_RATIO),
            "OCELL": OC, "npts": len(puntos), "points": sorted(puntos)}
-    dst = os.path.join(RAIZ, "dataset", "visibilidad_g1.json")
+    dst = salida or os.path.join(RAIZ, "dataset", "visibilidad_g1.json")
     json.dump(out, open(dst, "w"))
     print("escrito %s" % os.path.relpath(dst, RAIZ))
 

@@ -279,3 +279,52 @@ With `METASM=1`, `BLIND` occupies 39–50% of samples in the twin. That may be l
 calibrated noise, or the predicate may be too eager. It matters because `meta_state` will feed role
 resolution: a state that is on half the time discriminates little. To be checked against real runs
 when the roles are implemented.
+
+## 10. Amendment — coverage-field revision (21 Aug, before any confirmatory data)
+
+Recorded now because the resolver contract changes; no reserved configuration has been run.
+
+**Finding (measured on the 8 real runs of 20 Aug + 366 historical runs).** The coverage field
+`cov_def` (fraction of headings the reference map predicts and the scan does not return) was
+calibrated in the twin (threshold 0.20) against the Summit-derived map. On the real robot it
+saturates: per-sample median 0.96. Cause, quantified: the cell overlap between what the G1
+actually sees and the Summit map is ~50–59% — the field mostly measured "the G1 is not the
+Summit". Under it, C3 resolved *unresolved* on 99% of samples and C4 *lidar_coverage* on 99%:
+the principal contrast C4−C3 measured nothing. Two further structural facts: the fraction
+jumps when the robot turns (the sector faces new surfaces), and the environment drifts week to
+week (stable-cell overlap Jun→Aug 58%), so **any long-history absolute reference keeps a floor
+of phantom predictions**.
+
+**Revised field.** `cov_missing`: the number of cells of a *G1-own visibility reference* that
+are predicted and ABSENT in ≥2 consecutive scans. Localized (no denominator that moves with
+heading) and persistent (a turn transient lasts one scan; a coverage loss lasts the whole
+approach). The reference is built by `tools/mapa_visibilidad.py` from `laser_snapshots`
+(per-snapshot statistics with the exact `cov_def` geometry). Evidence-base note: snapshots
+store the accumulated obstacle map clipped to ±2.6 m, so the replay field is declared on that
+base with radius 2.5 m; the online variant (instantaneous scans, emitted when `G1_COVREF` is
+set) is calibrated separately.
+
+**Validation (development material, declared as such).** Synthetic glass — returns erased
+from a declared world rectangle of the real 20-Aug recordings, the twin's `SIM_GLASS`
+mechanism applied offline: detection in 8/8 runs at K=4, with ~3 false events/run
+attributable to historical-map drift. Four-condition replay on those episodes (unit = run,
+percentile bootstrap, 10,000 replicates, seed 7): **C4−C3 = +7.7 pp, CI95 [+5.9, +9.5];
+C4−C2 = +7.4 pp, CI95 [+5.0, +9.7]** — same direction as the twin W1 (+5.7 pp). Failure modes
+match the prescribed roles: C1 falsely retains, C2 is blind to the loss, C3 answers
+*unresolved*, and only C4 reaches the correct governed transition (switching delay 7.4–17 s;
+the other arms never arrive).
+
+**Frozen consequences.**
+1. Resolver trigger is `cov_missing ≥ 4` (replay). `cov_def` is still emitted as legacy
+   evidence but no longer triggers the role.
+2. Confirmatory sessions freeze the coverage reference **per session**: calibration laps
+   (`G1_LASER_SNAP=0.5`, no staging) before staging, reference built and declared before the
+   first scored run. Long-history references are development-only.
+3. `K_online` for the instantaneous-scan variant is not yet frozen; the 21-Aug night session
+   measures its normal-operation distribution.
+
+**Flagged, not yet decided (needs Renxi).** The object-question predicate
+(`c0_hard − c0 > 0.30`, twin-tuned) fires on 29% of real samples and dominates the
+unnecessary-switching secondary (real distribution: p75 = 0.45, p95 = 1.34). Options: raise
+the threshold to the real p95, or require persistence as an I¹-only derived field. Until
+decided, the current threshold stands and its false-trigger rate is reported.

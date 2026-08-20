@@ -203,6 +203,12 @@ COV = os.environ.get("G1_COV", "1") == "1"                      # G1_COV=0 lo ap
 COV_SECT = float(os.environ.get("G1_COV_SECT", "40.0"))         # grados a cada lado del rumbo
 COV_R = float(os.environ.get("G1_COV_R", "3.0"))                # m de alcance del trazado
 COV_NRAY = int(os.environ.get("G1_COV_NRAY", "25"))             # rayos en el sector
+# Referencia de VISIBILIDAD de sesion (21-ago): fichero points (formato ref_map) con lo que el
+# G1 ve con fiabilidad -- tools/mapa_visibilidad.py la construye de laser_snapshots. Si se da,
+# ademas de cov_def se emite cov_missing: n de celdas de ESA referencia predichas y AUSENTES en
+# 2 barridos frescos seguidos (localizado y persistente; el disparador nuevo del resolutor DCC,
+# validado con cristal sintetico sobre las runs del 20-ago). SOLO emision: no toca el control.
+COV_REF_FILE = os.environ.get("G1_COVREF", "")
 DOOR_STRAFE_SIGN = int(os.environ.get("G1_STRAFE_SIGN", "-1"))  # DEFAULT -1 (2026-07-02): MEDIDO en runs
                                  # 123933 (46 ticks orden izq -> 38cm a la DERECHA) y 122857 (51 ticks, 98cm
                                  # contra lo ordenado): el mapeo fisico de lx esta INVERTIDO. DOOR-CTR centraba
@@ -1551,6 +1557,50 @@ def _cov_deficit(x, y, yaw, live, refmap, oc, near_blind):
     return (round(falt / pred, 3), pred, round(ciego / pred, 3))
 
 
+def _cov_missing_celdas(x, y, yaw, live, covref, oc, near_blind, prev):
+    """(n_persistentes, celdas_de_este_barrido) contra la referencia de visibilidad de SESION.
+
+    Misma marcha de rayos que _cov_deficit, pero el resultado es POR CELDA: una celda cuenta si
+    esta predicha y AUSENTE en este barrido Y en el anterior (prev). El transitorio de un giro
+    dura un barrido; una perdida de cobertura, toda la aproximacion."""
+    paso = oc * 0.5
+    cel = {}
+    for k in range(COV_NRAY):
+        off = -COV_SECT + (2.0 * COV_SECT * k / max(1, COV_NRAY - 1))
+        a_ = math.radians(yaw + off)
+        ca, sa = math.cos(a_), math.sin(a_)
+        r_map = r_live = None
+        c_map = None
+        r = paso
+        while r <= COV_R:
+            c = (int(round((x + ca * r) / oc)), int(round((y + sa * r) / oc)))
+            if r_map is None and c in covref:
+                r_map, c_map = r, c
+            if r_live is None and c in live:
+                r_live = r
+            if r_map is not None and r_live is not None:
+                break
+            r += paso
+        if r_map is None or r_map < near_blind:
+            continue
+        falta = r_live is None or r_live > r_map + oc
+        cel[c_map] = cel.get(c_map, True) and falta     # verla con UN rayo basta
+    n = sum(1 for c, falta in cel.items() if falta and prev.get(c) is True)
+    return n, cel
+
+
+def load_cov_ref():
+    """Celdas OCELL de la referencia de visibilidad (G1_COVREF). Vacio si no esta configurada."""
+    if not COV_REF_FILE:
+        return None
+    try:
+        pts = json.load(open(COV_REF_FILE)).get("points", [])
+        return set((round(p[0] / g.OCELL), round(p[1] / g.OCELL)) for p in pts)
+    except Exception as e:
+        print("  [AVISO] G1_COVREF ilegible (%s): sin cov_missing" % e)
+        return None
+
+
 def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None):
     """NAVEGA A->B sobre el mapa cargado: A* (firmware-like) + DWA local, obstaculos de la nube 'location',
     contacto por IMU/odom y desatasco (reusados del frontier explorer). Para al llegar. Ctrl+C aborta.
@@ -1635,6 +1685,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     minc0 = 9.9
     rd = RunRecorder("ours", label, (wx, wy))
     refmap = load_ref_map(); health_t = 0; hh = {}; cloud_ok = False; cloud_warned = False
+    covref = load_cov_ref(); cov_missing = None; _covm_prev = {}
     staticmap = load_static_map()                            # muebles conocidos (nav_map) -> coste blando del plan global
     gplan = []; gplan_t = 0; cam_t = 0; cam_jpg = None
     aggressive = (os.environ.get("G1_AGGRESSIVE") == "1")    # modo agresivo (forzable; si no, se activa al atascarse)
@@ -1825,6 +1876,9 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 _t_cov = time.time()
                 cov_def, cov_n, cov_blind = _cov_deficit(x, y, yaw, live, refmap,
                                                          g.OCELL, g.NEAR_BLIND)
+                if covref is not None:
+                    cov_missing, _covm_prev = _cov_missing_celdas(
+                        x, y, yaw, live, covref, g.OCELL, g.NEAR_BLIND, _covm_prev)
                 cov_ms = round((time.time() - _t_cov) * 1000.0, 2)   # coste real (diag)
             if live:
                 cloud_ok = True
@@ -2707,6 +2761,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "cov_def": cov_def,                               # cobertura: predichos por el mapa y AUSENTES
                              "cov_blind": cov_blind,                           # ...y los inobservables por el recorte del fabricante
                              "cov_n": cov_n,                                   # rumbos que informan (0 = sin mapa)
+                             "cov_missing": cov_missing,                       # celdas de la ref de SESION ausentes 2 barridos (None = sin G1_COVREF)
                              "meta_state": (meta_state if METASM else None),   # estado de la MAQUINA META
                              "iface_q": (iface_q if METASM else None),         # calidad de la interfaz (Renxi)
                              "door_contra": sum(1 for t_ in dc_contra if now - t_ <= 10.0),   # contradicciones del centro de puerta en 10s
