@@ -185,6 +185,41 @@ def grounds(v):
     return g
 
 
+def authority_of(m):
+    """Que autoridad limito el mando en este tick. Se DERIVA de lo ya emitido: la sesion del
+    20-ago no lleva codigo nuevo sin validar en el gemelo.
+
+    Authority Partitioning exige separar evidencia, interpretacion, meta-decision, seguridad y
+    ejecucion. Sin este campo el par W4 -- evidencia ausente frente a autoridad no resuelta -- no
+    es escenificable, porque las dos mitades se ven igual desde fuera: el robot no avanza.
+
+    LA SENAL SON LAS MARCAS DE FASE, no 'sent' contra 'cmd'. Un primer intento comparo esos dos
+    campos y dio 71% de 'safety', que es absurdo; la causa es que 'sent' es lo enviado el tick
+    ANTERIOR y ya lleva la rampa dentro, asi que la comparacion mezcla la aceleracion normal con
+    la accion del guardia. Las marcas, en cambio, las pone cada guardia al actuar:
+        !H  guardia duro: frena segun holgura contra obstaculos persistentes
+        !D  guardia de puerta
+        !C  !c  bloqueo por camara
+        !S  tope de la maquina META
+        ~   limitador de RAMPA -- NO es autoridad, solo acota el cambio entre ticks
+    Precedencia declarada: operador > seguridad > gobernanza > meta.
+    """
+    if m.get("meta_state") == "ASSIST":
+        return ("operator", "mando cedido al operador")
+    ph = str(m.get("phase", ""))
+    for marca, motivo in (("!H", "guardia duro por holgura"),
+                          ("!D", "guardia de puerta"),
+                          ("!C", "bloqueo por camara"),
+                          ("!c", "avance minimo por camara")):
+        if marca in ph:
+            return ("safety", motivo)
+    if m.get("meta2_cap") is not None:
+        return ("governance", "techo de gobernanza vigente")
+    if "!S" in ph:
+        return ("meta", "tope de la maquina META")
+    return ("nav", "autoridad normal de navegacion")
+
+
 def condicion(muestra, cond):
     """Resuelve una muestra bajo C1..C4. Devuelve dict con salida, motivo y fundamentos."""
     nivel = "I0" if cond in ("C1", "C2") else "I1"
@@ -195,5 +230,7 @@ def condicion(muestra, cond):
     else:
         out, why = resolve_distributed(v)
         modo = "distributed"
-    return {"cond": cond, "iface": nivel, "mode": modo,
-            "out": out, "why": why, "grounds": grounds(v)}
+    auth, auth_why = authority_of(muestra)      # la autoridad NO depende de la ventana:
+    return {"cond": cond, "iface": nivel, "mode": modo,   # es un hecho del tick, no evidencia
+            "out": out, "why": why, "grounds": grounds(v),
+            "authority": auth, "authority_why": auth_why}
