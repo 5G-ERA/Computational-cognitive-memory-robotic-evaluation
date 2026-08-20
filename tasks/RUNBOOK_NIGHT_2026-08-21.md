@@ -108,12 +108,15 @@ findings, all now versioned:
    - Record film frames (`G1_FILM=1`) during the REAL dark traverses: whether any statistic
      separates lit from truly-dark **on nav-quality frames** is an open question tonight's
      material could not answer (the 20-Aug "dark" runs had daylight).
-2. **`free_center` ≡ 1.00 during runs is an instrument artifact, not a measurement**: soft
-   frames → floor mask everywhere → empty virtual scan → server emits `None` → the client
-   falls back to a local heuristic that reads mush as "all clear". The resolver does not
-   consume it (verified), so no condition is contaminated; do not cite it as evidence. Fix
-   (server: emit an explicit empty-scan reason; client: treat None as unknown) is queued for
-   AFTER the W2 pair — it changes the instrument.
+2. **The vision floor-clear gate is effectively dead during navigation** (corrected
+   mechanism — the first version of this note blamed a client fallback, wrongly: that
+   heuristic only runs when there is NO perception server). The true chain: soft frames →
+   floor mask everywhere → empty virtual scan → server emits `free_center = None` →
+   `vis_center` stays None → the gate never engages. The pinned 1.00 seen earlier came from
+   the degradation study, where the scan HAD bins and the chair sat outside the centre
+   sector. The resolver consumes none of this (verified); do not cite `free_center` as
+   evidence either way. The `floor_pct` diagnostic that makes empty-scan frames legible
+   lives in the `feature/vision-quality` branch, gated post-W2.
 3. **Chair range ground truth holds**: 26 detections, median returned range 2.00 m vs 2.0
    declared — the intrinsics warning was noise (cx=160, cy=90 is the exact centre of the
    320×180 frames actually processed).
