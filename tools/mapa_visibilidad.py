@@ -107,6 +107,20 @@ def main():
 
     fs = sorted(glob.glob(os.path.join(RAIZ, "dataset", "2026*_ours_[AB].json")))
     fs = [f for f in fs if desde <= os.path.basename(f)[:8] <= hasta]
+    # real y sim comparten dataset y PUEDEN compartir fecha: el filtro por fecha NO separa.
+    # (cazado en el ensayo general del 20-ago: las vueltas de calibracion del gemelo caian
+    # en el mapa de sesion del robot real). --reales excluye runs con sim_id; --sim al reves.
+    if "--reales" in sys.argv or "--sim" in sys.argv:
+        quiere_sim = "--sim" in sys.argv
+        filtrados = []
+        for f in fs:
+            try:
+                es_sim = bool(json.load(open(f)).get("sim_id"))
+            except Exception:
+                continue
+            if es_sim == quiere_sim:
+                filtrados.append(f)
+        fs = filtrados
     print("runs de entrada: %d  (%s .. %s)" % (len(fs), desde, hasta))
     opp, hit, runs_hit, usados = acumula(fs)
     print("runs con snapshots utilizables: %d" % usados)

@@ -27,6 +27,8 @@ NADA DE ESTE MODULO TOCA EL MANDO. La particion de autoridad exige que la eviden
 convierta en permiso de control por si sola; aqui solo se interpreta y se resuelve.
 """
 
+import os
+
 ROLES = ("motion", "sensor", "object", "energy", "lidar_coverage", "illumination")
 GOBERNADAS = ("no_use", "review", "defer")
 
@@ -60,11 +62,17 @@ UMBRAL = {
     # falsos/run atribuibles a la deriva del mapa historico; en confirmatorio la referencia se
     # congela POR SESION (vueltas de calibracion). cov_def se sigue EMITIENDO como evidencia.
     "cov_missing": 4,       # celdas persistentemente ausentes que invocan el rol
+    # ^ 4 vale para el campo de REPLAY (base acumulada, mapa historico). El campo ONLINE con
+    #   referencia DE SESION es mucho mas limpio (ensayo en gemelo 20-ago: normal <=1, cristal
+    #   pico 4) y usa un umbral menor via G1_DCC_COV_MISSING. Dos variantes del mismo campo,
+    #   dos bases de evidencia declaradas, dos umbrales.
     "bat_baja": 45.0,       # % de bateria que hace relevante la energia
     "det_conf": 0.50,       # confianza minima para "objeto fiablemente identificado"
     "obj_cerca": 2.5,       # m: mas alla, un objeto no gobierna la marcha
     "obj_no_mapeado": 0.30, # m que el barrido se adelanta al mapa = algo que el mapa no explica
 }
+if os.environ.get("G1_DCC_COV_MISSING"):
+    UMBRAL["cov_missing"] = int(os.environ["G1_DCC_COV_MISSING"])
 
 
 def vista(muestra, nivel):

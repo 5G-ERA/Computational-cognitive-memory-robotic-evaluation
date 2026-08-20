@@ -1,0 +1,24 @@
+{
+ "episodio": "ensayo-gemelo-cristal-online",
+ "run": "20260820_195719_ours_A",
+ "tramos": [
+  {
+   "t0": 0,
+   "t1": 13.2,
+   "delta": "motion",
+   "nota": "aproximacion"
+  },
+  {
+   "t0": 13.2,
+   "t1": 21.4,
+   "delta": "lidar_coverage",
+   "nota": "sector encara >=3 celdas del cristal declarado"
+  },
+  {
+   "t0": 21.4,
+   "t1": 99999,
+   "delta": "motion",
+   "nota": "ya paso"
+  }
+ ]
+}

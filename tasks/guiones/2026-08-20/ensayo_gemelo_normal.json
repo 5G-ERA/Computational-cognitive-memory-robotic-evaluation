@@ -1,0 +1,12 @@
+{
+ "episodio": "ensayo-gemelo-normal",
+ "run": "20260820_195609_ours_B",
+ "tramos": [
+  {
+   "t0": 0,
+   "t1": 99999,
+   "delta": "motion",
+   "nota": "sin escenificacion"
+  }
+ ]
+}

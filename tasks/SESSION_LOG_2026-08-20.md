@@ -141,3 +141,22 @@ arm contact, spill, a run stopped by hand. `ncol = 0` does not mean clean.
 
 ---
 
+## 19:58 → A  ·  `20260820_195719_ours_A`
+
+| | |
+|---|---|
+| Outcome | **arrived** |
+| Arm / flags | `-` · DOOR_CTR2=1 DOOR_CTR_HOLD=0.15 DOOR_YAW2=1 DOOR_EXIT_CTR=1 DOOR_CTR_TOL=0.07 |
+| Duration | 40 s |
+| Final distance to goal | 0.36 m |
+| Collisions (detected) | 0 |
+| Door crossings | 1 |
+| Lateral offset at the gap | +0.054 m |
+| Battery | 100% → 100% |
+| Coverage deficit | median 0.042, p90 0.300, max 1.000 |
+| Phases | DWA-F×159, ENG-GO×90, ENG-F×44, ENG-T×41, ENG-CG×10, ENG-AL×8 |
+
+**Operator:** ensayo general nocturno en el gemelo: cristal escenificado (mismo rectangulo que el replay), emision cov_missing en vivo contra referencia de sesion; pico 4 encarando el parche, 0-1 el resto
+
+---
+

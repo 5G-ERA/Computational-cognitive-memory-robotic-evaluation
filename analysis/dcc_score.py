@@ -79,12 +79,40 @@ def prescrito_en(tramos, t):
     return None, ""
 
 
+COV_VENTANA = 0.0                                                # s de historia para cov_missing (I1)
+
+
+def _ventana_cov(ss, seg):
+    """Sustituye cov_missing por su MAXIMO en los ultimos 'seg' segundos.
+
+    Es construccion del interfaz I1 (lecturas historicas seleccionadas), no un favor al
+    resolutor: la evidencia por celda es intermitente tick a tick (la persistencia se resetea
+    al ver la celda una vez y el sector barre al andar), y las condiciones I0 NO pueden hacer
+    esto porque no tienen historia -- el contraste C4-C2 se afila por la via correcta.
+    Cazado en el ensayo general del 20-ago: a 9 Hz del gemelo, sin ventana, C4 solo acertaba
+    ~25% de la ventana de cristal y el contraste se diluia."""
+    out = []
+    for i, m in enumerate(ss):
+        m2 = dict(m)
+        t = m.get("t")
+        if t is not None:
+            vals = [x.get("cov_missing") for x in ss
+                    if x.get("t") is not None and t - seg <= x["t"] <= t
+                    and isinstance(x.get("cov_missing"), (int, float))]
+            if vals:
+                m2["cov_missing"] = max(vals)
+        out.append(m2)
+    return out
+
+
 def puntua(guion):
     d = carga_run(guion["run"])
     if COVMAP is not None:
         ss = cov_g1.aplica(d, COVMAP, borra=guion.get("cristal"))
     else:
         ss = d.get("samples") or []
+    if COV_VENTANA > 0:
+        ss = _ventana_cov(ss, COV_VENTANA)
     ac = {c: [0, 0] for c in CONDS}                  # [aciertos, total]
     sec = {c: [0, 0] for c in ("C1", "C3")}          # secundario: juicio responsable
     detalle = collections.defaultdict(lambda: collections.Counter())
@@ -107,11 +135,15 @@ def puntua(guion):
 
 
 def main():
-    global COVMAP
+    global COVMAP, COV_VENTANA
     args = sys.argv[1:]
     if "--covmap" in args:
         i = args.index("--covmap")
         COVMAP = cov_g1.celdas(args[i + 1])
+        del args[i:i + 2]
+    if "--cov-ventana" in args:
+        i = args.index("--cov-ventana")
+        COV_VENTANA = float(args[i + 1])
         del args[i:i + 2]
     if not args:
         raise SystemExit(__doc__)
