@@ -51,7 +51,7 @@ I1_CAMPOS = I0_CAMPOS | I1_EXTRA
 # Umbrales. Son parametros del RESOLUTOR (capa bajo prueba), no del robot: se calibran en
 # material de desarrollo y se congelan antes de lo confirmatorio.
 UMBRAL = {
-    # cov_def 0.20 (twin) RETIRADO como disparador el 21-ago: en el robot real la fraccion satura
+    # cov_def 0.20 (twin) RETIRADO como disparador el 20-ago (tarde): en el robot real la fraccion satura
     # (mediana 0.96 contra el mapa Summit -- solape de celdas ~50% -- y ~0.45 incluso contra un
     # mapa de visibilidad propio, porque cambia de golpe al girar y el mobiliario deriva entre
     # semanas). El disparador pasa a cov_missing: celdas del mapa de visibilidad predichas y

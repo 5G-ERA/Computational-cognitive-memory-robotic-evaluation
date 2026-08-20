@@ -280,9 +280,9 @@ calibrated noise, or the predicate may be too eager. It matters because `meta_st
 resolution: a state that is on half the time discriminates little. To be checked against real runs
 when the roles are implemented.
 
-## 10. Amendment — coverage-field revision (21 Aug, before any confirmatory data)
+## 10. Amendment — coverage-field revision (20 Aug evening, before any confirmatory data)
 
-Recorded now because the resolver contract changes; no reserved configuration has been run.
+Recorded the same evening as the diagnosis because the resolver contract changes; no reserved configuration has been run.
 
 **Finding (measured on the 8 real runs of 20 Aug + 366 historical runs).** The coverage field
 `cov_def` (fraction of headings the reference map predicts and the scan does not return) was

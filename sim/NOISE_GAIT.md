@@ -1,6 +1,6 @@
 # The twin walks like furniture — measured, and the gait layer that answers it
 
-2026-08-21. Adrian's observation: the real G1 *walks* — the twin's rigidised model slides on a
+2026-08-20 (evening). Adrian's observation: the real G1 *walks* — the twin's rigidised model slides on a
 `planar_move` plugin, so it has none of the body oscillation of a biped. Question: is the
 noise we inject realistic? Answer, measured: **no in structure, close in scale.**
 
