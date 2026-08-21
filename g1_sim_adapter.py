@@ -221,12 +221,22 @@ SP_BNOISE = float(os.environ.get("G1_SIM_PERC_BDEG", "1.5"))  # ruido de bearing
 
 
 def _dummy_frame():
-    """JPEG 320x180 gris-moqueta como data URI (frame neutro: todo 'suelo' para el canal de color)."""
+    """JPEG 320x180 gris-moqueta como data URI (frame neutro: todo 'suelo' para el canal de color).
+    G1_SIM_PERC_LUMA escala el brillo (validacion del gate de iluminacion del DOOR-VIS: el
+    dummy por defecto da luma ~118 = 'toda la luz'; con LUMA=80 simula poca luz)."""
     try:
         from PIL import Image
         import io, base64
+        base_rgb = (126, 116, 104)                       # luma ~117.7
+        try:
+            objetivo = float(os.environ.get("G1_SIM_PERC_LUMA", "0") or 0)
+        except ValueError:
+            objetivo = 0
+        if objetivo > 0:
+            f = objetivo / 117.7
+            base_rgb = tuple(max(0, min(255, int(round(c * f)))) for c in base_rgb)
         buf = io.BytesIO()
-        Image.new("RGB", (320, 180), (126, 116, 104)).save(buf, format="JPEG", quality=50)
+        Image.new("RGB", (320, 180), base_rgb).save(buf, format="JPEG", quality=50)
         return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
     except Exception:
         return ""
