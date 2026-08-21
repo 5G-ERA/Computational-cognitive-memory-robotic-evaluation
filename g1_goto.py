@@ -4060,6 +4060,7 @@ def cmd_noisecheck(secs=20):
     print(" ok.")
     print(f"\n>>> MANTÉN EL ROBOT QUIETO {secs}s (de pie, sin conducir). Midiendo ruido de sensores...")
     refmap = load_ref_map(); t0 = time.time(); rows = []
+    _ultimo_celdas = [-9.9]
     sens = g1_metrics.SensingMonitor()
     while time.time() - t0 < secs:
         src, p, _ = read_pose(cdp)
@@ -4071,10 +4072,20 @@ def cmd_noisecheck(secs=20):
         c0 = clear_dir(x, y, yaw, 0, op)
         loc = match_score(live, refmap) if refmap else None
         sv = sens.update(time.time() - t0, live, c0, loc, False)
-        rows.append({"t": round(time.time() - t0, 2), "x": round(x, 4), "y": round(y, 4), "yaw": round(yaw, 2),
-                     "n": len(live), "c0": round(c0, 3), "loc": loc,
-                     "reliability": sv["reliability"], "laser_noise": sv["laser_noise"],
-                     "c0_std": sv["c0_std"], "scan_churn": sv["scan_churn"]})
+        # Cobertura (21-ago, para el testigo W1 con cristal REAL): el deficit contra el mapa
+        # historico por fila, y las CELDAS CRUDAS a ~1 Hz para recomputar offline contra
+        # cualquier referencia (p.ej. la de sesion). Solo grabacion: noisecheck no conduce.
+        cd, cn, cb = _cov_deficit(x, y, yaw, live, refmap, g.OCELL, g.NEAR_BLIND) \
+            if refmap else (None, 0, None)
+        fila = {"t": round(time.time() - t0, 2), "x": round(x, 4), "y": round(y, 4), "yaw": round(yaw, 2),
+                "n": len(live), "c0": round(c0, 3), "loc": loc,
+                "reliability": sv["reliability"], "laser_noise": sv["laser_noise"],
+                "c0_std": sv["c0_std"], "scan_churn": sv["scan_churn"],
+                "cov_def": cd, "cov_n": cn, "cov_blind": cb}
+        if not rows or (fila["t"] - _ultimo_celdas[0]) >= 1.0:
+            fila["celdas"] = sorted(list(live))[:600]
+            _ultimo_celdas[0] = fila["t"]
+        rows.append(fila)
         time.sleep(0.1)
     hh = read_telemetry(cdp); H = hh.get("h") or {}
     import statistics as _st
