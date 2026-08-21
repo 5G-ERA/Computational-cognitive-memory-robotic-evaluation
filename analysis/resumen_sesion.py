@@ -109,9 +109,10 @@ def main():
                 for dd in ((f.get("percepcion") or {}).get("detecciones") or []):
                     if dd[0] == "chair":
                         sillas.append(dd[1])
-            hqs = [f["hq"]["imagen"]["nitidez"] for f in fl
-                   if isinstance(f.get("hq"), dict) and "imagen" in f["hq"]]
-            print("  %-42s n=%-3d grano med %s  contraste med %s  silla %d/%d conf med %s  nitidez HQ med %s" % (
+            hqs = [f["hq"]["imagen"].get("grano") for f in fl
+                   if isinstance(f.get("hq"), dict) and isinstance(f["hq"].get("imagen"), dict)
+                   and f["hq"]["imagen"].get("grano") is not None]
+            print("  %-42s n=%-3d grano med %s  contraste med %s  silla %d/%d conf med %s  grano HQ med %s" % (
                 et[:42], len(fl),
                 med(f["imagen"]["grano"] for f in fl),
                 med(f["imagen"]["contraste"] for f in fl),
