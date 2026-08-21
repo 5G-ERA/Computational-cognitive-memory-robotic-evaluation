@@ -73,3 +73,35 @@ sharpness of `lookNN.jpg` frames against the same run's film frames. If channel 
 not recover sharpness (film ≈ 50, static ≈ 476 — anything meaningfully above film validates),
 the maneuver buys nothing and is dropped. This A/B costs one traverse with `G1_LOOK=1
 G1_LOOK_PERIODIC=1 G1_FILM=1`, post-W2.
+
+## Offline model bench (morning of 21 Aug, 202 traverse frames, frozen ruler)
+
+Ruler declared before testing: presence windows per run (bounded by sightings ±2 s — relative
+recall only, limitation declared), the 25-frame chair ground truth, the door bearing **by
+geometry** (recorded pose + door centre: strong truth), and an FP proxy (chair/couch
+detections outside every window; same yardstick for all methods, ranking only).
+Harness: `analysis/banco_vision.py` (A = preprocessing, B = gate×window sweep, C = YOLO-World).
+
+| Method (in-window recall) | chair % | couch % | FP proxy % |
+|---|---|---|---|
+| Current server (YOLO11x, gate 0.45, single frame) | 56 | 32 | 1.9 |
+| + upscale/unsharp/CLAHE preprocessing | 50–56 | **0–21** | 0.6 |
+| YOLO11x, gate 0.35, single frame | 67 | 36 | 1.9 |
+| **YOLO11x, gate 0.35 + 3-frame window** | **83** | **64** | 6.8 |
+| YOLO-World x, gate 0.30, single frame | 72 | 61 | 11.7 |
+
+Three measured verdicts:
+
+1. **Preprocessing hurts.** Sharpening/CLAHE amplify the compression artifacts of the soft
+   channel and destroy the weak class (couch 32→0–21%). Discarded by measurement.
+2. **The winning package needs no new model**: drop the server det gate 0.45→0.35 and use the
+   3-frame window already built in this branch. Nearly doubles recall (56→83 / 32→64) at an
+   FP proxy of 6.8% — and the resolver's `n ≥ 2` rule is stricter than the union metric used
+   here, so effective FP control is better than the table shows.
+3. **YOLO-World is not worth the switch**: better single-frame than current, worse than the
+   gate+window package on everything, 6× the FPs — and **0/48 on doors** where geometry
+   guarantees the door is in frame. The heuristic door channel stays.
+
+Deployment note: the det gate also feeds the camera-clamp obstacle logic (`YOLO_FURNITURE`),
+so 0.45→0.35 can change navigation behaviour — it ships with this branch's A/B validation,
+never as a quiet default change. Launch flag: `--det-conf 0.35`.
