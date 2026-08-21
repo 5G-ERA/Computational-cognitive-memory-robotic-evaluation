@@ -67,11 +67,24 @@ def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ("list", "play"):
         sys.exit(__doc__)
     modo = sys.argv[1]
+    import requests
+    try:
+        requests.get(g.PROXY + "/json", timeout=4)
+    except Exception:
+        sys.exit("No hay inspector en %s. ¿iPhone por USB, app en SLAM, ios_webkit_debug_proxy\n"
+                 "corriendo, Safari Inspector CERRADO, y NINGUN goto/vision_sample vivo?" % g.PROXY)
     cdp = g.CDP(g.discover_ws())          # cliente ligero; NO reinstala el driver de navegacion
+    try:
+        cdp.call("Runtime.enable")        # imprescindible antes de Runtime.evaluate (como get_cdp)
+    except Exception:
+        pass
     print("tap:", cdp.eval(TAP_JS))
     time.sleep(1.0)
     print("tap2:", cdp.eval(TAP_JS))     # segundo intento: __dc aparece cuando la app envia algo
 
+    if not json.loads(cdp.eval("JSON.stringify(!!window.__dc)") or "false"):
+        print("\n[!] window.__dc AUN no existe (el canal 'data' se puebla cuando la app ENVIA algo).")
+        print("    Mueve un poco el mapa en la app o espera unos segundos y reintenta.")
     if modo == "list":
         # sobres candidatos para el request 7107 (solo LECTURA). El que responda, gana.
         candidatos = [
