@@ -105,3 +105,27 @@ Three measured verdicts:
 Deployment note: the det gate also feeds the camera-clamp obstacle logic (`YOLO_FURNITURE`),
 so 0.45→0.35 can change navigation behaviour — it ships with this branch's A/B validation,
 never as a quiet default change. Launch flag: `--det-conf 0.35`.
+
+## New objects: yes — and visually verified (21 Aug morning)
+
+The bench table above measures classes where we had truth. The vocabulary question is
+separate: **does open-vocabulary find objects the current model cannot name?** Answer, with
+frames pulled and eyeballed:
+
+- **YOLO-World names the office's cardboard boxes as boxes**: ×67 detections up to conf 0.79.
+  Verified on the top frames (`161324_t036s`, `164050_t031s`): a real cardboard box, clearly
+  visible. This matters directly for **T10** (transport box blocking the doorway → governed
+  no-use), where the object role wants a *reliably identified* object, not just an obstacle.
+- **The current COCO model does not miss the boxes — it mislabels them and the furniture**:
+  "suitcase" ×18 @0.89 (verified frame `163319_t058s`: it is the cream couches, no suitcase
+  in sight), plus "bed" ×8, "toilet" ×6, "cat" ×3, "tennis racket", "umbrella". High-conf
+  wrong labels are worse than misses for the object role: exactly the evidence-conflation
+  Semantic Locality warns about.
+- Constraining the vocabulary also **cleans the output**: World with our 10 classes produced
+  no junk labels at all.
+
+Design idea for later (not implemented): run World **only on look-maneuver HQ frames** —
+"stop, look carefully, and name what you see". The expensive open-vocab pass rides the
+epistemic pause where latency does not matter, while the fast loop keeps YOLO11x + the
+window. The review realization then upgrades the identifier quality precisely when the
+resolver asked for better evidence.
