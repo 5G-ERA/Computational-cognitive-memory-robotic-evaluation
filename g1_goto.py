@@ -1589,6 +1589,56 @@ def _cov_missing_celdas(x, y, yaw, live, covref, oc, near_blind, prev):
     return n, cel
 
 
+def _cov_deficit_v2(x, y, yaw, live, refcells, oc, near_blind):
+    """Instrumento v2 del deficit de cobertura (21-ago, tras la negativa del cristal real).
+
+    El control de pared maciza invalido al v1: cov_def 1.000 con la pared VISIBLE a 2.16 m
+    (c0), porque (a) el mapa historico esta desfasado y (b) el march exacto por celdas se salta
+    superficies finas en distancia (aliasing rayo-celda). Dos arreglos, ambos declarados:
+      - referencia = el mapa de VISIBILIDAD DE SESION (G1_COVREF), no el historico;
+      - el matching del retorno vivo acepta VECINDAD 3x3 alrededor de cada paso del rayo
+        (una superficie a 0.2 m de la linea exacta del rayo cuenta como presente), y la
+        tolerancia de rango sube a 2 celdas.
+    Devuelve (deficit, n_predichos, ciego) como el v1. Pendiente de validar en gemelo con
+    SIM_GLASS + control de pared antes de usarse en sesion."""
+    if not refcells:
+        return (None, 0, None)
+    paso = oc * 0.5
+    pred = falt = ciego = 0
+    for k in range(COV_NRAY):
+        off = -COV_SECT + (2.0 * COV_SECT * k / max(1, COV_NRAY - 1))
+        a_ = math.radians(yaw + off)
+        ca, sa = math.cos(a_), math.sin(a_)
+        r_map = r_live = None
+        r = paso
+        while r <= COV_R:
+            cx = int(round((x + ca * r) / oc))
+            cy = int(round((y + sa * r) / oc))
+            if r_map is None and (cx, cy) in refcells:
+                r_map = r
+            if r_live is None:
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        if (cx + dx, cy + dy) in live:
+                            r_live = r
+                            break
+                    if r_live is not None:
+                        break
+            if r_map is not None and r_live is not None:
+                break
+            r += paso
+        if r_map is None:
+            continue
+        pred += 1
+        if r_map < near_blind:
+            ciego += 1
+        elif r_live is None or r_live > r_map + 2.0 * oc:
+            falt += 1
+    if not pred:
+        return (None, 0, None)
+    return (round(falt / pred, 3), pred, round(ciego / pred, 3))
+
+
 def load_cov_ref():
     """Celdas OCELL de la referencia de visibilidad (G1_COVREF). Vacio si no esta configurada."""
     if not COV_REF_FILE:
@@ -4060,6 +4110,7 @@ def cmd_noisecheck(secs=20):
     print(" ok.")
     print(f"\n>>> MANTÉN EL ROBOT QUIETO {secs}s (de pie, sin conducir). Midiendo ruido de sensores...")
     refmap = load_ref_map(); t0 = time.time(); rows = []
+    _covref_nc = load_cov_ref()               # instrumento v2: referencia de SESION (G1_COVREF)
     _ultimo_celdas = [-9.9]
     sens = g1_metrics.SensingMonitor()
     while time.time() - t0 < secs:
@@ -4077,11 +4128,14 @@ def cmd_noisecheck(secs=20):
         # cualquier referencia (p.ej. la de sesion). Solo grabacion: noisecheck no conduce.
         cd, cn, cb = _cov_deficit(x, y, yaw, live, refmap, g.OCELL, g.NEAR_BLIND) \
             if refmap else (None, 0, None)
+        cd2, cn2, cb2 = _cov_deficit_v2(x, y, yaw, live, _covref_nc, g.OCELL, g.NEAR_BLIND) \
+            if _covref_nc else (None, 0, None)
         fila = {"t": round(time.time() - t0, 2), "x": round(x, 4), "y": round(y, 4), "yaw": round(yaw, 2),
                 "n": len(live), "c0": round(c0, 3), "loc": loc,
                 "reliability": sv["reliability"], "laser_noise": sv["laser_noise"],
                 "c0_std": sv["c0_std"], "scan_churn": sv["scan_churn"],
-                "cov_def": cd, "cov_n": cn, "cov_blind": cb}
+                "cov_def": cd, "cov_n": cn, "cov_blind": cb,
+                "cov2_def": cd2, "cov2_n": cn2, "cov2_blind": cb2}
         if not rows or (fila["t"] - _ultimo_celdas[0]) >= 1.0:
             fila["celdas"] = sorted(list(live))[:600]
             _ultimo_celdas[0] = fila["t"]
