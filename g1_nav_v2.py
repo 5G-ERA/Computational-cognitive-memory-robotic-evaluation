@@ -62,6 +62,18 @@ CAM_JS = (
     "c.width=W;c.height=H;c.getContext('2d').drawImage(v,0,0,W,H);"
     "try{return c.toDataURL('image/jpeg',%.2f);}catch(e){return '';}})()" % (CAM_W, CAM_Q)
 )
+# Captura HQ puntual (rama vision-quality): resolucion NATIVA del <video> y JPEG 0.85. NO es
+# para el bucle: cada eval gordo compite por el canal congestionado. La usa la MANIOBRA DE
+# MIRADA (g1_goto, G1_LOOK) tras darle al ABR ~1s de silencio para recuperar bitrate.
+CAM_HQ_JS = (
+    "(function(){var v=document.querySelector('video');"
+    "if(!v||!v.videoWidth)return '';"
+    "var c=window.__camhq||(window.__camhq=document.createElement('canvas'));"
+    "c.width=v.videoWidth;c.height=v.videoHeight;"
+    "c.getContext('2d').drawImage(v,0,0);"
+    "try{return JSON.stringify({w:v.videoWidth,h:v.videoHeight,"
+    "d:c.toDataURL('image/jpeg',0.85)});}catch(e){return '';}})()"
+)
 
 
 FLOOR_MIN = 0.10      # fraccion minima de suelo en el centro; muy bajo -> camara solo bloquea si esta casi todo tapado

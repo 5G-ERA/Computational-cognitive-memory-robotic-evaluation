@@ -118,6 +118,23 @@ GLOB_WALL_HALO = float(os.environ.get("G1_GLOB_WHALO", "6.0"))  # coste blando 1
                                  # Run 122857: c0min=0.16 y roces laterales en pared/marco -> con el bamboleo
                                  # del bipedo, 0.13 es rozar por diseno. Probar G1_AGGR_R=0.16 si repite (A/B).
 PERC_PERIOD = 0.3                # s entre consultas al servidor de percepcion GPU (depth->scan virtual de la mesa)
+# --- MANIOBRA DE MIRADA (G1_LOOK=1, rama vision-quality) -------------------------------------
+# Idea de Adrian (21-ago): la vision deberia mejorar si el robot se para. La auditoria del
+# 20-ago la CORRIGE en un punto: pararse fisicamente NO basta (nitidez 50 parado vs 52 andando
+# en travesia) porque lo hundido es el CANAL WebRTC bajo la carga del lazo, no la camara. La
+# maniobra correcta: pararse Y DESCARGAR EL CANAL -- congelar polling de nube y submits de
+# percepcion LOOK_WARM s para que el ABR recupere bitrate, capturar UN frame HQ (CAM_HQ_JS),
+# consultarlo, y reanudar. Disparo: un candidato DEBIL en la ventana dets_p3 (n==1: parpadeo
+# que merece confirmacion), o periodico con G1_LOOK_PERIODIC=1 (pruebas / barrido de sala).
+# Nunca cerca del vano ni en fases de negociacion/recuperacion. Es la realizacion autorizada
+# de un review: una accion epistemica gobernada -- fase LOOK, autoridad meta en dcc_roles.
+LOOK = os.environ.get("G1_LOOK", "0") == "1"
+LOOK_HOLD = float(os.environ.get("G1_LOOK_HOLD", "2.0"))    # s parado en total
+LOOK_WARM = float(os.environ.get("G1_LOOK_WARM", "1.2"))    # s de silencio de canal antes del HQ
+LOOK_EVERY = float(os.environ.get("G1_LOOK_EVERY", "8.0"))  # s minimos entre miradas
+LOOK_PERIODIC = os.environ.get("G1_LOOK_PERIODIC", "0") == "1"
+LOOK_DOOR_R = 1.8                                           # m: sin miradas cerca del vano
+LOOK_CONF_MIN = 0.35                                        # conf minima del parpadeo que dispara
 DOOR_CENTER = (os.environ.get("G1_DOOR_CENTER", "1") == "1")   # centrar izq/dcha en la puerta (idea de Renxi): strafe al lado mas libre
 DOOR_BAL_TH = 0.22               # |clear_left - clear_right| (normalizado) para considerar el robot DESCENTRADO
 DOOR_STRAFE = 0.34               # magnitud del strafe lateral (> deadzone ~0.3, si no el robot no se mueve)
@@ -1816,6 +1833,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     dc_contra = []                                    # timestamps de sugerencias CONTRADICTORIAS
     dc_last = None                                    # ultima sugerencia de centro de puerta
     crumbs = []; retreat = None; retreat_cool = 0.0   # RETREAT v2 (portado de main)
+    look_end = 0.0; look_warm_end = 0.0; look_shot = True; look_last = 0.0; nlook = 0  # MIRADA
     rt_prev_ncol = 0; rt_col_ts = []; rt_count = 0
     stk_hist = []
     meta_state = "NORMAL"; ms_ev_t = 0.0; iface_q = 1.0   # maquina de estados META
@@ -1898,7 +1916,11 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 return True
 
             # --- OBSTACULOS de la nube 'location' (frame mapa) -> mapa con SCORE/DECAY (anti-ruido) ---
-            live = reloc_cells(cdp)                   # celdas del barrido ACTUAL (laser en vivo)
+            if LOOK and now < look_warm_end:          # MIRADA en warm-up: canal en silencio
+                reloc_cells.fresh = False             # (parado con cmd=0: no necesita barrido)
+                live = set()
+            else:
+                live = reloc_cells(cdp)               # celdas del barrido ACTUAL (laser en vivo)
             scan_fresh = reloc_cells.fresh            # True = buffer NUEVO (dedup: no re-contar el mismo barrido)
             if not scan_fresh:
                 stale_streak += 1; stale_ticks += 1
@@ -1960,7 +1982,24 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 if door_sticky:
                     confirmed |= door_sticky
             # --- PERCEPCION GPU (HILO APARTE): depth -> scan virtual (la MESA que el LiDAR no ve) + suelo despejado ---
-            if perc_worker is not None and now - perc_t > PERC_PERIOD:
+            if LOOK and now < look_end and perc_worker is not None:
+                if now >= look_warm_end and not look_shot:     # fin del warm-up: UN frame HQ
+                    look_shot = True
+                    try:
+                        _hq = cdp.eval(g.CAM_HQ_JS)
+                        if _hq:
+                            _o = json.loads(_hq)
+                            perc_worker.submit(_o["d"], x, y, yaw)
+                            nlook += 1
+                            rd.save_cam(f"look{nlook:02d}", _o["d"])
+                            rd.event("look", now - t0, x, y,
+                                     {"video_wh": [_o.get("w"), _o.get("h")],
+                                      "warm_s": round(LOOK_WARM, 1)})
+                            lg.write(f"LOOK #{nlook} hq={_o.get('w')}x{_o.get('h')} "
+                                     f"pos=({x:+.2f},{y:+.2f}) t={now - t0:.0f}s\n")
+                    except Exception as _e:
+                        lg.write(f"LOOK fallo captura HQ: {_e}\n")
+            elif perc_worker is not None and now - perc_t > PERC_PERIOD:
                 _fr = grab_cam(cdp)
                 cambuf.append((now, _fr))                      # buffer para la autopsia pre-colision
                 perc_worker.submit(_fr, x, y, yaw)             # no bloquea: el hilo hace la consulta GPU
@@ -2969,6 +3008,23 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                         print("  [META-SM] ASISTENCIA: parado esperando al humano ('m <cm>' en el marcador)")
             if exit_p0 is None:
                 exit_p0 = (x, y)                     # punto de arranque (lo usa RETREAT-en-salida)
+            # --- MANIOBRA DE MIRADA (G1_LOOK; ver cabecera LOOK): parada epistemica gobernada.
+            if LOOK and now >= look_end and now - look_last > LOOK_EVERY \
+                    and math.hypot(x - DOOR_CX, y - DOOR_CY) > LOOK_DOOR_R \
+                    and retreat is None \
+                    and not any(k in ph for k in ("ENG", "ESC", "R-", "BRK", "ASSIST")) \
+                    and cmd is not None and cmd[1] > 0.05:
+                _flick = any((len(d) > 4 and d[4] == 1 and (d[1] or 0) >= LOOK_CONF_MIN
+                              and d[3] is not None and float(d[3]) <= 3.5)
+                             for d in (_dets_persist(det_hist) or []))
+                if LOOK_PERIODIC or _flick:
+                    look_end = now + LOOK_HOLD
+                    look_warm_end = now + LOOK_WARM
+                    look_shot = False
+                    look_last = now
+            if LOOK and now < look_end:
+                cmd = (0.0, 0.0, 0.0, 0)          # parada (la RAMPA la suaviza aguas abajo)
+                ph = "LOOK"
             # --- HARD-GUARD (G1_HARDGUARD=1): las paredes/persistentes NO se rozan ni en agresivo.
             # Frena el avance segun la holgura contra lo DURO; lo blando/ruidoso sigue negociable.
             if HARD_GUARD and cmd[1] > 0.05:

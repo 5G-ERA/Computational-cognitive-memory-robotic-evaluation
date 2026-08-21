@@ -405,6 +405,9 @@ class SimCDP:
             self.b.publish_cmd(K_FWD * ly, -K_LAT * lx, -K_YAW * rx)
             self.b.last_cmd_t = time.time()
             return "ok"
+        if "__camhq" in e:                                # CAM_HQ_JS (mirada): frame HQ + tamano
+            import json as _j
+            return _j.dumps({"w": 320, "h": 180, "d": _DUMMY_URI}) if SIM_PERC else ""
         if "__camc" in e:                                 # CAM_JS: frame de camara
             return _DUMMY_URI if SIM_PERC else ""
         if "__relocbuf||[]).length" in e:

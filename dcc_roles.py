@@ -246,6 +246,10 @@ def authority_of(m):
     # lo borra y la derivacion cae a 'phase' sin marcadores -> 'nav' siempre, que es EXACTAMENTE
     # el aliasing que W4 escenifica (evidencia ausente y autoridad no resuelta se ven igual).
     ph = str(m.get("phase_sent") or m.get("phase", ""))
+    if ph.startswith("LOOK"):
+        # mirada epistemica (rama vision-quality): el meta-nivel detiene el avance para
+        # ADQUIRIR mejor evidencia -- es un review REALIZADO, no una guardia de seguridad
+        return ("meta", "mirada epistemica: review realizado como adquisicion")
     for marca, motivo in (("!H", "guardia duro por holgura"),
                           ("!D", "guardia de puerta"),
                           ("!C", "bloqueo por camara"),
