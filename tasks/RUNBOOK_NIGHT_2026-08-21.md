@@ -123,3 +123,16 @@ findings, all now versioned:
 4. **Detection persistence is worth deploying after W2**: a 3-frame window doubles effective
    recall on the weak class during traverses (couch 18→36%, 33→67%, 25→50%; chair already
    100% inside its window). Client-side derived evidence; the perception server stays frozen.
+
+## Perception server is now reboot-proof (22 Aug)
+
+The  view (cv2 window, and therefore the web overlay) needed the graphical session
+on  — which only exists if a person physically logged in at the lab. After any reboot
+there is nobody to do that, and gdm has no autologin. Fixed with a virtual display:
+
+    bash tools/arranca_percepcion.sh
+
+Creates  if absent, launches the server in tmux  with ,
+waits for the models and prints . No graphical login needed, ever. Verified working
+(both 3090s, floorcolor loaded). The old  line still works while someone IS
+logged in; the script is the one to use from now on.
