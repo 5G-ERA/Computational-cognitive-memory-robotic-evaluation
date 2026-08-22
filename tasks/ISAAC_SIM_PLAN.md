@@ -554,3 +554,32 @@ same per-sample rate yields ~3x the count per run.
    There is no held-out set, so 12 of 13 measures *fit*, not predictive validity.
 2. **N = 4 tuned runs against 132 real ones.** It shows the twin sits in the right
    distribution; it does not show its variance is calibrated.
+
+
+## Rung 6 (gait) - night session, phase 1: REAL locomotion works in our office
+
+**Finding that shapes the work:** NVIDIA publishes no pretrained policy for the G1. The asset
+server carries `/Isaac/Samples/Policies/` for **Anymal, Franka, H1 and Spot** only. The H1 is
+Unitree's other humanoid, so it is the right vehicle to validate the whole chain before
+attacking the G1.
+
+`sim/isaac/h1_locomocion.py`: H1 with `H1FlatTerrainPolicy` walking **in our reconstructed
+office**, physics at 200 Hz, policy in the loop. First clean run: **12.63 m travelled, upright
+at 0.90 m throughout, zero falls**. Articulated legs, real contacts - visible in the footage,
+reflected in the glass panel.
+
+**Two defects found and fixed, both consequences of earlier decisions:**
+1. The robot **fell through the floor** (z reached -6786 m). The office scene is built with
+   `create_new_stage()` for inspection and carries no ground plane - fine for looking at it,
+   fatal for physics.
+2. It then **walked through the walls like a ghost**: the inspection scene has no collision at
+   all (physics was deliberately stripped). Collision is now applied to the 468 structure and
+   glass prims, and the robot bumps into the wall and keeps stepping in place without falling -
+   which is exactly what a locomotion policy should do.
+
+The camera also had to be rewritten to actually track the robot; the first version aimed at a
+fixed point and never showed it.
+
+**Next:** the G1 itself. Options are (a) find a published G1 checkpoint, (b) train one with
+Isaac Lab on the two 3090s, (c) adapt the H1 policy - (c) is ruled out, the observation and
+action dimensions differ.
