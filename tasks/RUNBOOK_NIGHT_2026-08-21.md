@@ -126,13 +126,14 @@ findings, all now versioned:
 
 ## Perception server is now reboot-proof (22 Aug)
 
-The  view (cv2 window, and therefore the web overlay) needed the graphical session
-on  — which only exists if a person physically logged in at the lab. After any reboot
-there is nobody to do that, and gdm has no autologin. Fixed with a virtual display:
+The `--debug` view (cv2 window, and therefore the web overlay) needed the graphical session
+on `:1` — which only exists if a person physically logged in at the lab. After any reboot
+there is nobody to do that, and gdm had no autologin. Fixed with a virtual display:
 
     bash tools/arranca_percepcion.sh
 
-Creates  if absent, launches the server in tmux  with ,
-waits for the models and prints . No graphical login needed, ever. Verified working
-(both 3090s, floorcolor loaded). The old  line still works while someone IS
-logged in; the script is the one to use from now on.
+Creates `Xvfb :99` if absent, launches the server in tmux `perc` with `--debug --floorcolor 1`,
+waits for the models and prints `/health`. No graphical login needed, ever. Verified working
+(both 3090s, floorcolor loaded). The old `DISPLAY=:1` line still works while someone IS
+logged in; **the script is the one to use from now on** — and it is what makes an unattended
+reboot survivable.
