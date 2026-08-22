@@ -51,7 +51,7 @@ CRISTAL = (-3.75, -0.55, -2.65, 0.75)
 H_PARED_INTOCABLE = 1.9      # una celda asi de alta nunca se cede: es pared real
 MARGEN_BBOX = 0.35   # v6: generoso - la auditoria vio anillos de mobiliario a 0.5-0.6 m del centro
 
-_O = open("/ws/office3d_v11_result.txt", "w")
+_O = open("/ws/office3d_v12_result.txt", "w")
 def log(*a):
     s = " ".join(str(x) for x in a); print(s, flush=True); _O.write(s + "\n"); _O.flush()
 
@@ -70,7 +70,7 @@ for k in range(len(P)):
     zpor[(ix[k], iy[k])].append(P[k, 2])
 
 def altura(c, defecto):
-    """Altura ROBUSTA a fantasmas (v11): banda de 0.3 m mas alta con densidad REAL.
+    """Altura ROBUSTA a fantasmas (v12): banda de 0.3 m mas alta con densidad REAL.
 
     El p95 simple se dejaba enganar por los rastros de gente: una celda de sofa con puntos
     ralos de torsos por encima "media" 2 m y la regla la protegia como pared. Una superficie
@@ -256,12 +256,14 @@ for c in sorted(cristal_cells):
     for i in range(ntiras):
         yc = y0 + (i + 0.5) * ANCHO_TIRA
         idx = int(round(yc / ANCHO_TIRA))          # indice GLOBAL: patron continuo entre celdas
-        # PATRON RESUELTO contra las DOS firmas reales (medicion frontal 23% con el patron
-        # 5v/4i enseno que la ausencia por sector = (racha_inv - arco_sector)/periodo):
-        #   racha invisible 5 tiras (16.7 cm) + visible 3 tiras (10 cm), periodo 26.7 cm
-        #   frontal (1.45m, arco 5.1cm): (16.7-5.1)/26.7 = 43.4%  [real 44]
-        #   oblicua 30 (2m, arco 8.1cm con 1/cos): (16.7-8.1)/26.7 = 32.2%  [real 32]
-        invisible = (idx % 8) >= 3                  # 5 de cada 8 invisibles
+        # PATRON CALIBRADO EN BANCO (sim/isaac/calibra_cristal.py, 23-ago): panel recto, linea
+        # limpia, barrido de 20 patrones a incidencia 0 y 30 grados. Ganador 3 visibles /
+        # 5 invisibles, reproducible en 3 corridas: 36-40% de ausencia frontal y 32% en
+        # oblicuo, contra las firmas reales 44% y 32%. Las medidas reales tienen solo 25
+        # rumbos informativos (IC95 [25,63]% y [14,50]%), asi que el patron es
+        # ESTADISTICAMENTE INDISTINGUIBLE del cristal real; afinar mas seria ajustar ruido.
+        # La tendencia angular (menos ausencia en oblicuo) EMERGE de la geometria, no se impone.
+        invisible = (idx % 8) >= 3                  # 3 visibles / 5 invisibles
         cb = UsdGeom.Cube.Define(stage, "/World/Cristal/t%d" % nt)
         cb.GetSizeAttr().Set(1.0)
         xf = UsdGeom.Xformable(cb.GetPrim())
@@ -276,7 +278,7 @@ for c in sorted(cristal_cells):
             # (materiales de sensor con reflectancia fisica) queda para el peldano 3.
             UsdGeom.Imageable(cb.GetPrim()).MakeInvisible()
         nt += 1
-log("tiras de cristal:", nt, "(44.4%% invisibles a rayos)")
+log("tiras de cristal:", nt, "(patron calibrado 3v/5i)")
 
 add_reference_to_stage(usd_path=root + "/Isaac/Robots/Unitree/G1/g1.usd", prim_path="/World/G1")
 g1 = stage.GetPrimAtPath("/World/G1")
@@ -294,6 +296,6 @@ UsdGeom.Xformable(key.GetPrim()).AddRotateXYZOp().Set(Gf.Vec3f(-50, 25, 0))
 UsdLux.DomeLight.Define(stage, "/World/Dome").CreateIntensityAttr(320.0)
 
 stage.GetRootLayer().Export("/ws/office3d.usd")
-log("USD: /ws/office3d.usd (v11)")
-log("=== OFICINA v11 OK ===")
+log("USD: /ws/office3d.usd (v12)")
+log("=== OFICINA v12 OK ===")
 app.close()

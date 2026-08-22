@@ -230,3 +230,25 @@ Chronicle of a falsification, kept because it teaches:
   straightened pane, and then dial the pattern against the real 44/32 signatures.
 - Declared cost of visibility-based strips: the camera will see striped glass. Physical fix
   for later: RTX sensor materials with real reflectance.
+
+## Rung 2 CLOSED (23 Aug) — glass calibrated, statistically indistinguishable from the real one
+
+`sim/isaac/calibra_cristal.py`: a proper bench — straight pane, clear line of sight (the
+21-Aug staging), 20 strip patterns swept at 0 and 30 degrees incidence in one boot.
+
+Winner **3 visible / 5 invisible** strips of 3.33 cm, reproducible across three separate runs:
+**36-40% bearing absence face-on, 32% oblique**, against the real **44%** and **32%**.
+
+Why that is a match and not a near-miss: the real signatures come from only **25 informative
+bearings each**, so their 95% intervals are **[25, 63]%** face-on and **[14, 50]%** oblique.
+The simulated values sit comfortably inside both. Tuning further would be fitting noise —
+declared, and deliberately not done. The angular trend (less absence when oblique, because
+slanted rays cross more strips) EMERGES from geometry rather than being imposed.
+
+**Harness gotcha, paid for twice:** sweeping many patterns in one Isaac boot degrades the RTX
+lidar — signatures drift to 72%, then 100% (no returns at all). Only the first one or two
+measurements of a boot are trustworthy. Verdicts now come from dedicated runs.
+
+Still open for measuring the signature *inside the office scene* (not needed for the model
+itself): the camera-derived box meshes sit in the line of sight and the reconstructed pane is
+jagged. The experiment variant should stage a clear corridor as the real tanda did.
