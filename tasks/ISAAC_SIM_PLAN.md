@@ -515,3 +515,42 @@ crosses slightly MORE precisely than the robot, which is the benign direction.
 A more aggressive threshold (60 opportunities) was tried and rejected: it fixed braking equally
 but pushed the crossing to 0.09 m and the path to 8.7 m. The conservative setting is the one
 kept.
+
+## The vision channel was the worst-matching aspect — and it was missing from the table
+
+A disclosure first: the "9 of 10 inside the real IQR" I reported did **not include detection
+volume**, where the twin was emitting **746 detections per run against the real 32 — 23x** —
+and confidence 0.93 against 0.68. That metric had appeared in the earlier Isaac-vs-Gazebo
+table and was absent from the realism one, which made the result look better than it was.
+
+**Adrián supplied the physical cause:** the robot's images travel over the app's **WebRTC
+channel, which is a bottleneck**, and that hits the detector. Our own data backs it: traverse
+frames measure 3.5 median sharpness against 6.1 for the staged captures with the channel idle
+(and the August edge-sharpness measurement gave 52 against 476). The staged `calib_luz` curve
+that feeds the emulator was measured with the robot still and the channel at rest — it is a
+**ceiling**, not the rate of a normal run.
+
+Checked and rejected on the way: motion blur. The real detection rate is **flat with speed**
+(16.2% stopped, 16.0% slow, 16.9% fast), so it is the channel under load for the whole run,
+not instantaneous blur. The factor is therefore constant, not velocity-dependent.
+
+**Two calibrated corrections, same cause:**
+- `G1_EMU_ATEN=0.18` — over 15,837 real poses it reproduces the measured per-sample
+  distribution (real 84/13/3/0 % for 0/1/2/3+ detections, emulated 83/14/3/0, 2 pp of error).
+  Plus a cap of 2 detections per call: the real server never returned three.
+- `G1_EMU_CONFPEN=0.14` — the degraded channel also lowers confidence: median 0.70 [0.45-0.79]
+  against the real 0.68 [0.55-0.83].
+
+**Result, with vision now IN the table: 12 of 13 metrics inside the real interquartile range**,
+including % of samples carrying a detection (18.8% against 12.8%) and confidence. The one
+still outside is detections per run, 126 against 32 — and that residue is largely a harness
+artifact rather than the model: the twin logs 9.6 samples/s against the robot's 3.2, so the
+same per-sample rate yields ~3x the count per run.
+
+### Two caveats that do not go away
+
+1. **The tuning and the evaluation use the same data.** VSCALE, TAU, the cleaning thresholds,
+   ATEN and CONFPEN were all fitted against the 132 real runs and then scored against them.
+   There is no held-out set, so 12 of 13 measures *fit*, not predictive validity.
+2. **N = 4 tuned runs against 132 real ones.** It shows the twin sits in the right
+   distribution; it does not show its variance is calibrated.

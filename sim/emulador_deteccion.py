@@ -25,6 +25,32 @@ import math
 import os
 import random
 
+# ATENUACION DE NAVEGACION LIBRE. La curva de arriba se midio con el objeto ESCENIFICADO: en
+# su marca de cinta, centrado, con el robot quieto y el canal de video EN REPOSO. Es un TECHO,
+# no la tasa de un run normal.
+#
+# CAUSA FISICA PRINCIPAL (apuntada por Adrian y medida en nuestros datos): las imagenes viajan
+# por el canal WEBRTC de la app, que es un cuello de botella. Durante una travesia el canal va
+# saturado y TODOS los fotogramas llegan degradados -- nitidez mediana 3.5 frente a 6.1 en las
+# capturas estaticas de tanda (1.7x), y en la medicion de agosto la caida fue mucho mayor
+# todavia (52 frente a 476 en nitidez de borde). A eso se suman encuadre descentrado, oclusion
+# parcial y las perdidas del propio servidor (latencia, caidas).
+#
+# OJO: la degradacion NO depende de la velocidad instantanea -- se comprobo y la tasa real de
+# deteccion es plana (16.2% parado, 16.0% lento, 16.9% rapido). Es el canal bajo carga durante
+# TODO el run, no el desenfoque de movimiento. Por eso el factor es constante y no v-dependiente.
+#
+# CALIBRACION: sobre 15837 poses reales, atenuacion 0.18 reproduce el reparto medido de
+# detecciones por muestra (real 84/13/3/0 %, emulado 83/14/3/0, error 2 pp). Sin atenuar el
+# emulador disparaba en el 59% de las muestras y sacaba 3 o mas en el 21%: 23 veces mas
+# detecciones por run que la realidad.
+ATENUACION = float(os.environ.get("G1_EMU_ATEN", "0.18"))
+# El canal degradado no solo hace FALLAR detecciones: tambien baja la CONFIANZA de las que
+# salen. Medido: en runs reales la confianza mediana es 0.68 [0.55-0.83], mientras que en las
+# tandas escenificadas (canal en reposo) es 0.91-0.94. Misma causa, dos efectos.
+CONF_PENAL = float(os.environ.get("G1_EMU_CONFPEN", "0.14"))
+MAX_DETS = int(os.environ.get("G1_EMU_MAXDETS", "2"))   # el servidor real nunca dio mas de 2
+
 HFOV = 28.07          # medio campo horizontal de la camara real (fx=600, W=640)
 RMAX = 4.5
 UMBRAL_LUZ = 108.0    # brillo que separa 'luz' de 'poca' (medido: ~116 toda luz / ~85 poca)
@@ -111,17 +137,25 @@ class EmuladorDeteccion:
             (p, cmed, cmin, cmax), extrapolado = _interp(CURVA[cond], r)
             # en el borde del campo la deteccion decae (el objeto sale del encuadre)
             p *= max(0.0, 1.0 - max(0.0, abs(brg) - HFOV * 0.75) / (HFOV * 0.25))
+            p *= ATENUACION                      # de condiciones escenificadas a run normal
             if self.rng.random() > p:
                 continue
             # TRIANGULAR con moda en la MEDIANA medida, no uniforme: la distribucion real
             # esta sesgada (a 1.8 m con luz casi todo cae cerca de 0.85 con pocos valores
             # bajos), y muestrear uniforme daba 0.65 donde la realidad da 0.82 -- justo el
             # contraste que sostiene el testigo W2.
-            conf = min(0.99, max(0.05, self.rng.triangular(cmin, cmax, cmed)))
+            conf = self.rng.triangular(cmin, cmax, cmed) - CONF_PENAL * self.rng.uniform(0.7, 1.3)
+            # el suelo no es el umbral del servidor sino lo que se OBSERVA en runs reales: por
+            # debajo de ~0.45 practicamente no hay detecciones aceptadas en el historico
+            conf = min(0.99, max(0.45, conf))
             out.append([lab, round(conf, 2),
                         round(brg + self.rng.gauss(0, self.sigma_brg), 1),
                         round(max(0.1, r * (1 + self.rng.gauss(0, self.sigma_rel_rango))), 2),
                         {"extrapolado": extrapolado} if extrapolado else None])
+        # el servidor real devolvia como mucho 2 detecciones; se quedan las mas cercanas
+        if len(out) > MAX_DETS:
+            out.sort(key=lambda d: d[3])
+            out = out[:MAX_DETS]
         # el formato real son 4 campos; el 5º (metadatos) solo si hay extrapolacion
         return [d[:4] if d[4] is None else d for d in out]
 

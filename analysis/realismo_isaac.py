@@ -7,7 +7,8 @@ real (que es el criterio honesto: no basta con parecerse la mediana).
 import json, glob, math, os, statistics
 import collections
 
-ISAAC = {"191958", "192119", "192216", "192326"}   # mapa DOBLEMENTE limpio + realismo temporal
+ISAAC = {"193744", "193918", "194006", "194104"}   # mapa limpio + realismo temporal +
+                                                   # emulador atenuado por el canal WebRTC
 GAZEBO = {"172340","181643","181739"}
 
 DX, DY = -3.90, 1.25
@@ -45,6 +46,11 @@ for f in sorted(glob.glob("dataset/2026*_ours_[AB].json")):
     if s.get("time_s"): D["duracion (s)"].append(float(s["time_s"]))
     if s.get("err_m") is not None: D["error de llegada (m)"].append(float(s["err_m"]))
     D["colisiones"].append(float(s.get("collisions") or 0))
+    dd = [z for m in ss for z in (m.get("dets") or []) if z[0] != "door"]
+    D["detecciones por run"].append(len(dd))
+    D["confianza de objeto"] += [z[1] for z in dd if isinstance(z[1], (int, float))]
+    D["%% muestras con deteccion"].append(
+        100.0 * sum(1 for m in ss if any(z[0] != "door" for z in (m.get("dets") or []))) / len(ss))
     for m in ss:
         if isinstance(m.get("spd"), (int, float)): D["velocidad (m/s)"].append(m["spd"])
         if isinstance(m.get("c0"), (int, float)): D["holgura c0 (m)"].append(m["c0"])
@@ -68,8 +74,9 @@ print("runs comparados:", dict(n_runs))
 print()
 print("%-24s %-22s %-22s %s" % ("metrica", "REAL (med [IQR])", "ISAAC (med [IQR])", "veredicto"))
 print("-" * 90)
-METRICAS = ["duracion (s)", "error de llegada (m)", "colisiones", "velocidad (m/s)",
+METRICAS = ["duracion (s)", "colisiones", "velocidad (m/s)",
             "holgura c0 (m)", "obstaculos vistos", "|lateral| en vano (m)",
+            "detecciones por run", "%% muestras con deteccion", "confianza de objeto",
             "fase % DWA", "fase % ENG", "fase % GO", "fase % BRK"]
 dentro = fuera = 0
 for k in METRICAS:
