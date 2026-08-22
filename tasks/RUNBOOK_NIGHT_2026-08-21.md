@@ -127,13 +127,16 @@ findings, all now versioned:
 ## Perception server is now reboot-proof (22 Aug)
 
 The `--debug` view (cv2 window, and therefore the web overlay) needed the graphical session
-on `:1` — which only exists if a person physically logged in at the lab. After any reboot
+on `:1` — which only exists if a person physically logged in at the lab. **And the display
+NUMBER is not stable**: verified 22 Aug by restarting gdm — autologin brought the session back
+by itself (good) but as `:0`, and `:1` ceased to exist. Any hard-coded `DISPLAY=:1` would have
+failed silently at the next session with the same Qt error we already lost time to. After any reboot
 there is nobody to do that, and gdm had no autologin. Fixed with a virtual display:
 
     bash tools/arranca_percepcion.sh
 
 Creates `Xvfb :99` if absent, launches the server in tmux `perc` with `--debug --floorcolor 1`,
 waits for the models and prints `/health`. No graphical login needed, ever. Verified working
-(both 3090s, floorcolor loaded). The old `DISPLAY=:1` line still works while someone IS
-logged in; **the script is the one to use from now on** — and it is what makes an unattended
-reboot survivable.
+(both 3090s, floorcolor loaded). **Do not hand-type `DISPLAY=:1` any more** — it is stale and
+the number moves. The script owns its own `:99` and is immune, which is what makes an
+unattended reboot survivable.
