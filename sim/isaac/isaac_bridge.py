@@ -130,9 +130,26 @@ def paso_fisico():
         x, y, yaw = e["x"], e["y"], e["yaw"]
     OP_C.Set(Gf.Vec3d(x, y, 0.6))
     if OP_G1_T is not None:
-        OP_G1_T.Set(Gf.Vec3d(x, y, 0.793))
+        # BAMBOLEO procedural (mismo modelo efectivo que la capa de marcha del gemelo Gazebo,
+        # aqui en el dominio visual): la fase avanza con la DISTANCIA recorrida (zancada
+        # ~0.55 m) y la amplitud escala con la velocidad. La articulacion real de piernas
+        # exige la politica de locomocion (peldano 6) y NO se finge.
+        v = math.hypot(e["vx"], e["vy"])
+        globals().setdefault("_fase", 0.0)
+        globals()["_fase"] += (v * DT / 0.55) * 2 * math.pi
+        f = globals()["_fase"]
+        k_amp = min(1.0, v / 0.25)
+        bob = 0.022 * k_amp * math.sin(2 * f)          # el cuerpo sube 2 veces por zancada
+        roll = 2.2 * k_amp * math.sin(f)               # balanceo lateral una vez por zancada
+        OP_G1_T.Set(Gf.Vec3d(x, y, 0.793 + bob))
         if OP_G1_R is not None:
-            OP_G1_R.Set(math.degrees(yaw) - 90.0)
+            # BUG CORREGIDO: el eje frontal del modelo es +X; el -90 anterior lo llevaba DE LADO
+            OP_G1_R.Set(math.degrees(yaw))
+        if "_OP_ROLL" not in globals():
+            _xg2 = UsdGeom.Xformable(stage.GetPrimAtPath("/World/G1"))
+            globals()["_OP_ROLL"] = _xg2.AddRotateXOp(opSuffix="sway")
+        globals()["_OP_ROLL"].Set(roll)
+        globals()["_bob_actual"] = bob
     # PRUEBA: el lidar rotatorio necesita completar una revolucion; si se le reescribe la pose
     # cada fotograma puede no acumular nunca. Con G1_ISAAC_LIDAR_QUIETO=1 se deja fijo.
     if not QUIETO:
@@ -352,8 +369,16 @@ def graba():
     # camara ELEVADA: a 2.1 m se metia dentro de las paredes (2.2-2.7 m de alto) y salian
     # fotogramas en blanco. Desde 4.2 m mirando hacia abajo se ve el robot y su entorno.
     D, H = 3.6, 4.2
-    cx, cy = x - D * math.cos(yaw), y - D * math.sin(yaw)
-    dx, dy, dz = x - cx, y - cy, 0.9 - H
+    bob = globals().get("_bob_actual", 0.0)
+    f = globals().get("_fase", 0.0)
+    with LOCK:
+        v = math.hypot(ESTADO["vx"], ESTADO["vy"])
+    k = min(1.0, v / 0.25)
+    # la camara hereda medio bob y anade su propio temblor de persecucion
+    cx = x - D * math.cos(yaw) + 0.03 * k * math.sin(f * 0.9)
+    cy = y - D * math.sin(yaw) + 0.03 * k * math.cos(f * 1.1)
+    H = H + 0.5 * bob + 0.02 * k * math.sin(f * 2.3)
+    dx, dy, dz = x - cx, y - cy, 0.9 + bob - H
     _OPV_T.Set(Gf.Vec3d(cx, cy, H))
     _OPV_R.Set(Gf.Vec3f(90.0 + math.degrees(math.atan2(dz, math.hypot(dx, dy))),
                         0.0, math.degrees(math.atan2(dy, dx)) - 90.0))
