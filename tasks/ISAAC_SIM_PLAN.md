@@ -252,3 +252,37 @@ measurements of a boot are trustworthy. Verdicts now come from dedicated runs.
 Still open for measuring the signature *inside the office scene* (not needed for the model
 itself): the camera-derived box meshes sit in the line of sight and the reconstructed pane is
 jagged. The experiment variant should stage a clear corridor as the real tanda did.
+
+## Rung 3 (camera -> perception), first pass — meshes out, real-pixel cards in, gated
+
+Adrián: "remove the meshes, I don't trust them; the detector and the boxes must be the same
+as reality". Both done, and the second part measured rather than assumed.
+
+**Meshes removed.** The bench already justified it (SM_Armchair -> "tv" 0.74 in OUR detector).
+
+**Replaced by real-pixel cards.** `analysis/extrae_recortes_reales.py` finds, for each object
+cluster, the real frame that produced its best detection, re-runs yolo11x to recover the box
+(the stored dets carry only label/conf/bearing/range), pairs box to det by label+bearing, and
+derives physical width/height from box + range. Cards are placed at the position implied by
+THAT observation, standing on the floor, facing the observer.
+
+**Four faults found and fixed by measuring, not guessing:**
+1. Frames are **320x180 (16:9)**, not 640x480 — the server's fx=600/cx=320/cy=240 belong to
+   4:3. Using cy=240 put the optical axis 60 px low and made every object float ~0.27 m.
+2. Cards were **doubly lit**: the crop already carries the office's real illumination, and the
+   scene light was applied on top, rendering them almost black. Now emissive.
+3. Cards sat at the **cluster centroid** while viewed from one observation's pose — 0.93 m
+   apart where the detection said 1.5 m, so the apparent size was wrong. Now at the
+   observation-implied position, and the bench reproduces the robot's exact pose and yaw
+   instead of "looking at the card" (framing matters to YOLO).
+4. Structure blocks stood **in the line of sight**; the sight corridor is now evicted too.
+
+**Result, honestly:** 1/18 -> 4/18. It works for **chairs** (sim 0.78-0.82 vs real 0.83-0.93)
+and fails for couches and boxes. The failures look structural: couch crops are partial views,
+and "refrigerator" was itself a COCO misclassification driven by whole-scene context, which a
+flat card cannot reproduce. Same doctrine as the meshes now applies automatically: the office
+generator reads `aprobadas.json` and places only cards that pass the bench — currently 4.
+
+**Recommendation for the protocol:** for calibrated claims the sim vision channel should be
+driven by a detection model fitted to the real curves (which we have), not by rendering.
+Rendered vision stays for design and rehearsal, declared as not calibrated.

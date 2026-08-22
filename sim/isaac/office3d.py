@@ -51,7 +51,7 @@ CRISTAL = (-3.75, -0.55, -2.65, 0.75)
 H_PARED_INTOCABLE = 1.9      # una celda asi de alta nunca se cede: es pared real
 MARGEN_BBOX = 0.35   # v6: generoso - la auditoria vio anillos de mobiliario a 0.5-0.6 m del centro
 
-_O = open("/ws/office3d_v12_result.txt", "w")
+_O = open("/ws/office3d_v15_result.txt", "w")
 def log(*a):
     s = " ".join(str(x) for x in a); print(s, flush=True); _O.write(s + "\n"); _O.flush()
 
@@ -70,7 +70,7 @@ for k in range(len(P)):
     zpor[(ix[k], iy[k])].append(P[k, 2])
 
 def altura(c, defecto):
-    """Altura ROBUSTA a fantasmas (v12): banda de 0.3 m mas alta con densidad REAL.
+    """Altura ROBUSTA a fantasmas (v15): banda de 0.3 m mas alta con densidad REAL.
 
     El p95 simple se dejaba enganar por los rastros de gente: una celda de sofa con puntos
     ralos de torsos por encima "media" 2 m y la regla la protegia como pared. Una superficie
@@ -109,36 +109,105 @@ UsdGeom.Xform.Define(stage, "/World")
 
 # --- 1) MALLAS PRIMERO, con su bbox real ---
 objetos = json.load(open("/ws/objetos_vistos.json"))
-MESH = {"chair": ["SM_ChairOffice_A.usd"]}   # la UNICA aprobada por el banco detector
+# v13: FUERA LAS MALLAS. Adrian no se fia de ellas y el banco le da la razon (SM_Armchair ->
+# "tv" 0.74 en nuestro detector). En su lugar, TARJETAS con los PIXELES REALES: para cada
+# objeto se recorta del fotograma real la region que produjo su deteccion y se coloca como
+# quad texturizado en su posicion medida, con el ANCHO y ALTO fisicos derivados de la caja y
+# el rango, apoyado en el suelo (todos son objetos de suelo). El detector no ve una
+# aproximacion del sofa: ve EL SOFA, asi que la etiqueta y la confianza salen por construccion.
+MESH = {}
 props = [(lab, o["x"], o["y"]) for lab, ol in objetos.items() if lab in MESH
          for o in ol if o["n"] >= 12]
-root = get_assets_root_path(); PR = root + "/Isaac/Environments/Office/Props/"
-rng = random.Random(7)
-UsdGeom.Xform.Define(stage, "/World/Muebles")
+root = get_assets_root_path()
+UsdGeom.Xform.Define(stage, "/World/Objetos")
+
+def tarjeta(path, png, cx, cy, ancho, alto, mirar_x, mirar_y):
+    """Quad texturizado con los pixeles reales, apoyado en el suelo y encarado al observador."""
+    from pxr import UsdShade as _S, Vt
+    ang = math.atan2(mirar_y - cy, mirar_x - cx)          # normal hacia el observador
+    ux, uy = -math.sin(ang), math.cos(ang)                 # eje ancho (perpendicular a la normal)
+    h = ancho / 2.0
+    pts = [Gf.Vec3f(cx - ux*h, cy - uy*h, 0.0), Gf.Vec3f(cx + ux*h, cy + uy*h, 0.0),
+           Gf.Vec3f(cx + ux*h, cy + uy*h, alto), Gf.Vec3f(cx - ux*h, cy - uy*h, alto)]
+    mesh = UsdGeom.Mesh.Define(stage, path)
+    mesh.CreatePointsAttr(pts)
+    mesh.CreateFaceVertexCountsAttr([4])
+    mesh.CreateFaceVertexIndicesAttr([0, 1, 2, 3])
+    mesh.CreateDoubleSidedAttr(True)
+    st = UsdGeom.PrimvarsAPI(mesh).CreatePrimvar("st", Sdf.ValueTypeNames.TexCoord2fArray,
+                                                 UsdGeom.Tokens.varying)
+    st.Set([Gf.Vec2f(0, 0), Gf.Vec2f(1, 0), Gf.Vec2f(1, 1), Gf.Vec2f(0, 1)])
+    mat = _S.Material.Define(stage, path + "/Mat")
+    sh = _S.Shader.Define(stage, path + "/Mat/S")
+    sh.CreateIdAttr("UsdPreviewSurface")
+    sh.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(1.0)
+    sh.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+    tex = _S.Shader.Define(stage, path + "/Mat/Tex")
+    tex.CreateIdAttr("UsdUVTexture")
+    tex.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(png)
+    tex.CreateInput("sourceColorSpace", Sdf.ValueTypeNames.Token).Set("sRGB")
+    tex.CreateInput("wrapS", Sdf.ValueTypeNames.Token).Set("clamp")
+    tex.CreateInput("wrapT", Sdf.ValueTypeNames.Token).Set("clamp")
+    lector = _S.Shader.Define(stage, path + "/Mat/St")
+    lector.CreateIdAttr("UsdPrimvarReader_float2")
+    lector.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
+    tex.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(
+        lector.ConnectableAPI(), "result")
+    # EMISIVA, no difusa: el recorte YA lleva la iluminacion real de la oficina. Si ademas se
+    # ilumina con la luz de la escena se cuenta dos veces y la tarjeta sale negra (medido).
+    sh.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0, 0, 0))
+    sh.CreateInput("emissiveColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
+        tex.ConnectableAPI(), "rgb")
+    mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(), "surface")
+    _S.MaterialBindingAPI(mesh.GetPrim()).Bind(mat)
+    return mesh
+
+fichas = json.load(open("/ws/recortes/fichas.json"))
+# PUERTA DEL BANCO: solo entran las tarjetas que, renderizadas desde la pose original, hacen
+# que NUESTRO detector diga la misma etiqueta con confianza cercana a la real (<=0.25).
+# Medido: funciona con sillas (0.78-0.82 sim vs 0.83-0.93 real); sofas y cajas NO pasan -- sus
+# recortes son parciales y "refrigerator" era ya una confusion de COCO guiada por contexto de
+# escena, que una tarjeta plana no reproduce. Esos objetos se quedan como bloques.
+try:
+    _ap = json.load(open("/ws/recortes/aprobadas.json"))
+    _ok = {(a_["lab"], round(a_["pos"][0], 2), round(a_["pos"][1], 2)) for a_ in _ap}
+except Exception:
+    _ok = None
 cajas = []
-bb = UsdGeom.BBoxCache(Usd.TimeCode.Default(), ["default", "render"])
+corredores = []
 m = 0
-for lab, px, py in props:
-    p_ = "/World/Muebles/%s_%d" % (lab, m)
-    add_reference_to_stage(usd_path=PR + rng.choice(MESH[lab]), prim_path=p_)
-    pr = stage.GetPrimAtPath(p_)
-    xf = UsdGeom.Xformable(pr); xf.ClearXformOpOrder()
-    xf.AddTranslateOp().Set(Gf.Vec3d(px, py, 0.0))
-    xf.AddRotateZOp().Set(rng.uniform(0, 360))
-    try:
-        r = bb.ComputeWorldBound(pr).ComputeAlignedRange()
-        mn, mx = r.GetMin(), r.GetMax()
-        caja = (mn[0]-MARGEN_BBOX, mn[1]-MARGEN_BBOX, mx[0]+MARGEN_BBOX, mx[1]+MARGEN_BBOX)
-    except Exception:
-        caja = (px-0.6, py-0.6, px+0.6, py+0.6)
-    cajas.append(caja)
+for f_ in fichas:
+    px, py = f_.get("pos_obs") or f_["pos"]
+    an, al = f_["ancho_m"], f_["alto_m"]
+    if an < 0.30 or al < 0.30:                      # recortes parciales: no valen como tarjeta
+        continue
+    if _ok is not None and (f_["lab"], round(f_["pos"][0], 2), round(f_["pos"][1], 2)) not in _ok:
+        continue                                     # no paso el banco detector
+    tarjeta("/World/Objetos/%s_%d" % (f_["lab"], m), "/ws/recortes/" + f_["png"],
+            px, py, an, al, f_["observador"][0], f_["observador"][1])
+    r_ = max(an, 0.5) / 2.0 + MARGEN_BBOX
+    cajas.append((px - r_, py - r_, px + r_, py + r_))
+    corredores.append((f_["observador"][0], f_["observador"][1], px, py))
     m += 1
-log("mallas reales:", m)
+log("tarjetas con pixeles reales:", m, "de", len(fichas), "recortes")
+props = [(f_["lab"], f_["pos"][0], f_["pos"][1]) for f_ in fichas]
 
 # --- 2) CESION por bbox real, protegiendo pared alta ---
 def dentro(c):
     x, y = c[0]*OC, c[1]*OC
-    return any(x0 <= x <= x1 and y0 <= y <= y1 for (x0, y0, x1, y1) in cajas)
+    if any(x0 <= x <= x1 and y0 <= y <= y1 for (x0, y0, x1, y1) in cajas):
+        return True
+    # y el CORREDOR de vision entre el observador y su tarjeta: si un bloque se cruza ahi, la
+    # tarjeta queda tapada y el detector no ve nada (medido en el primer banco).
+    for (ox, oy, tx_, ty_) in corredores:
+        dx_, dy_ = tx_-ox, ty_-oy
+        L2 = dx_*dx_ + dy_*dy_
+        if L2 < 1e-6:
+            continue
+        t = max(0.0, min(1.0, ((x-ox)*dx_ + (y-oy)*dy_) / L2))
+        if math.hypot(x - (ox+t*dx_), y - (oy+t*dy_)) < 0.22:
+            return True
+    return False
 
 ced_p = {c for c in pared_cells if dentro(c) and altura(c, 2.2) < H_PARED_INTOCABLE}
 ced_m = {c for c in mueble_cells if dentro(c)}
@@ -151,18 +220,7 @@ log("cedidas a las mallas: %d de pared(2D) + %d de mueble (protegidas %d de pare
 # v6: RECOLOCAR cada malla al centroide de las celdas que desaloja. La posicion de camara
 # trae ~0.3-0.5 m de error (cuantizacion de rumbo + rango); la ocupacion del laser dice
 # donde estaba el objeto DE VERDAD. Si no desalojo nada, se queda donde la vio la camara.
-cedidas = ced_p | ced_m
-for i, (x0, y0, x1, y1) in enumerate(cajas):
-    mias = [c for c in cedidas if x0 <= c[0]*OC <= x1 and y0 <= c[1]*OC <= y1]
-    if len(mias) >= 2:
-        cx = sum(c[0] for c in mias) / len(mias) * OC
-        cy = sum(c[1] for c in mias) / len(mias) * OC
-        pr = stage.GetPrimAtPath("/World/Muebles/%s_%d" % (props[i][0], i))
-        if pr and pr.IsValid():
-            ops = UsdGeom.Xformable(pr).GetOrderedXformOps()
-            if ops:
-                ops[0].Set(Gf.Vec3d(cx, cy, 0.0))
-log("mallas recolocadas al centroide de su ocupacion")
+# (las tarjetas se colocan en la posicion medida por la camara; no se recolocan)
 
 # --- 3) bloques restantes ---
 def en_cristal(c):
@@ -296,6 +354,6 @@ UsdGeom.Xformable(key.GetPrim()).AddRotateXYZOp().Set(Gf.Vec3f(-50, 25, 0))
 UsdLux.DomeLight.Define(stage, "/World/Dome").CreateIntensityAttr(320.0)
 
 stage.GetRootLayer().Export("/ws/office3d.usd")
-log("USD: /ws/office3d.usd (v12)")
-log("=== OFICINA v12 OK ===")
+log("USD: /ws/office3d.usd (v15)")
+log("=== OFICINA v15 OK ===")
 app.close()
