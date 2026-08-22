@@ -51,11 +51,26 @@ open_stage(ESCENA)
 world = World(stage_units_in_meters=1.0)
 stage = omni.usd.get_context().get_stage()
 
-# cuerpo visible del robot (cinematico): un cilindro a la altura del G1
+# cuerpo del robot: se mueve el MODELO G1 que ya trae la escena (antes se movia un cilindro
+# gris y el G1 se quedaba plantado en su pose inicial -- en el video se veia el cilindro
+# navegando y el robot quieto al fondo).
+_g1 = stage.GetPrimAtPath("/World/G1")
+OP_G1_T = OP_G1_R = None
+if _g1 and _g1.IsValid():
+    _xg = UsdGeom.Xformable(_g1)
+    for _op in _xg.GetOrderedXformOps():
+        if _op.GetOpType() == UsdGeom.XformOp.TypeTranslate and OP_G1_T is None:
+            OP_G1_T = _op
+        elif _op.GetOpType() == UsdGeom.XformOp.TypeRotateZ and OP_G1_R is None:
+            OP_G1_R = _op
+print("[robot] G1 en escena: translate=%s rotateZ=%s" % (OP_G1_T is not None, OP_G1_R is not None), flush=True)
+# cilindro de respaldo, invisible si el G1 esta disponible
 cuerpo = UsdGeom.Cylinder.Define(stage, "/World/Robot")
 cuerpo.CreateRadiusAttr(0.16); cuerpo.CreateHeightAttr(1.2)
 xf_c = UsdGeom.Xformable(cuerpo.GetPrim()); xf_c.ClearXformOpOrder()
 OP_C = xf_c.AddTranslateOp()
+if OP_G1_T is not None:
+    UsdGeom.Imageable(cuerpo.GetPrim()).MakeInvisible()
 
 lidar = LidarRtx(prim_path="/World/LidarNav", name="lnav",
                  position=np.array([X0, Y0, H_LIDAR]),
@@ -114,6 +129,10 @@ def paso_fisico():
         e["yaw"] = (e["yaw"] + e["wz"] * DT + math.pi) % (2 * math.pi) - math.pi
         x, y, yaw = e["x"], e["y"], e["yaw"]
     OP_C.Set(Gf.Vec3d(x, y, 0.6))
+    if OP_G1_T is not None:
+        OP_G1_T.Set(Gf.Vec3d(x, y, 0.793))
+        if OP_G1_R is not None:
+            OP_G1_R.Set(math.degrees(yaw) - 90.0)
     # PRUEBA: el lidar rotatorio necesita completar una revolucion; si se le reescribe la pose
     # cada fotograma puede no acumular nunca. Con G1_ISAAC_LIDAR_QUIETO=1 se deja fijo.
     if not QUIETO:
@@ -260,6 +279,15 @@ async def handler(ws):
                 subs.add(m.get("topic"))
             elif op == "unsubscribe":
                 subs.discard(m.get("topic"))
+            elif op == "publish" and m.get("topic") == "/reset":
+                # devolver el robot a una pose conocida sin reiniciar el simulador
+                ms = m.get("msg") or {}
+                with LOCK:
+                    ESTADO["x"] = float(ms.get("x", X0))
+                    ESTADO["y"] = float(ms.get("y", Y0))
+                    ESTADO["yaw"] = float(ms.get("yaw", YAW0))
+                    ESTADO["vx"] = ESTADO["vy"] = ESTADO["wz"] = 0.0
+                    ESTADO["cx"] = ESTADO["cy"] = ESTADO["cw"] = 0.0
             elif op == "publish" and m.get("topic") == "/cmd_vel":
                 tw = m.get("msg") or {}
                 lin, ang = tw.get("linear") or {}, tw.get("angular") or {}
@@ -298,6 +326,43 @@ def hilo_ws():
             await emisor()
     asyncio.run(main())
 
+# --------------------------------------------------------------------- grabacion para video
+REC = os.environ.get("G1_ISAAC_REC", "") == "1"
+REC_DIR = os.environ.get("G1_ISAAC_REC_DIR", "/ws/video")
+_rec_n = 0
+if REC:
+    import omni.replicator.core as rep
+    from PIL import Image
+    os.makedirs(REC_DIR, exist_ok=True)
+    _cam = UsdGeom.Camera.Define(stage, "/World/CamVideo")
+    _cam.CreateFocalLengthAttr(20.0)
+    _cam.CreateClippingRangeAttr(Gf.Vec2f(0.05, 200.0))
+    _xv = UsdGeom.Xformable(_cam.GetPrim()); _xv.ClearXformOpOrder()
+    _OPV_T = _xv.AddTranslateOp(); _OPV_R = _xv.AddRotateXYZOp()
+    _rp = rep.create.render_product("/World/CamVideo", (960, 540))
+    _ann_rgb = rep.AnnotatorRegistry.get_annotator("rgb")
+    _ann_rgb.attach([_rp])
+    print("=== GRABANDO en %s ===" % REC_DIR, flush=True)
+
+def graba():
+    """Camara de persecucion: detras y por encima del robot, mirandolo."""
+    global _rec_n
+    with LOCK:
+        x, y, yaw = ESTADO["x"], ESTADO["y"], ESTADO["yaw"]
+    # camara ELEVADA: a 2.1 m se metia dentro de las paredes (2.2-2.7 m de alto) y salian
+    # fotogramas en blanco. Desde 4.2 m mirando hacia abajo se ve el robot y su entorno.
+    D, H = 3.6, 4.2
+    cx, cy = x - D * math.cos(yaw), y - D * math.sin(yaw)
+    dx, dy, dz = x - cx, y - cy, 0.9 - H
+    _OPV_T.Set(Gf.Vec3d(cx, cy, H))
+    _OPV_R.Set(Gf.Vec3f(90.0 + math.degrees(math.atan2(dz, math.hypot(dx, dy))),
+                        0.0, math.degrees(math.atan2(dy, dx)) - 90.0))
+    d = _ann_rgb.get_data()
+    if d is not None and len(d):
+        Image.fromarray(np.asarray(d)[:, :, :3].astype("uint8")).save(
+            os.path.join(REC_DIR, "f%06d.png" % _rec_n))
+        _rec_n += 1
+
 threading.Thread(target=hilo_ws, daemon=True).start()
 
 print("=== SIMULACION ISAAC LISTA ===", flush=True)
@@ -306,6 +371,16 @@ while True:
     paso_fisico()
     world.step(render=True)
     n += 1
+    # OJO: grabar cada 2 pasos a 1280x720 hundia el ritmo del lazo y el robot se movia a
+    # tirones respecto al reloj real (el cmd_vel caduca en 0.6 s de reloj de pared), tanto que
+    # no completaba la travesia. A 960x540 y 1 de cada 6 pasos el ritmo se mantiene.
+    if REC and n % 6 == 0:
+        graba()
+    if n % 400 == 0:
+        _ahora = time.time()
+        if "_t_ritmo" in globals():
+            print("[ritmo] %.1f pasos/s (objetivo %.0f)" % (400.0/(_ahora-_t_ritmo), 1.0/DT), flush=True)
+        globals()["_t_ritmo"] = _ahora
     if n % 4 == 0:
         with LOCK:
             _x, _y, _yaw = ESTADO["x"], ESTADO["y"], ESTADO["yaw"]
