@@ -209,3 +209,24 @@ the angular trend (more returns oblique, 0.32@30deg) EMERGES naturally because o
 cross more strips. Before dialing: the capture harness must wait for a full rotation
 (current first-nonempty grab returned a partial 34-sector buffer) and calibrate the sensor's
 azimuth offset once against a known wall instead of best-fit searching per scan.
+
+## Rung 2, second pass (23 Aug) — mechanism settled the hard way
+
+Chronicle of a falsification, kept because it teaches:
+- The azimuth offset is **0 degrees**: calibrated at A against pure geometry, median |dr|
+  0.07 m over 124 sectors. All earlier "best-fit offsets" (232/246/256) were overfitting on
+  sparse windows. The FlatScan azimuth is world-aligned; never fit per scan again.
+- `primvars:doNotCastRays` (authored in USD) does NOTHING for this lidar - proven by three
+  scene generations with different strip patterns yielding IDENTICAL signatures, and the
+  earlier runtime "success" was actually the sensor breaking (34-sector collapse), a false
+  positive I had believed. Mechanism falsified.
+- What DOES work: **USD visibility** (MakeInvisible). Isolated panel test (lone striped pane,
+  no office): 5/8-invisible pattern -> **63% sector absence** where naive geometry predicted
+  43% - the mechanism works and the dial responds. `sim/isaac/test_tiras_aislado.py`.
+- Remaining blocker in the OFFICE scene is staging, not physics: the camera-derived box
+  meshes near that wall return at 2.0-2.5 m inside the glass window, and the pane row is
+  jagged (easternmost-cell-per-row of a scattered blob). For glass experiments the scene
+  needs the 21-Aug staging: clear line to the specimen (relocate/remove those meshes), a
+  straightened pane, and then dial the pattern against the real 44/32 signatures.
+- Declared cost of visibility-based strips: the camera will see striped glass. Physical fix
+  for later: RTX sensor materials with real reflectance.

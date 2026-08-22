@@ -1,4 +1,14 @@
-"""Oficina 3D v7 — solo mallas VALIDADAS por el detector (22-ago, noche).
+"""Oficina 3D v8 — cristal a TIRAS para el lidar RTX (23-ago).
+
+El FlatScan RTX ignora la transparencia de cualquier material (PreviewSurface y OmniGlass
+devuelven 31/31); lo unico que respeta es `primvars:doNotCastRays`. Modelo efectivo del
+cristal tintado: cada celda de cristal se subdivide en TIRAS verticales de ~3.3 cm a lo largo
+de la pared, con patron determinista 5 visibles / 4 invisibles (44.4% de ausencia frontal =
+el 0.44 medido en el cristal real el 21-ago). La tendencia angular (mas retornos en oblicuo,
+0.32@30 grados real) debe EMERGER de la geometria: un rayo oblicuo cruza mas tiras.
+OJO declarado: doNotCastRays puede afectar tambien al render de camara (tiras en la imagen);
+se verificara en el peldano 3 y, si molesta, se usaran dos geometrias solapadas (una solo
+para sensores, otra solo visual).
 
 Pregunta de Adrian: ¿impacta poner mallas sobre nuestro object detector? MEDIDO con el banco
 (bench_mallas.py + eval_bench.py, el mismo yolo11x del perception_server):
@@ -41,7 +51,7 @@ CRISTAL = (-3.75, -0.55, -2.65, 0.75)
 H_PARED_INTOCABLE = 1.9      # una celda asi de alta nunca se cede: es pared real
 MARGEN_BBOX = 0.35   # v6: generoso - la auditoria vio anillos de mobiliario a 0.5-0.6 m del centro
 
-_O = open("/ws/office3d_v7_result.txt", "w")
+_O = open("/ws/office3d_v11_result.txt", "w")
 def log(*a):
     s = " ".join(str(x) for x in a); print(s, flush=True); _O.write(s + "\n"); _O.flush()
 
@@ -60,7 +70,7 @@ for k in range(len(P)):
     zpor[(ix[k], iy[k])].append(P[k, 2])
 
 def altura(c, defecto):
-    """Altura ROBUSTA a fantasmas (v7): banda de 0.3 m mas alta con densidad REAL.
+    """Altura ROBUSTA a fantasmas (v11): banda de 0.3 m mas alta con densidad REAL.
 
     El p95 simple se dejaba enganar por los rastros de gente: una celda de sofa con puntos
     ralos de torsos por encima "media" 2 m y la regla la protegia como pared. Una superficie
@@ -159,12 +169,26 @@ def en_cristal(c):
     x, y = c[0]*OC, c[1]*OC
     return CRISTAL[0] <= x <= CRISTAL[2] and CRISTAL[1] <= y <= CRISTAL[3]
 
+cristal_blob = {c for c in pared_cells if en_cristal(c)}
+pared_cells = pared_cells - cristal_blob
+# v10: el cristal es un PANEL FINO, no el pegote entero. El mapa 2D dentro del rect mezcla el
+# panel con artefactos vistos DETRAS/A TRAVES del vidrio (1.1 m de fondo). La sala esta al
+# ESTE (x mayores): el panel = la celda mas oriental de cada fila y; el resto del pegote se
+# BORRA (tras el cristal real no hay retorno lidar).
+_pane = {}
+for c in cristal_blob:
+    y = c[1]
+    if y not in _pane or c[0] > _pane[y][0]:
+        _pane[y] = c
+cristal_cells = set(_pane.values())
+log("cristal: pegote de %d celdas -> panel fino de %d (el resto, artefactos tras-cristal, borrado)" % (
+    len(cristal_blob), len(cristal_cells)))
 bandas = {}
 for c in pared_cells:
     h = altura(c, 2.2)
     if h < 1.5:
         h = max(h, 1.8)
-    bandas.setdefault(("P", int(round(h/BANDA)), en_cristal(c)), set()).add(c)
+    bandas.setdefault(("P", int(round(h/BANDA)), False), set()).add(c)
 for c in mueble_cells:
     h = min(altura(c, 0.8), 1.4)
     bandas.setdefault(("M", max(1, int(round(h/BANDA))), False), set()).add(c)
@@ -220,6 +244,40 @@ for (cls, b, vid), cs in sorted(bandas.items()):
         n += 1
 log("prims de estructura:", n)
 
+# --- CRISTAL A TIRAS (patron 5 visibles / 4 doNotCastRays = 44.4% ausencia frontal) ---
+ANCHO_TIRA = 0.0333
+UsdGeom.Xform.Define(stage, "/World/Cristal")
+nt = 0
+for c in sorted(cristal_cells):
+    h = max(altura(c, 2.2), 1.8)
+    x0 = c[0]*OC - OC/2.0
+    y0 = c[1]*OC - OC/2.0
+    ntiras = int(round(OC / ANCHO_TIRA))
+    for i in range(ntiras):
+        yc = y0 + (i + 0.5) * ANCHO_TIRA
+        idx = int(round(yc / ANCHO_TIRA))          # indice GLOBAL: patron continuo entre celdas
+        # PATRON RESUELTO contra las DOS firmas reales (medicion frontal 23% con el patron
+        # 5v/4i enseno que la ausencia por sector = (racha_inv - arco_sector)/periodo):
+        #   racha invisible 5 tiras (16.7 cm) + visible 3 tiras (10 cm), periodo 26.7 cm
+        #   frontal (1.45m, arco 5.1cm): (16.7-5.1)/26.7 = 43.4%  [real 44]
+        #   oblicua 30 (2m, arco 8.1cm con 1/cos): (16.7-8.1)/26.7 = 32.2%  [real 32]
+        invisible = (idx % 8) >= 3                  # 5 de cada 8 invisibles
+        cb = UsdGeom.Cube.Define(stage, "/World/Cristal/t%d" % nt)
+        cb.GetSizeAttr().Set(1.0)
+        xf = UsdGeom.Xformable(cb.GetPrim())
+        xf.AddTranslateOp().Set(Gf.Vec3d(c[0]*OC, yc, h/2.0))
+        xf.AddScaleOp().Set(Gf.Vec3f(OC, ANCHO_TIRA, h))
+        UsdShade.MaterialBindingAPI(cb.GetPrim()).Bind(mat_vidrio)
+        if invisible:
+            # v11: doNotCastRays autorado NO afecta a este lidar (medido: firma identica con
+            # patrones distintos; el "exito" del test en runtime era el sensor rompiendose).
+            # Visibilidad USD si que lo quita de TODO el render, sensores incluidos.
+            # Coste declarado: la camara vera el cristal a franjas; el arreglo fino
+            # (materiales de sensor con reflectancia fisica) queda para el peldano 3.
+            UsdGeom.Imageable(cb.GetPrim()).MakeInvisible()
+        nt += 1
+log("tiras de cristal:", nt, "(44.4%% invisibles a rayos)")
+
 add_reference_to_stage(usd_path=root + "/Isaac/Robots/Unitree/G1/g1.usd", prim_path="/World/G1")
 g1 = stage.GetPrimAtPath("/World/G1")
 xg = UsdGeom.Xformable(g1); xg.ClearXformOpOrder()
@@ -236,6 +294,6 @@ UsdGeom.Xformable(key.GetPrim()).AddRotateXYZOp().Set(Gf.Vec3f(-50, 25, 0))
 UsdLux.DomeLight.Define(stage, "/World/Dome").CreateIntensityAttr(320.0)
 
 stage.GetRootLayer().Export("/ws/office3d.usd")
-log("USD: /ws/office3d.usd (v7)")
-log("=== OFICINA v7 OK ===")
+log("USD: /ws/office3d.usd (v11)")
+log("=== OFICINA v11 OK ===")
 app.close()
