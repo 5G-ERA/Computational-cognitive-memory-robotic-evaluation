@@ -188,3 +188,24 @@ responses from the ROBOT's sensors and stack as reality does** — never "pretti
 6. **Gait (P4)** — locomotion policy on the articulated G1, calibrated against real IMU sway.
 7. **Full loop** — g1_goto driving Isaac's G1 through the adapter; same commands -> comparable
    trajectories vs the 133 real runs.
+
+## Rungs 1-2 progress (23 Aug, small hours)
+
+**Rung 1 (lidar) — filter v1 validated at two poses.** The app's cloud filter, measured over
+1444 real snapshots: ~82 points/snapshot, ~62 of 180 sectors, **hard range cap at 3.7 m**
+(94% under 3 m), near-biased histogram {0-1m:12%, 1-2m:45%, 2-3m:37%, 3+:6%}. Applying it to
+the sim scan (`analysis/filtra_scan_app.py`): at A median |dr| 0.24->0.19 m and p90 1.25->
+0.43 m; cross-validated at B with UNCHANGED parameters (`analysis/valida_filtro_B.py`):
+median 0.24 m, p90 0.75. Range errors sit at the cell-resolution floor and TRANSFER.
+Remaining gap is coverage shape (A: sim too rich, B: too poor) -> the fixed 62-sector budget
+is wrong; v2 should use constant per-range-band retention instead.
+
+**Rung 2 (glass) — mechanism found, dial pending.** The RTX FlatScan ignores material
+transparency entirely: UsdPreviewSurface opacity 0.22 AND full OmniGlass MDL both return
+31/31 sectors off the glass. What DOES work: `primvars:doNotCastRays` (returns collapsed in
+the glass window when set). Design for the effective model: replace the glass slab with thin
+vertical strips, ~44% marked doNotCastRays - face-on absence matches the measured 0.44, and
+the angular trend (more returns oblique, 0.32@30deg) EMERGES naturally because oblique rays
+cross more strips. Before dialing: the capture harness must wait for a full rotation
+(current first-nonempty grab returned a partial 34-sector buffer) and calibrate the sensor's
+azimuth offset once against a known wall instead of best-fit searching per scan.
