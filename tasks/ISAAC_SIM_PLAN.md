@@ -583,3 +583,31 @@ fixed point and never showed it.
 **Next:** the G1 itself. Options are (a) find a published G1 checkpoint, (b) train one with
 Isaac Lab on the two 3090s, (c) adapt the H1 policy - (c) is ruled out, the observation and
 action dimensions differ.
+
+
+## Rung 6, phase 2: training OUR OWN G1 policy with Isaac Lab
+
+Third-party G1 checkpoints do exist on HuggingFace, but they come from Isaac **Gym** (a
+different observation format) and from unverified provenance. Training our own with Isaac Lab
+means we control the reward and know what the policy does - and Isaac Lab ships
+`Isaac-Velocity-Flat-G1-v0` ready to go.
+
+**Install, and the five things that blocked it** (all now solved, worth banking):
+1. Isaac Lab `main` requires **Python >= 3.12** while Isaac Sim 5.1 ships 3.11 -> use tag
+   **v2.3.2**, which asks for >= 3.10.
+2. `isaaclab.sh` dies on a `tabs` call unless `TERM=xterm` is set.
+3. The base `isaaclab` package silently did not install while its siblings did; installing it
+   explicitly then failed building `flatdict` because pip's **isolated build env** lacks
+   `pkg_resources` -> `--no-build-isolation`.
+4. Isaac's prebundled `typing_extensions` has no `deprecated`, which breaks `isaaclab_tasks`
+   -> upgrade it inside `omni.kit.pip_archive.../pip_prebundle`.
+5. `git` is absent from the image and rsl_rl wants it for experiment provenance -> apt install.
+
+**Memory is the real constraint on this machine.** Kimi holds ~20.7 GB of EACH GPU, leaving
+~3.5 GB. Measured: 2048 and 1024 environments both go out of memory; **512 fits and runs at
+13,601 steps/s** (256 fits too, at half that). Training therefore runs at 512 envs rather than
+the customary 4096 - fewer parallel environments means less sample diversity, which is a
+declared limitation of whatever policy comes out.
+
+**Overnight run launched:** `Isaac-Velocity-Flat-G1-v0`, 512 envs, 4000 iterations, headless.
+Rate observed: ~190 iterations in 3 minutes, so roughly an hour for the full run.
