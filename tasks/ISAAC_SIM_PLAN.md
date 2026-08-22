@@ -57,3 +57,32 @@ DESIGN and staging rehearsal, not the calibrated claims the Gazebo twin backs. B
 - Newer tags exist and are pullable: **4.5.0, 5.0.0, 5.1.0**. Moving to `5.1.0` (2025 build,
   driver matrix much closer to 610; also the version whose Unitree/humanoid asset coverage is
   best). `p1_g1_sanity.py` written dual-namespace (omni.isaac.* 4.x / isaacsim.* 5.x).
+
+## P0/P1 blocked — precise diagnosis (22 Aug)
+
+Both `4.2.0` and `5.1.0` segfault in the RTX renderer at startup. Root cause narrowed to
+**Vulkan being unusable inside containers on this host with driver 610.43.02**:
+
+- Graphics libs DO get injected (correct 610 versions of `libGLX_nvidia`, `rtcore`, etc.),
+  the ICD json is present, `ldd` shows no missing deps, and strace shows no missing files.
+- Yet the Vulkan loader fails with `Could not get 'vkCreateInstance' via
+  'vk_icdGetInstanceProcAddr' for ICD libGLX_nvidia.so.0` → only llvmpipe enumerates →
+  Isaac's RTX plugin dies. Reproduced in a bare ubuntu:22.04 container with
+  `NVIDIA_DRIVER_CAPABILITIES=all` — **this is not an Isaac bug**.
+- The ICD declares `api_version 1.4.341` (very new); the loaders available (host and
+  container are both 1.3.204, Ubuntu 22.04 stock) predate the 610 series by years. The
+  `nvidia-container-toolkit` on the host is **1.19.1**, also predating this driver.
+
+### Fix candidates, in order (first two need sudo — Adrián)
+
+1. `sudo apt-get update && sudo apt-get install --only-upgrade nvidia-container-toolkit`
+   then retry (newer toolkit tracks the 610-series lib/ICD layout).
+2. `sudo apt-get install vulkan-tools` on the HOST and run `vulkaninfo --summary` — if the
+   host itself cannot enumerate the 3090s on Vulkan, the driver install is graphics-broken
+   (fine for CUDA, broken for Vulkan) and the fix is at driver-package level.
+3. Interim path without RTX (no sudo): a physics-only kit experience would unblock P1
+   (articulation) and P2 (map building) — RTX only becomes essential at P3/P4
+   (lidar/camera). Parked unless 1-2 fail.
+
+Container gotchas already banked: `--entrypoint ./python.sh`, `NVIDIA_DRIVER_CAPABILITIES=all`,
+cache mounts, and the 17.6+GB images pull without NGC auth.
