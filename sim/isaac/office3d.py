@@ -33,7 +33,7 @@ SALVO que la nube 3D diga que esa celda mide >= 1.9 m (pared de verdad: se queda
 abrir agujeros al lidar). El reparto de fuentes sigue siendo el de la v3 (2D=donde,
 nube=altura, fotos=que/color).
 """
-import json, math, random
+import json, math, os, random
 import numpy as np
 
 from isaacsim import SimulationApp
@@ -51,7 +51,7 @@ CRISTAL = (-3.75, -0.55, -2.65, 0.75)
 H_PARED_INTOCABLE = 1.9      # una celda asi de alta nunca se cede: es pared real
 MARGEN_BBOX = 0.35   # v6: generoso - la auditoria vio anillos de mobiliario a 0.5-0.6 m del centro
 
-_O = open("/ws/office3d_v15_result.txt", "w")
+_O = open("/ws/office3d_v17_result.txt", "w")
 def log(*a):
     s = " ".join(str(x) for x in a); print(s, flush=True); _O.write(s + "\n"); _O.flush()
 
@@ -70,7 +70,7 @@ for k in range(len(P)):
     zpor[(ix[k], iy[k])].append(P[k, 2])
 
 def altura(c, defecto):
-    """Altura ROBUSTA a fantasmas (v15): banda de 0.3 m mas alta con densidad REAL.
+    """Altura ROBUSTA a fantasmas (v17): banda de 0.3 m mas alta con densidad REAL.
 
     El p95 simple se dejaba enganar por los rastros de gente: una celda de sofa con puntos
     ralos de torsos por encima "media" 2 m y la regla la protegia como pared. Una superficie
@@ -95,10 +95,41 @@ def altura(c, defecto):
             tope = hi
     return max(0.3, min(2.7, float(tope)))
 
+# v16: el vano se talla como CORREDOR, no como circulo. Medido en el mapa reconstruido: con
+# un circulo de r=0.55 el pasaje se ESTRANGULA a 0.40 m medio metro antes del umbral, asi que
+# el robot no aproximaba alineado -- enhebraba una ranura (llegaba 31 grados fuera de eje
+# contra los 10 del robot real, y pasaba 4-5x mas tiempo maniobrando cerca). La puerta real es
+# un PASAJE de ~1.13 m de boca y ~0.5 m de fondo (nota de lab.world), asi que se talla eso:
+# ancho constante a lo largo del eje de cruce.
+DOOR_W = float(os.environ.get("G1_DOOR_W", "1.13"))     # boca real
+DOOR_L = float(os.environ.get("G1_DOOR_L", "1.10"))     # fondo del pasaje + margen de aproximacion
+_AXR = math.radians(135.0)
+_UX, _UY = math.cos(_AXR), math.sin(_AXR)
+
 def en_puerta(c):
-    return math.hypot(c[0]*OC - DOOR[0], c[1]*OC - DOOR[1]) < DOOR_R
+    dx, dy = c[0]*OC - DOOR[0], c[1]*OC - DOOR[1]
+    s = dx*_UX + dy*_UY                 # a lo largo del eje de cruce
+    p = -dx*_UY + dy*_UX                # perpendicular
+    return abs(s) <= DOOR_L/2.0 and abs(p) <= DOOR_W/2.0
 pared_cells = {c for c in pared_cells if not en_puerta(c)}
 mueble_cells = {c for c in mueble_cells if not en_puerta(c)}
+
+# --- LIMPIEZA POR TRAYECTORIA REAL (v17) ---
+# Arbitro incontestable: por donde el robot paso fisicamente, no hay pared. De 38779 poses en
+# 133 runs salen 928 celdas transitadas, y resulta que 122 celdas de "pared" y 100 de "mueble"
+# estan entre ellas -- ocupacion espuria del mapa 2D y de la nube acumulada. Junto a la puerta
+# eran 55 de 72 (76%), que es lo que estrangulaba el pasaje a 0.40 m y hacia que el robot
+# llegase 31 grados fuera de eje en vez de los 10 del robot real.
+try:
+    _lib = {(int(c[0]), int(c[1]))
+            for c in json.load(open("/ws/celdas_libres.json"))["cells"]}
+    _np, _nm = len(pared_cells), len(mueble_cells)
+    pared_cells -= _lib
+    mueble_cells -= _lib
+    log("limpieza por trayectoria: -%d celdas de pared, -%d de mueble (%d transitadas)" % (
+        _np - len(pared_cells), _nm - len(mueble_cells), len(_lib)))
+except Exception as _e:
+    log("AVISO: sin limpieza por trayectoria (%s)" % _e)
 
 # --- escena ---
 create_new_stage()
@@ -354,6 +385,6 @@ UsdGeom.Xformable(key.GetPrim()).AddRotateXYZOp().Set(Gf.Vec3f(-50, 25, 0))
 UsdLux.DomeLight.Define(stage, "/World/Dome").CreateIntensityAttr(320.0)
 
 stage.GetRootLayer().Export("/ws/office3d.usd")
-log("USD: /ws/office3d.usd (v15)")
-log("=== OFICINA v15 OK ===")
+log("USD: /ws/office3d.usd (v17)")
+log("=== OFICINA v17 OK ===")
 app.close()

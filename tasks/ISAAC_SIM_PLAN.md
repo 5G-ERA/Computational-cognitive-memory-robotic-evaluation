@@ -403,3 +403,41 @@ calibrated claims.
 
 **Honest bottom line:** Isaac is not yet globally more faithful than Gazebo — it wins three
 metrics, loses three and ties on safety. Its advantage is the ceiling, not today's fidelity.
+
+## Approach geometry fixed by trajectory clearing — the gate rehearsal is now conclusive
+
+The rehearsal had been inconclusive because ENG-C fired 0-1 times against the real robot's 10.
+`analysis/diag_aproximacion.py` located the cause: the robot arrived **31 degrees off the door
+axis** (real: 10), spent 4-5x longer manoeuvring in the near band, and saw obstacles at 0.63 m
+where the real robot has 1.34 m. Measuring the passage showed why — the reconstructed map
+**pinches to 0.40 m** half a metre before the threshold, and at one point the door axis itself
+is occupied. The robot was threading a slot, not approaching a doorway.
+
+**The fix is data, not a fudge.** There is an incontestable arbiter: the robot physically
+drove through those cells 133 times, so they cannot be walls.
+`analysis/limpia_por_trayectoria.py` marks every cell the body occupied and subtracts it from
+the occupancy. Of 38,779 real poses, **122 "wall" cells and 100 "furniture" cells turned out
+to be cells the robot drove through**; near the doorway 55 of 72 occupied cells were traversed.
+
+The criterion needed calibrating, and the first attempt over-cleaned: radius 0.22 m erased the
+jambs themselves (the robot really did graze them) and left a 1.75 m opening against the real
+1.13. Settled at **radius 0.16 m (the body's true half-width) and at least 5 independent
+runs**: the passage profile becomes 1.55 / 2.60 / 1.50 / **1.20 / 1.20 / 1.20** / 3.15 m —
+the gap stays at 1.20 m against the real 1.13, and the approach clears.
+
+**Result:** ENG-C now fires 2-8 times (real 10), and one leg reproduces the real approach
+almost exactly (2 degrees off axis, lateral -0.124 against the real -0.127). The A->B
+direction still arrives 31 degrees off, which is partly geometry: the straight line from A
+meets the door at 172 degrees while its axis is 135.
+
+**Gate verdict, 4 legs per arm with the same direction mix:**
+
+| arm | \|lateral\| per leg (m) | median | collisions |
+|---|---|---|---|
+| gate OFF | 0.095 0.006 0.025 0.075 | 0.050 | 0 |
+| gate ON | 0.016 0.024 0.027 0.063 | **0.025** | 0 |
+
+**The illumination gate halves the crossing deviation (-49%)**, and the suppression is visible
+in the logs (110-326 samples gated per leg). Still short of the real magnitudes (0.130 lit
+versus -0.001 dark), so the twin under-reproduces the effect rather than exaggerating it —
+which is the safe direction for a rehearsal.
