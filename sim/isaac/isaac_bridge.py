@@ -31,7 +31,17 @@ H_LIDAR = 0.55
 DT = 0.05
 QUIETO = os.environ.get("G1_ISAAC_LIDAR_QUIETO", "") == "1"
 
+# --- REALISMO TEMPORAL (medido contra 132 runs reales) ---
+# El cuerpo cinematico alcanzaba la velocidad ordenada al instante: velocidad media 0.387 m/s
+# contra 0.178 real (2.2x), 46% del tiempo parado contra 23%, y frenado x4.4 -- arrancaba y
+# paraba en seco. Ademas el puente publicaba odometria a 10 Hz cuando el robot real entrega
+# ~3.2 muestras/s, asi que el lazo corria 3x mas rapido que la realidad.
+TAU = float(os.environ.get("G1_ISAAC_TAU", "0.55"))        # retardo de actuacion (s)
+ESCALA_V = float(os.environ.get("G1_ISAAC_VSCALE", "0.62"))  # perdida real mando->velocidad
+HZ_ODOM = float(os.environ.get("G1_ISAAC_HZ", "3.2"))      # cadencia real de muestras
+
 ESTADO = {"x": X0, "y": Y0, "yaw": YAW0, "vx": 0.0, "vy": 0.0, "wz": 0.0,
+          "cx": 0.0, "cy": 0.0, "cw": 0.0,                  # comando pedido (antes del retardo)
           "t_cmd": 0.0, "scan": [], "seq": 0}
 LOCK = threading.Lock()
 
@@ -92,7 +102,12 @@ def paso_fisico():
         e = ESTADO
         # cmd_vel caduca: si el piloto calla, el robot para (como el gemelo)
         if time.time() - e["t_cmd"] > 0.6:
-            e["vx"] = e["vy"] = e["wz"] = 0.0
+            e["cx"] = e["cy"] = e["cw"] = 0.0
+        # retardo de primer orden: el cuerpo persigue el comando, no lo alcanza de golpe
+        k = min(1.0, DT / max(1e-3, TAU))
+        e["vx"] += (e["cx"] * ESCALA_V - e["vx"]) * k
+        e["vy"] += (e["cy"] * ESCALA_V - e["vy"]) * k
+        e["wz"] += (e["cw"] * ESCALA_V - e["wz"]) * k
         c, s = math.cos(e["yaw"]), math.sin(e["yaw"])
         e["x"] += (c * e["vx"] - s * e["vy"]) * DT
         e["y"] += (s * e["vx"] + c * e["vy"]) * DT
@@ -230,9 +245,9 @@ async def handler(ws):
                 tw = m.get("msg") or {}
                 lin, ang = tw.get("linear") or {}, tw.get("angular") or {}
                 with LOCK:
-                    ESTADO["vx"] = float(lin.get("x", 0.0))
-                    ESTADO["vy"] = float(lin.get("y", 0.0))
-                    ESTADO["wz"] = float(ang.get("z", 0.0))
+                    ESTADO["cx"] = float(lin.get("x", 0.0))
+                    ESTADO["cy"] = float(lin.get("y", 0.0))
+                    ESTADO["cw"] = float(ang.get("z", 0.0))
                     ESTADO["t_cmd"] = time.time()
     except Exception:
         pass
@@ -242,7 +257,7 @@ async def handler(ws):
 async def emisor():
     import websockets  # noqa
     while True:
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(1.0 / HZ_ODOM)
         with LOCK:
             perfil = dict(ESTADO["scan"]) if ESTADO["scan"] else {}
         od = json.dumps({"op": "publish", "topic": "/odom", "msg": msg_odom()})

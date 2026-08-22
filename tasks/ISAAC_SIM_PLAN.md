@@ -441,3 +441,40 @@ meets the door at 172 degrees while its axis is 135.
 in the logs (110-326 samples gated per leg). Still short of the real magnitudes (0.130 lit
 versus -0.001 dark), so the twin under-reproduces the effect rather than exaggerating it —
 which is the safe direction for a rehearsal.
+
+## Is the Isaac twin realistic against the historical corpus? — measured, 9 of 10
+
+`analysis/realismo_isaac.py` compares the twin against **all 132 real runs**, not a hand-picked
+few, and asks of each metric whether the twin's median falls inside the real
+**interquartile range** — a stricter test than matching medians.
+
+| metric | REAL (median [IQR]) | ISAAC | verdict |
+|---|---|---|---|
+| traverse duration (s) | 70.2 [54.4-101.9] | 71.4 [58.1-88.2] | inside |
+| collisions | 0 [0-1] | 0 [0-0] | inside |
+| speed (m/s) | 0.07 [0.03-0.10] | 0.05 [0.00-0.10] | inside |
+| frontal clearance c0 (m) | 0.83 [0.55-1.42] | 0.66 [0.52-0.83] | inside |
+| obstacles seen | 339 [233-579] | 255 [150-324] | inside |
+| \|lateral\| in the gap (m) | 0.06 [0.04-0.09] | 0.06 [0.05-0.16] | inside |
+| phase % DWA | 38.6 [21.2-50.9] | 39.0 [30.6-51.0] | inside |
+| phase % ENG | 0.0 [0.0-53.8] | 24.4 [17.4-41.5] | inside |
+| phase % GO | 0.0 [0.0-0.0] | 0.0 [0.0-0.0] | inside |
+| phase % BRK | 6.0 [0.0-10.7] | 11.3 [0.0-23.2] | **outside (x1.9)** |
+
+**Getting there took fixing a real defect, not tuning a number.** The first pass sat 2 of 10
+outside: traverses ran 2.5x too fast and braking was 4.4x too frequent. Decomposing it showed
+the path length was already right (11.0 m against the real 12.6) while the twin moved at
+0.387 m/s against 0.178 and stood still 46% of the time against 23% — the kinematic body
+reached its commanded velocity instantly, starting and stopping dead. A first-order actuation
+lag plus a command-to-velocity scale (`G1_ISAAC_TAU=0.8`, `G1_ISAAC_VSCALE=0.27`) brings
+duration to 71 s against the real 70 and speed to 0.161 against 0.178.
+
+**Answer:** yes, with one caveat. Nine of ten distributional metrics — including the ones that
+matter for the protocol (duration, clearance, obstacle density, doorway crossing, and how the
+resolver spends its phases) — sit inside the real interquartile range. **Braking is still
+about twice too frequent**, and the residual cause is visible: the twin's path is 10.5 m
+against the real 12.6, so it wanders less and brakes harder, and its clearance stays slightly
+tighter (0.66 vs 0.83). Both point the same way — a little more spurious geometry to clear.
+
+Declared: this is 4 tuned runs against 132 real ones. It shows the twin is in the right
+distribution, not that its variance is calibrated.
