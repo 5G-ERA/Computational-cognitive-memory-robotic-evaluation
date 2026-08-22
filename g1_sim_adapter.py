@@ -232,6 +232,9 @@ SIM_LUZ = float(os.environ.get("G1_SIM_LUZ", "116"))
 SIM_DOOR_BIAS = float(os.environ.get("G1_SIM_DOOR_BIAS", "8.8"))   # sesgo con luz plena
 SIM_DOOR_P_LUZ = float(os.environ.get("G1_SIM_DOOR_P_LUZ", "0.95"))
 SIM_DOOR_P_OSC = float(os.environ.get("G1_SIM_DOOR_P_OSC", "0.30"))
+SP_DOOR_RMIN = float(os.environ.get("G1_SIM_DOOR_RMIN", "0.5"))
+SP_DOOR_RMAX = float(os.environ.get("G1_SIM_DOOR_RMAX", "4.2"))
+SP_DOOR_FOV = float(os.environ.get("G1_SIM_DOOR_FOV", "28"))
 
 _EMU = None
 def _emulador():
@@ -303,7 +306,11 @@ def start_sim_perc(bridge):
                 b = (math.degrees(math.atan2(dy, dx) - tp[2]) + 180) % 360 - 180
                 _con_luz = SIM_LUZ >= 108.0
                 _p_door = SIM_DOOR_P_LUZ if _con_luz else SIM_DOOR_P_OSC
-                if 0.6 < rng < 2.8 and abs(b) < 28 and random.random() < _p_door:
+                # VENTANA calibrada contra el conteo real: el robot real registro 89
+                # observaciones de vano con luz plena y 19-41 a oscuras dentro de +-1.5 m del
+                # umbral; con la ventana estrecha 0.6-2.8 m el gemelo solo daba 13 y el sesgo
+                # no llegaba a actuar. Ambas configurables.
+                if SP_DOOR_RMIN < rng < SP_DOOR_RMAX and abs(b) < SP_DOOR_FOV and random.random() < _p_door:
                     if _con_luz:
                         b = b + SIM_DOOR_BIAS         # el sesgo medido con todas las luces
                     b = b + random.gauss(0.0, SP_BNOISE)
