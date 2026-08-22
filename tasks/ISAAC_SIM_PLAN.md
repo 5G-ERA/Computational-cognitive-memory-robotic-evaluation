@@ -44,3 +44,16 @@ Isaac's G1 walks with OUR policy, not Unitree's controller — its gait signatur
 from the real robot's just like the rigid twin does, only less. RTX lidar glass behaviour is a
 material model, not measured IR optics of THIS tinted film. Isaac results therefore feed
 DESIGN and staging rehearsal, not the calibrated claims the Gazebo twin backs. Both stay.
+
+## P0 log (22 Aug)
+
+- `isaac-sim:4.2.0` pulls WITHOUT NGC auth (17.6 GB) — but **segfaults on this station**:
+  `omni.kit.widget.viewport → __enable_hydra_engine` dies on stage open, headless included.
+  Signature of driver-too-new (610.43 vs the 535/550 era 4.2 was tested on). Not fixable by
+  config without losing the RTX renderer — which is the whole point here.
+- Container gotcha: the image's default entrypoint is `runheadless.native.sh` and it swallows
+  any command as arguments (launches the streaming app instead). Always run with
+  `--entrypoint ./python.sh`.
+- Newer tags exist and are pullable: **4.5.0, 5.0.0, 5.1.0**. Moving to `5.1.0` (2025 build,
+  driver matrix much closer to 610; also the version whose Unitree/humanoid asset coverage is
+  best). `p1_g1_sanity.py` written dual-namespace (omni.isaac.* 4.x / isaacsim.* 5.x).
