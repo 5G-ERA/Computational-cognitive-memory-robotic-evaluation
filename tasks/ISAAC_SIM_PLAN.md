@@ -119,13 +119,29 @@ run on this station; what fails is one specific plugin path.
   known cause of Omniverse/Isaac instability. The compat check passes because it never builds
   the RT scene database - exactly the component that dies.
 
-### The test that settles it (Adrian's call - machine-wide, needs reboot)
-Add `intel_iommu=off` to the kernel cmdline (or disable VT-d in BIOS) and re-run the one-line
-sanity. If the RT scene DB then starts, everything else here is already staged and P1 resumes
-the same afternoon. If it still crashes, the next step is an NVIDIA forum/bug report with this
-exact stack - not a park.
+### RESOLVED (22 Aug): it is a documented Isaac bug against the driver branch
 
-Staged for the retry: images 4.2/5.0/5.1, cache mounts, dual-namespace `p1_g1_sanity.py`,
-official G1 MJCF (23/29 DOF) at `~/isaac_ws/g1_mjcf`, plus the container gotchas
-(`--entrypoint ./python.sh`, `--user root`, `NVIDIA_DRIVER_CAPABILITIES=all`, and `libegl1`
-for any GPU-graphics container on this station).
+Web search closed the case. GitHub issue isaac-sim/IsaacSim#651 reports our exact signature:
+Ubuntu 24.04, **driver 610**, segfault in `rtx.scenedb.plugin`. Two facts from the thread and
+neighbours:
+
+- **`intel_iommu=off` was tried by others with NO change** - so the reboot we nearly spent
+  would have been wasted. (Our own P2P health check pointed the same way.)
+- **Isaac Sim 5.1 validates driver 580.65.06**; the 590/610 branch is outside the supported
+  range and breaks the RTX renderer. Reproduced by many users across 4090 / 5080 / 5090 /
+  5060 Ti, on Linux and Windows.
+
+So: the station is fine (2x 3090 are ample), the container is fine, our configuration is fine.
+**The blocker is the driver branch.** Note the compatibility checker's PASSED verdict is
+lenient - it does not verify the validated driver branch, which is why it disagreed.
+
+### Decision (Adrian's, machine-wide)
+1. **Downgrade to the 580 branch** and Isaac works. Compatibility for our other workloads
+   looks fine: the perception server's torch cu124 needs >=550, and CUDA 13 is supported on
+   580. Needs sudo + a reboot with somebody present - i.e. Thursday.
+2. **Or wait**: the issue is open with many users behind it; a release supporting the 610
+   branch will come. Zero risk, unknown date.
+
+Everything else is staged for either path: images 4.2/5.0/5.1, caches, dual-namespace
+`p1_g1_sanity.py`, official G1 MJCF at `~/isaac_ws/g1_mjcf`, and the container gotchas
+(`--entrypoint ./python.sh`, `--user root`, `NVIDIA_DRIVER_CAPABILITIES=all`, `libegl1`).
