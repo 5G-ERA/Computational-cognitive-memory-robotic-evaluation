@@ -163,3 +163,28 @@ Generate walls/floor/door from the SAME map data that built `lab.world`, in the 
 the real robot, so waypoints transfer with zero translation. Then the tinted-glass panel as a
 transmissive material (the RTX material system is live: the startup log shows
 `omni:rtx:material:db:flattener:transmittance_color`).
+
+## The realism ladder (22 Aug, night) — channel by channel, each rung with its metric
+
+Principle, proven by the mesh-detector bench: **"more real" means the sim elicits the same
+responses from the ROBOT's sensors and stack as reality does** — never "prettier to humans".
+
+1. **Lidar (P3)** — RTX FlatScan at G1 height vs the real laser_snapshots. FIRST RESULT at
+   waypoint A: 31 common sectors, median |dr| = 0.24 m (at the 0.2 m cell resolution floor),
+   p90 1.25 m. Coverage gap: real 25% of sectors vs sim 69% — the app's cloud is heavily
+   filtered/decimated, so realism here means IMPOVERISHING the sim scan (model the app's
+   filter), not enriching it. `sim/isaac/sim_lidar_A.py` + `analysis/compara_lidar_sim.py`.
+   Gotchas banked: config must be `Example_Rotary_2D` (FlatScan refuses 3D configs), data
+   lives in the ANNOTATOR (`IsaacComputeRTXLidarFlatScan` -> `linearDepthData` +
+   `azimuthRange`), and it needs ~20 stepped frames before producing.
+2. **Glass (W1)** — tune the transmissive material until the RTX lidar reproduces the real
+   angular signature measured 21-Aug (0.44 face-on, 0.32 @30deg).
+3. **Camera -> perception** — feed Isaac frames to the real perception_server; calibrate
+   against the real light-by-distance chair curve (0.92@1.5 / 0.82@1.8 lit; 0.47-0.61 dark).
+4. **Illumination (W2/W3)** — switchable scene lights matching measured brightness
+   (~116 full / ~85 low); rehearse the DOOR_VIS +9deg bias in sim.
+5. **Textures from real photos** — project real frames onto walls; cardboard texture for the
+   boxes (pass criterion: the detector says "refrigerator" like reality does).
+6. **Gait (P4)** — locomotion policy on the articulated G1, calibrated against real IMU sway.
+7. **Full loop** — g1_goto driving Isaac's G1 through the adapter; same commands -> comparable
+   trajectories vs the 133 real runs.
