@@ -1,0 +1,50 @@
+{
+ "0.3_luz": {
+  "n": 20,
+  "p_det": 1.0,
+  "conf_med": 0.94,
+  "conf_min": 0.92,
+  "conf_max": 0.95,
+  "brillo": 118
+ },
+ "0.3_poca": {
+  "n": 10,
+  "p_det": 1.0,
+  "conf_med": 0.94,
+  "conf_min": 0.94,
+  "conf_max": 0.95,
+  "brillo": 81
+ },
+ "1.5_luz": {
+  "n": 15,
+  "p_det": 0.667,
+  "conf_med": 0.93,
+  "conf_min": 0.92,
+  "conf_max": 0.93,
+  "brillo": 115
+ },
+ "1.5_poca": {
+  "n": 45,
+  "p_det": 0.778,
+  "conf_med": 0.91,
+  "conf_min": 0.9,
+  "conf_max": 0.93,
+  "brillo": 95
+ },
+ "1.8_luz": {
+  "n": 20,
+  "p_det": 0.95,
+  "conf_med": 0.82,
+  "conf_min": 0.46,
+  "conf_max": 0.85,
+  "brillo": 116
+ },
+ "1.8_poca": {
+  "n": 10,
+  "p_det": 1.0,
+  "conf_med": 0.54,
+  "conf_min": 0.47,
+  "conf_max": 0.61,
+  "brillo": 88
+ }
+}

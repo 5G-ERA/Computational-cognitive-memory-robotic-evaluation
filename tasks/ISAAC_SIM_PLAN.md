@@ -286,3 +286,43 @@ generator reads `aprobadas.json` and places only cards that pass the bench — c
 **Recommendation for the protocol:** for calibrated claims the sim vision channel should be
 driven by a detection model fitted to the real curves (which we have), not by rendering.
 Rendered vision stays for design and rehearsal, declared as not calibrated.
+
+## Rung 3 RESOLVED — the sim vision channel is a calibrated emulator, not rendered pixels
+
+Rendering was tried honestly and did not reach fidelity: library meshes make our detector say
+"tv" where reality says "couch"; real-pixel cards reach only 4/18. Adrián approved switching
+the channel to a **model fitted to real data**.
+
+`sim/emulador_deteccion.py` emits detections in the server's own format
+`[label, conf, bearing, range]` from robot pose + frame brightness.
+
+**Evidence base — the only data with a clean denominator.** Run logs cannot serve: the `dets`
+key exists ONLY when something was detected (88% of samples carry no key at all), so a
+negative is ambiguous between "perception did not run" and "ran and saw nothing". The staged
+`calib_luz` tandas do have denominators: object on a tape mark, N frames, count of hits.
+
+**Batch labels were unreliable** (the reused-label defect). Conditions are therefore split by
+**frame brightness**, the measured variable — which also settles the relabelling that was
+pending for Thursday:
+
+| distance | light (>=108) | low (<108) |
+|---|---|---|
+| 0.3 m | P 1.00, conf 0.94 | P 1.00, conf 0.94 |
+| 1.5 m | P 0.67, conf 0.93 | P 0.78, conf 0.91 |
+| **1.8 m** | P 0.95, **conf 0.82** | P 1.00, **conf 0.54** |
+
+Light is irrelevant at 0.3 and 1.5 m and halves confidence at 1.8 m — the W2 money pair,
+recovered cleanly from brightness alone.
+
+**Two modelling faults found by validating rather than assuming:** the line-of-sight march
+reported every object occluded, because the furniture sits in the occupancy map itself (the
+ray now stops 0.45 m short of the target); and sampling confidence uniformly between min and
+max gave 0.65 where reality gives 0.82, because the real distribution is skewed — now
+triangular with the mode at the measured median.
+
+`analysis/valida_emulador.py` replays all six staged conditions through the emulator: **all
+six within tolerance**, and the W2 contrast survives (0.72 lit vs 0.54 dark).
+
+**Declared limits:** the curve is measured for `chair` only and up to 1.8 m; beyond that the
+model extrapolates conservatively and flags each emission as `extrapolado`. It is the
+statistical twin of the perception server in simulation, never a replacement on the robot.
