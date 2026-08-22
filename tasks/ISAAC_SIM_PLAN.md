@@ -119,29 +119,47 @@ run on this station; what fails is one specific plugin path.
   known cause of Omniverse/Isaac instability. The compat check passes because it never builds
   the RT scene database - exactly the component that dies.
 
-### RESOLVED (22 Aug): it is a documented Isaac bug against the driver branch
+### RESOLVED AND FIXED (22 Aug) - driver branch was the blocker; P1 is DONE
 
-Web search closed the case. GitHub issue isaac-sim/IsaacSim#651 reports our exact signature:
-Ubuntu 24.04, **driver 610**, segfault in `rtx.scenedb.plugin`. Two facts from the thread and
-neighbours:
+Diagnosis confirmed by GitHub isaac-sim/IsaacSim#651 (Ubuntu 24.04 + driver 610 + segfault in
+`rtx.scenedb.plugin`, reproduced across 4090/5080/5090/5060 Ti): **Isaac 5.1 validates driver
+580.65.06; the 590/610 branch breaks the RTX renderer.** Others tried `intel_iommu=off` with no
+change, so the reboot we nearly spent on that would have been wasted - our P2P health check had
+pointed the same way. Note NVIDIA's own `compatibility_check` says PASSED: it is lenient and
+does not verify the validated driver branch, which is why it disagreed with the crash.
 
-- **`intel_iommu=off` was tried by others with NO change** - so the reboot we nearly spent
-  would have been wasted. (Our own P2P health check pointed the same way.)
-- **Isaac Sim 5.1 validates driver 580.65.06**; the 590/610 branch is outside the supported
-  range and breaks the RTX renderer. Reproduced by many users across 4090 / 5080 / 5090 /
-  5060 Ti, on Linux and Windows.
+**Fix applied the same day** (Adrian ran the sudo steps): `nvidia-driver-580-open` 580.178.04.
+Two gotchas worth banking: the install aborted midway on a dpkg file conflict
+(`libnvidia-cfg1-580` vs an in-transaction upgrade of `libnvidia-cfg1` to 610.57.04) - resolved
+forward with `dpkg -i --force-overwrite` on that one package, then `apt-get -f install`, then
+the driver; and the machine boots a different kernel (6.8.0-138) than the one it was running
+(136) - DKMS had built and signed modules for both, so the reboot was safe. Autologin verified
+BEFORE the reboot by restarting gdm alone: the session came back with no password, but as `:0`
+instead of `:1` - a stale `DISPLAY=:1` in our notes would have failed silently on Thursday
+(fixed; `tools/arranca_percepcion.sh` owns its own Xvfb `:99` and is immune).
 
-So: the station is fine (2x 3090 are ample), the container is fine, our configuration is fine.
-**The blocker is the driver branch.** Note the compatibility checker's PASSED verdict is
-lenient - it does not verify the validated driver branch, which is why it disagreed.
+Post-reboot state, all verified: driver 580.178.04 on both 3090s; torch cu124 sees 2 GPUs and
+runs a GPU matmul (Thursday's perception stack intact); autologin session up; **Isaac Sim boots
+clean** - `app ready` at 8.5 s, `Simulation App Startup Complete`, no crash.
 
-### Decision (Adrian's, machine-wide)
-1. **Downgrade to the 580 branch** and Isaac works. Compatibility for our other workloads
-   looks fine: the perception server's torch cu124 needs >=550, and CUDA 13 is supported on
-   580. Needs sudo + a reboot with somebody present - i.e. Thursday.
-2. **Or wait**: the issue is open with many users behind it; a release supporting the 610
-   branch will come. Zero risk, unknown date.
+## P1 DONE - the G1 is alive in Isaac
 
-Everything else is staged for either path: images 4.2/5.0/5.1, caches, dual-namespace
-`p1_g1_sanity.py`, official G1 MJCF at `~/isaac_ws/g1_mjcf`, and the container gotchas
-(`--entrypoint ./python.sh`, `--user root`, `NVIDIA_DRIVER_CAPABILITIES=all`, `libegl1`).
+`/ws/p1_g1_sanity.py` against `Isaac/Robots/Unitree/G1/g1.usd` (NVIDIA also ships `G1_23dof`,
+plus `Dex3`/`Dex5` dexterous hands):
+
+```
+JUNTAS: 43
+nombres: left_hip_pitch, right_hip_pitch, waist_yaw, left_hip_roll, waist_roll,
+         left_knee, right_knee, left_shoulder_pitch ...
+pose z inicial 1.042 -> final 0.145 (fisica actua: SI)
+=== P1 SANITY OK ===
+```
+
+43 articulated DOF and gravity acting on the body - not the rigidised block that slides in the
+Gazebo twin. This is the structural answer to Adrian's "it moves like furniture".
+
+## Next: P2 - the office in USD
+Generate walls/floor/door from the SAME map data that built `lab.world`, in the same frame as
+the real robot, so waypoints transfer with zero translation. Then the tinted-glass panel as a
+transmissive material (the RTX material system is live: the startup log shows
+`omni:rtx:material:db:flattener:transmittance_color`).
