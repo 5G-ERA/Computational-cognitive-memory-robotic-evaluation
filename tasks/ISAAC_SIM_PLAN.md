@@ -87,28 +87,45 @@ Both `4.2.0` and `5.1.0` segfault in the RTX renderer at startup. Root cause nar
 Container gotchas already banked: `--entrypoint ./python.sh`, `NVIDIA_DRIVER_CAPABILITIES=all`,
 cache mounts, and the 17.6+GB images pull without NGC auth.
 
-## P1 verdict (22 Aug) — parked with a precise diagnosis
+## P1 verdict (22 Aug) - CORRECTED after Adrian pushed back
 
-The environment is now FIXED and proven: after `nvidia-container-toolkit` 1.20 (Adrián, sudo)
-plus the `libegl1` discovery, **Vulkan enumerates both RTX 3090s inside containers** —
-including inside the Isaac image itself (verified with vulkaninfo as root). The chain that was
-broken: driver 610's Vulkan ICD dlopens `libEGL.so.1` (GLVND dispatcher, a distro package) at
-init; minimal containers lack it; the loader then reports `vk_icdGetInstanceProcAddr` failure
-and only llvmpipe exists. This finding benefits ANY GPU-graphics container on this station.
+**My earlier verdict ("driver 610 incompatible, park it") was wrong.** Adrian did not buy it;
+he was right. NVIDIA's own checker, shipped inside the image, says the opposite:
 
-**But Isaac still crashes** — 5.1.0 in `librtx.scenedb` / `scenerenderer-rtx` at plugin
-startup, 4.2.0 in `omni.physx.ui`, both with a fully healthy Vulkan underneath, as root, caps
-all. The incompatibility sits above Vulkan: the 2024/2025 RTX plugin builds against the
-May-2026 610-series raytracing interfaces. No newer container tags exist yet (5.2 / 2026.x
-probed absent). A native pip install shares the same userspace → same outcome.
+```
+isaac-sim.compatibility_check.sh
+  |-- Driver version [supported]
+  |-- GPU 0 [supported]   |-- GPU 1 [supported]
+  |-- GPU 0: VRAM [good]  |-- GPU 1: VRAM [good]
+  |-- CPU processor [supported]   |-- Operating system [supported]
+System checking result: PASSED
+```
 
-### Options from here
-1. **Wait for the next Isaac release** and retry (the realistic unblock for RTX lidar/camera —
-   the actual point of this tier). Retry cost: one command, everything else is staged.
-2. **Plan C now**: a physics-only kit experience (no RTX) unblocks P1 articulation + P2 map
-   authoring — but not the sensors, so it advances scaffolding, not the goal.
-3. **Driver-branch change on the station** (to a 580-era branch Isaac supports): Adrián's
-   call only — the 610 driver serves the station's other workloads; not recommended lightly.
+And that experience **runs to completion without crashing** (verified twice). So Isaac DOES
+run on this station; what fails is one specific plugin path.
 
-Staged and ready for the retry: both images, cache mounts, dual-namespace `p1_g1_sanity.py`,
-official G1 MJCF (23/29 DOF) at `~/isaac_ws/g1_mjcf`, and the full gotcha list above.
+### What is actually true, measured
+- Vulkan is healthy in containers (after toolkit 1.20 + the `libegl1` discovery). Isaac's own
+  banner enumerates both 3090s: `Driver Version: 610.43.02 | Graphics API: Vulkan`.
+- The full app loads dozens of extensions and reaches `isaacsim.core` at ~9.4 s, while a
+  **worker thread dies at 50-600 ms inside `librtx.scenedb.plugin.so!carbOnPluginStartup`**
+  (RT scene database). Same signature on 4.2.0, 5.0.0 and 5.1.0.
+- Ruled out by test: stale/shared shader caches (fresh caches crash too), multi-GPU
+  (`--gpus device=0` crashes), privileged mode, X display (`DISPLAY=:1` + socket), non-root vs
+  root, default streaming entrypoint vs `python.sh`, and the lighter
+  `isaacsim.exp.base.python.kit` experience.
+- Prime remaining suspect, from Isaac's own startup log: **`IOMMU is enabled`** (32 groups on
+  this host, BIOS/kernel default, no `intel_iommu` in cmdline). NVIDIA documents IOMMU as a
+  known cause of Omniverse/Isaac instability. The compat check passes because it never builds
+  the RT scene database - exactly the component that dies.
+
+### The test that settles it (Adrian's call - machine-wide, needs reboot)
+Add `intel_iommu=off` to the kernel cmdline (or disable VT-d in BIOS) and re-run the one-line
+sanity. If the RT scene DB then starts, everything else here is already staged and P1 resumes
+the same afternoon. If it still crashes, the next step is an NVIDIA forum/bug report with this
+exact stack - not a park.
+
+Staged for the retry: images 4.2/5.0/5.1, cache mounts, dual-namespace `p1_g1_sanity.py`,
+official G1 MJCF (23/29 DOF) at `~/isaac_ws/g1_mjcf`, plus the container gotchas
+(`--entrypoint ./python.sh`, `--user root`, `NVIDIA_DRIVER_CAPABILITIES=all`, and `libegl1`
+for any GPU-graphics container on this station).
