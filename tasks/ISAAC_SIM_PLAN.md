@@ -326,3 +326,30 @@ six within tolerance**, and the W2 contrast survives (0.72 lit vs 0.54 dark).
 **Declared limits:** the curve is measured for `chair` only and up to 1.8 m; beyond that the
 model extrapolates conservatively and flags each emission as `extrapolado`. It is the
 statistical twin of the perception server in simulation, never a replacement on the robot.
+
+## Rung 7 reached: the G1 stack now drives ISAAC (Adrián's choice of platform)
+
+`sim/isaac/isaac_bridge.py` makes Isaac speak the **rosbridge dialect the adapter already
+uses** — the adapter needs only three things (subscribe `/odom`, subscribe `/scan`, publish
+`/cmd_vel`), so the bridge implements that subset over a websocket and
+`g1_sim_adapter.py` connects **unmodified** with `G1_SIM_URL=ws://localhost:8766`. This avoids
+mixing ROS distros: Isaac ships Jazzy internally while the Gazebo twin runs Humble.
+
+**First traverses inside Isaac:** A→B reached, error 0.35 m, 0 collisions, 39 s; B→A reached,
+error 0.23 m, 0 collisions. 368 samples, 628 detections emitted by the calibrated emulator
+(chair 194, couch 261, refrigerator 112, door 61) with median confidence 0.78.
+
+**The laser is geometric, not RTX — declared.** Inside this bridge the RTX FlatScan annotator
+returns 0 rays persistently (tested with the lidar held still, without a custom timestep, and
+with the prim's original xformOps preserved), although it produces normally in dedicated runs
+— the rungs 1-2 measurements stand. So `/scan` is a ray-march against the map carrying the
+two calibrations that matter: the app's measured filter (result: 62-70 of 180 sectors return,
+against the real robot's median of 62) and the glass as a **probabilistic pass-through** with
+the bench signature (44% absence face-on, 32% at 30 degrees) — which is arguably better than
+depending on the strip geometry. Restoring the RTX lidar in-bridge is left as a known task.
+
+**Light-dependent door channel** reproduces the 21-Aug finding for rehearsal: under full light
+the twin emits 2-4x more door observations, biased by the measured +8.8 degrees
+(`G1_SIM_LUZ`, `G1_SIM_DOOR_BIAS`). First pair: 13 door observations lit vs 3 dark, exactly
+the asymmetry seen on the real robot. Crossing stayed centred in both (+0.06) — the gate can
+now be rehearsed before Thursday rather than discovered on the robot.

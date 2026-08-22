@@ -219,6 +219,36 @@ SP_LAT = float(os.environ.get("G1_SIM_PERC_LAT", "0.28"))  # latencia media (s)
 SP_DROP = float(os.environ.get("G1_SIM_PERC_DROP", "0.04"))  # dropout de respuesta
 SP_BNOISE = float(os.environ.get("G1_SIM_PERC_BDEG", "1.5"))  # ruido de bearing (deg)
 
+# --- ILUMINACION del gemelo y sus dos consecuencias MEDIDAS en el robot real ---
+# G1_SIM_LUZ es el brillo de fotograma que declara la escena: ~116 = todas las luces,
+# ~85 = poca luz (los dos valores medidos el 21-ago). De el dependen:
+#   (a) el canal de OBJETOS, via el emulador calibrado (sim/emulador_deteccion.py): a 1.8 m
+#       la confianza de silla pasa de 0.82 con luz a 0.54 a oscuras -> el testigo W2;
+#   (b) el canal de PUERTA: con luz plena el robot real produjo 2-4x mas observaciones de
+#       vano y SESGADAS +8.8 grados (89 muestras vs 19-41 a oscuras, mediana +8.8 vs +0.9/-6.1),
+#       que es lo que empujo el cruce a +0.134 y provoco el golpe. Se reproduce aqui para
+#       poder ENSAYAR el gate de iluminacion antes de la sesion real.
+SIM_LUZ = float(os.environ.get("G1_SIM_LUZ", "116"))
+SIM_DOOR_BIAS = float(os.environ.get("G1_SIM_DOOR_BIAS", "8.8"))   # sesgo con luz plena
+SIM_DOOR_P_LUZ = float(os.environ.get("G1_SIM_DOOR_P_LUZ", "0.95"))
+SIM_DOOR_P_OSC = float(os.environ.get("G1_SIM_DOOR_P_OSC", "0.30"))
+
+_EMU = None
+def _emulador():
+    """Emulador de deteccion calibrado (carga perezosa; si falta, el canal queda mudo)."""
+    global _EMU
+    if _EMU is None:
+        try:
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "sim"))
+            from emulador_deteccion import carga_por_defecto
+            _EMU = carga_por_defecto(os.path.dirname(os.path.abspath(__file__)))
+            print("[sim-perc] emulador calibrado: %d objetos, brillo declarado %.0f"
+                  % (len(_EMU.objetos), SIM_LUZ))
+        except Exception as e:
+            print("[sim-perc] AVISO: sin emulador (%s); solo canal de puerta" % e)
+            _EMU = False
+    return _EMU or None
+
 
 def _dummy_frame():
     """JPEG 320x180 gris-moqueta como data URI (frame neutro: todo 'suelo' para el canal de color)."""
@@ -271,12 +301,25 @@ def start_sim_perc(bridge):
                 dx = SP_DOOR[0] - tp[0]; dy = SP_DOOR[1] - tp[1]
                 rng = math.hypot(dx, dy)
                 b = (math.degrees(math.atan2(dy, dx) - tp[2]) + 180) % 360 - 180
-                if 0.6 < rng < 2.8 and abs(b) < 28:    # vision realista: el vano solo se ve CERCA y DE FRENTE
+                _con_luz = SIM_LUZ >= 108.0
+                _p_door = SIM_DOOR_P_LUZ if _con_luz else SIM_DOOR_P_OSC
+                if 0.6 < rng < 2.8 and abs(b) < 28 and random.random() < _p_door:
+                    if _con_luz:
+                        b = b + SIM_DOOR_BIAS         # el sesgo medido con todas las luces
                     b = b + random.gauss(0.0, SP_BNOISE)
                     rng = max(0.3, rng * (1.0 + random.gauss(0.0, 0.05)))
                     dets = [{"label": "door", "bearing_deg": round(b, 1), "range_m": round(rng, 2)}]
                     door = {"bearing_deg": round(b, 1), "range_m": round(rng, 2)}
-            out = {"detections": dets, "scan": []}
+            # --- OBJETOS: emulador calibrado con datos reales ---
+            emu = _emulador()
+            if emu is not None and tp:
+                try:
+                    for d in emu.detecta(tp[0], tp[1], math.degrees(tp[2]), SIM_LUZ):
+                        dets.append({"label": d[0], "conf": d[1],
+                                     "bearing_deg": d[2], "range_m": d[3]})
+                except Exception:
+                    pass
+            out = {"detections": dets, "scan": [], "brillo": SIM_LUZ}
             if door:
                 out["door"] = door
             self._send(out)
