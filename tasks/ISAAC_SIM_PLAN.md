@@ -86,3 +86,29 @@ Both `4.2.0` and `5.1.0` segfault in the RTX renderer at startup. Root cause nar
 
 Container gotchas already banked: `--entrypoint ./python.sh`, `NVIDIA_DRIVER_CAPABILITIES=all`,
 cache mounts, and the 17.6+GB images pull without NGC auth.
+
+## P1 verdict (22 Aug) — parked with a precise diagnosis
+
+The environment is now FIXED and proven: after `nvidia-container-toolkit` 1.20 (Adrián, sudo)
+plus the `libegl1` discovery, **Vulkan enumerates both RTX 3090s inside containers** —
+including inside the Isaac image itself (verified with vulkaninfo as root). The chain that was
+broken: driver 610's Vulkan ICD dlopens `libEGL.so.1` (GLVND dispatcher, a distro package) at
+init; minimal containers lack it; the loader then reports `vk_icdGetInstanceProcAddr` failure
+and only llvmpipe exists. This finding benefits ANY GPU-graphics container on this station.
+
+**But Isaac still crashes** — 5.1.0 in `librtx.scenedb` / `scenerenderer-rtx` at plugin
+startup, 4.2.0 in `omni.physx.ui`, both with a fully healthy Vulkan underneath, as root, caps
+all. The incompatibility sits above Vulkan: the 2024/2025 RTX plugin builds against the
+May-2026 610-series raytracing interfaces. No newer container tags exist yet (5.2 / 2026.x
+probed absent). A native pip install shares the same userspace → same outcome.
+
+### Options from here
+1. **Wait for the next Isaac release** and retry (the realistic unblock for RTX lidar/camera —
+   the actual point of this tier). Retry cost: one command, everything else is staged.
+2. **Plan C now**: a physics-only kit experience (no RTX) unblocks P1 articulation + P2 map
+   authoring — but not the sensors, so it advances scaffolding, not the goal.
+3. **Driver-branch change on the station** (to a 580-era branch Isaac supports): Adrián's
+   call only — the 610 driver serves the station's other workloads; not recommended lightly.
+
+Staged and ready for the retry: both images, cache mounts, dual-namespace `p1_g1_sanity.py`,
+official G1 MJCF (23/29 DOF) at `~/isaac_ws/g1_mjcf`, and the full gotcha list above.
