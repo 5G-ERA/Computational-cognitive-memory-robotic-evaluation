@@ -353,3 +353,53 @@ the twin emits 2-4x more door observations, biased by the measured +8.8 degrees
 (`G1_SIM_LUZ`, `G1_SIM_DOOR_BIAS`). First pair: 13 door observations lit vs 3 dark, exactly
 the asymmetry seen on the real robot. Crossing stayed centred in both (+0.06) — the gate can
 now be rehearsed before Thursday rather than discovered on the robot.
+
+## Door-gate rehearsal in Isaac — INCONCLUSIVE, and a claim retracted
+
+I claimed on one run that the twin "reproduces the real failure" (+0.138 vs the real +0.130).
+With repetitions that does not hold: gate-off legs give |lateral| 0.010-0.034 m, nowhere near
+the real 0.130. **The single matching run was coincidence and the claim is withdrawn.**
+
+The diagnostic says why: on the real robot the biased bearing drove the strafe phase
+**ENG-C 21 times** near the doorway; in Isaac it fires **0-1 times**. The mechanism does not
+engage, so the rehearsal can neither validate nor refute the gate (measured 0.022 -> 0.048 m
+with 2-3 legs per arm, which is noise). What the twin DOES reproduce: the asymmetry of the
+channel itself — DOOR-VIS engages under light and not in darkness — and the gate provably
+suppresses it (191/198 samples gated, luma 118 detected, `door_vis_gated` logged).
+
+Closing the gap needs the approach geometry to match, not more repetitions.
+
+## Isaac vs Gazebo — objective comparison against the real robot
+
+`analysis/isaac_vs_gazebo.py`. Real runs are the gold standard; the question for each metric
+is which twin sits closer to them.
+
+| metric | REAL | GAZEBO | ISAAC | closer |
+|---|---|---|---|---|
+| traverse duration (s) | 56 | 55 | 40 | Gazebo |
+| obstacles per sample | 290 | 477 | 362 | **Isaac** |
+| frontal clearance c0 (m) | 2.50 | 0.70 | 0.64 | Gazebo (both far) |
+| doorway observations | 32 | 51 | 36 | **Isaac** |
+| ENG-C phases at the door | 10 | 6 | 1 | Gazebo |
+| \|lateral\| in the gap (m) | 0.021 | 0.066 | 0.043 | **Isaac** |
+| object detections per run | 32 | 866 | 650 | Gazebo (both far) |
+| median object confidence | 0.60 | 0.86 | 0.92 | Gazebo |
+| collisions | 0 | 0 | 0 | tie |
+
+**Where Isaac is better:** map fidelity (obstacle density and doorway observations closer to
+real, because the geometry comes from the same 3D scan), crossing accuracy, and the ceiling it
+opens — material-aware glass, controllable lighting, real camera rendering, an articulated
+robot. Gazebo cannot do any of those.
+
+**Where Gazebo still wins:** traverse pacing (its calibrated noise contract reproduces the
+real duration), the ENG-C engagement count, and cost — CPU 19% and 850 MB against Isaac's
+588% CPU, 4.2 GB RAM and ~1.5-2.3 GB of VRAM.
+
+**Where BOTH are far from real:** frontal clearance (0.6-0.7 m vs 2.50 m — both twins are
+crowded by geometry the real robot does not see) and detection volume (650-866 per run vs 32,
+because the emulator fires on every opportunity while the real perception server ran at ~1 Hz
+with drops). Both are fixable and both are worth fixing before either twin is used for
+calibrated claims.
+
+**Honest bottom line:** Isaac is not yet globally more faithful than Gazebo — it wins three
+metrics, loses three and ties on safety. Its advantage is the ceiling, not today's fidelity.

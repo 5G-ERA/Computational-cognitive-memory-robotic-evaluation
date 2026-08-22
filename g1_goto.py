@@ -260,6 +260,16 @@ DOORGUARD_R = float(os.environ.get("G1_DOORGUARD_R", "1.2"))
 # 50s culebreando, mientras door_b veia el vano limpio (103 muestras, +-0.9..3.5 grados).
 # Opt-in: G1_DOOR_VIS=1.
 DOOR_VIS = os.environ.get("G1_DOOR_VIS", "") == "1"
+# --- GATE POR ILUMINACION del representante de vision (rama door-vis-illum-gate, 21-ago) ---
+# Medido en sesion: con TODA la luz el canal DOOR-VIS produce 2-4x mas observaciones sesgadas
+# +9 grados y el cruce acabo en +0.134 con golpe; a oscuras el canal calla y el eje del mapa
+# centra (+-0.02). Decision de Renxi: en vez de corregir el sesgo, la ILUMINACION decide que
+# representante del centro de puerta puede gobernar (W3 en produccion): con luma del frame por
+# encima del umbral, el representante de vision queda SUPRIMIDO y gobierna el eje del mapa.
+# La luma se estima en cliente (media del frame que ya se captura para percepcion, EMA 0.8).
+# Emite por muestra illum_b (EMA) y dvis_gate (1 = suprimido) para puntuarlo en replay.
+DOOR_VIS_GATE = os.environ.get("G1_DOOR_VIS_GATE", "") == "1"
+DOOR_VIS_LUX = float(os.environ.get("G1_DOOR_VIS_LUX", "100"))   # medido: ~85 poca luz / ~116 toda
 # RETREAT v2 (portado de main, donde esta VALIDADO en gemelo: 6/6 sin falsos + trampa
 # determinista con 3 retiradas y P9 pausado). Doctrina de Renxi: "reverse back using the
 # EXACT SAME TRAJECTORY as they enter". Disparo SOLO con atasco seguro (>=2 col/20s o
@@ -1742,6 +1752,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     rd = RunRecorder("ours", label, (wx, wy))
     refmap = load_ref_map(); health_t = 0; hh = {}; cloud_ok = False; cloud_warned = False
     covref = load_cov_ref(); cov_missing = None; _covm_prev = {}
+    illum_ema = None; dvis_gate = 0; _dvg_log = 0   # gate de iluminacion del DOOR-VIS
     staticmap = load_static_map()                            # muebles conocidos (nav_map) -> coste blando del plan global
     gplan = []; gplan_t = 0; cam_t = 0; cam_jpg = None
     aggressive = (os.environ.get("G1_AGGRESSIVE") == "1")    # modo agresivo (forzable; si no, se activa al atascarse)
@@ -1984,6 +1995,15 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # --- PERCEPCION GPU (HILO APARTE): depth -> scan virtual (la MESA que el LiDAR no ve) + suelo despejado ---
             if perc_worker is not None and now - perc_t > PERC_PERIOD:
                 _fr = grab_cam(cdp)
+                if DOOR_VIS_GATE and _fr and _fr.startswith("data:image"):
+                    try:                                  # luma media del frame (EMA): ~1ms a 320px
+                        import base64 as _b64, io as _io
+                        from PIL import Image as _Im, ImageStat as _Ist
+                        _lum = _Ist.Stat(_Im.open(_io.BytesIO(
+                            _b64.b64decode(_fr.split(",", 1)[1]))).convert("L")).mean[0]
+                        illum_ema = _lum if illum_ema is None else 0.8 * illum_ema + 0.2 * _lum
+                    except Exception:
+                        pass
                 cambuf.append((now, _fr))                      # buffer para la autopsia pre-colision
                 perc_worker.submit(_fr, x, y, yaw)             # no bloquea: el hilo hace la consulta GPU
                 perc_t = now
@@ -2419,7 +2439,14 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                             if DOOR_VIS:
                                 _db = (perc_raw.get("door") or {}).get("bearing_deg") if isinstance(perc_raw, dict) else None
                                 _vfresh = perc_rx_t is not None and (now - perc_rx_t) < 1.2
-                                if _db is not None and _vfresh and abs(_db) < 45 and abs(_db - he) < 35:
+                                dvis_gate = 1 if (DOOR_VIS_GATE and illum_ema is not None
+                                                  and illum_ema > DOOR_VIS_LUX) else 0
+                                if dvis_gate and _db is not None and not _dvg_log:
+                                    _dvg_log = 1
+                                    lg.write(f"DOOR-VIS SUPRIMIDO por iluminacion (luma={illum_ema:.0f} > {DOOR_VIS_LUX:.0f}): gobierna el eje del mapa\n")
+                                    rd.event("door_vis_gated", now - t0, x, y,
+                                             {"luma": round(illum_ema, 1), "bearing_desc": round(_db, 1)})
+                                if (not dvis_gate) and _db is not None and _vfresh and abs(_db) < 45 and abs(_db - he) < 35:
                                     if not eng.get("vlog"):
                                         eng["vlog"] = 1
                                         lg.write(f"DOOR-VIS activo: bearing={_db:+.1f} (mapa he={he:+.1f})\n")
@@ -2798,6 +2825,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "color_near": perc_raw.get("color_near"),        # puntos clampeados (obstaculo encima)
                              "color_rmin": perc_raw.get("color_rmin"),        # obstaculo de color mas cercano (m)
                              "door_b": (perc_raw.get("door") or {}).get("bearing_deg"),   # rumbo de puerta por vision
+                             "illum_b": (round(illum_ema, 1) if illum_ema is not None else None),  # luma EMA del frame (gate iluminacion)
+                             "dvis_gate": (dvis_gate if DOOR_VIS_GATE else None),  # 1 = representante de vision suprimido
                              "carrot": ([round(carrot[0], 2), round(carrot[1], 2)] if carrot else None),
                              "goal_err": round(beg, 1),                       # error de rumbo al objetivo
                              "carrot_err": (round(bce, 1) if bce is not None else None),   # y al carrot del plan
