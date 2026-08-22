@@ -478,3 +478,40 @@ tighter (0.66 vs 0.83). Both point the same way — a little more spurious geome
 
 Declared: this is 4 tuned runs against 132 real ones. It shows the twin is in the right
 distribution, not that its variance is calibrated.
+
+## Remaining spurious geometry cleared — braking now inside the real range
+
+Two metrics were still off: braking about twice too frequent and a path 21% shorter than real,
+both pointing at leftover phantom occupancy.
+
+**A failed attempt, kept because it teaches.** The first cleaner ray-marched from each pose to
+each snapshot point, clearing the cells in between. That is **invalid**: `laser_snapshots.pts`
+holds the robot's ACCUMULATED obstacle belief cropped to ±2.6 m, not the instantaneous sweep,
+so those rays never existed. It removed 23% of the map and opened the doorway flanks to 4.25 m
+— the check caught it before anything was applied.
+
+**The valid criterion** is the same logic as `cov_missing`, run backwards to audit the map: a
+cell the G1 had within 2.4 m at least 100 times, seen from at least 3 different octants, in
+which its own laser never placed an obstacle (≤1% of occasions), is not occupied — whatever
+the Summit-derived map says. `analysis/celdas_espurias.py`. Result: **61 wall cells and 17
+furniture cells removed** (on top of the 32 from trajectory clearing).
+
+Safety checks before applying: rays cast from the three real waypoints open by more than 1.5 m
+in only 1 of 6 directions (0 of 6 from C), and those that do point along the doorway corridor.
+The gap itself holds at 1.20 m against the real 1.13. From waypoint C two rays previously
+terminated at 0.05 m — the robot was standing inside "occupied" cells, which settles the
+argument.
+
+**A consistency bug found on the way:** the bridge builds its own map for the ray-march and I
+had cleaned only the USD scene, so the laser kept seeing phantoms the geometry no longer had.
+Both now read the same cleaned cells.
+
+**Result against the 132 real runs:** braking 7.6% against the real 5.99% [0-10.7] — inside
+the real range, where it had been 26% at the start of the session. Duration 62 s (real 70),
+speed 0.161 (real 0.178), path 9.9 m (real 12.6). Nine of ten metrics inside the real IQR; the
+one outside is now doorway lateral at 0.04 m against the real 0.06 [0.04-0.09] — the twin
+crosses slightly MORE precisely than the robot, which is the benign direction.
+
+A more aggressive threshold (60 opportunities) was tried and rejected: it fixed braking equally
+but pushed the crossing to 0.09 m and the path to 8.7 m. The conservative setting is the one
+kept.

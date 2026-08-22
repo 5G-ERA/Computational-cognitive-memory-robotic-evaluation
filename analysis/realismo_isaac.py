@@ -7,8 +7,7 @@ real (que es el criterio honesto: no basta con parecerse la mediana).
 import json, glob, math, os, statistics
 import collections
 
-ISAAC = {"185052", "185218", "185259", "185429"}   # solo el puente AFINADO (mapa limpio +
-                                                   # retardo de actuacion + escala de velocidad)
+ISAAC = {"191958", "192119", "192216", "192326"}   # mapa DOBLEMENTE limpio + realismo temporal
 GAZEBO = {"172340","181643","181739"}
 
 DX, DY = -3.90, 1.25

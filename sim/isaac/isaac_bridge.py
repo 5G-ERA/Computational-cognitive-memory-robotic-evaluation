@@ -144,10 +144,29 @@ try:
             _pane[c[1]] = c
     _CRISTAL = set(_pane.values())
     _MAPA -= (_blob - _CRISTAL)                 # artefactos tras el cristal: fuera
-    _DOOR, _DR = (-3.90, 1.25), 0.55
-    _MAPA = {c for c in _MAPA
-             if math.hypot(c[0]*_OC - _DOOR[0], c[1]*_OC - _DOOR[1]) >= _DR}
-    print("[scan] mapa: %d celdas (%d de cristal)" % (len(_MAPA), len(_CRISTAL)), flush=True)
+    # el vano como CORREDOR (misma geometria que la escena: 1.13 x 1.10 m sobre el eje 135)
+    _DOOR = (-3.90, 1.25)
+    _AXR = math.radians(135.0)
+    _DUX, _DUY = math.cos(_AXR), math.sin(_AXR)
+    def _en_puerta(c):
+        dx, dy = c[0]*_OC - _DOOR[0], c[1]*_OC - _DOOR[1]
+        s = dx*_DUX + dy*_DUY
+        p = -dx*_DUY + dy*_DUX
+        return abs(s) <= 0.55 and abs(p) <= 0.565
+    _MAPA = {c for c in _MAPA if not _en_puerta(c)}
+    # MISMA LIMPIEZA QUE LA ESCENA (si no, el laser sigue viendo los fantasmas que la
+    # geometria ya no tiene: el barrido y el mundo deben contar lo mismo).
+    _quitadas = 0
+    for _f in ("/ws/celdas_libres.json", "/ws/celdas_espurias.json"):
+        try:
+            _cs = {(int(c[0]), int(c[1])) for c in json.load(open(_f))["cells"]}
+            _n0 = len(_MAPA)
+            _MAPA -= (_cs - _CRISTAL)
+            _quitadas += _n0 - len(_MAPA)
+        except Exception:
+            pass
+    print("[scan] mapa: %d celdas (%d de cristal, -%d limpiadas)" % (
+        len(_MAPA), len(_CRISTAL), _quitadas), flush=True)
 except Exception as _e:
     print("[scan] AVISO: sin mapa (%s)" % _e, flush=True)
 

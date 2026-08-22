@@ -51,7 +51,7 @@ CRISTAL = (-3.75, -0.55, -2.65, 0.75)
 H_PARED_INTOCABLE = 1.9      # una celda asi de alta nunca se cede: es pared real
 MARGEN_BBOX = 0.35   # v6: generoso - la auditoria vio anillos de mobiliario a 0.5-0.6 m del centro
 
-_O = open("/ws/office3d_v17_result.txt", "w")
+_O = open("/ws/office3d_v18_result.txt", "w")
 def log(*a):
     s = " ".join(str(x) for x in a); print(s, flush=True); _O.write(s + "\n"); _O.flush()
 
@@ -70,7 +70,7 @@ for k in range(len(P)):
     zpor[(ix[k], iy[k])].append(P[k, 2])
 
 def altura(c, defecto):
-    """Altura ROBUSTA a fantasmas (v17): banda de 0.3 m mas alta con densidad REAL.
+    """Altura ROBUSTA a fantasmas (v18): banda de 0.3 m mas alta con densidad REAL.
 
     El p95 simple se dejaba enganar por los rastros de gente: una celda de sofa con puntos
     ralos de torsos por encima "media" 2 m y la regla la protegia como pared. Una superficie
@@ -114,7 +114,7 @@ def en_puerta(c):
 pared_cells = {c for c in pared_cells if not en_puerta(c)}
 mueble_cells = {c for c in mueble_cells if not en_puerta(c)}
 
-# --- LIMPIEZA POR TRAYECTORIA REAL (v17) ---
+# --- LIMPIEZA POR TRAYECTORIA REAL (v18) ---
 # Arbitro incontestable: por donde el robot paso fisicamente, no hay pared. De 38779 poses en
 # 133 runs salen 928 celdas transitadas, y resulta que 122 celdas de "pared" y 100 de "mueble"
 # estan entre ellas -- ocupacion espuria del mapa 2D y de la nube acumulada. Junto a la puerta
@@ -130,6 +130,24 @@ try:
         _np - len(pared_cells), _nm - len(mueble_cells), len(_lib)))
 except Exception as _e:
     log("AVISO: sin limpieza por trayectoria (%s)" % _e)
+
+# --- SEGUNDA LIMPIEZA (v18): la CREENCIA DEL PROPIO G1 ---
+# Una celda que el robot tuvo cerca >=60 veces, desde >=3 octantes distintos, y en la que su
+# laser nunca puso obstaculo (<=2% de las veces), no esta ocupada -- por mucho que lo diga el
+# mapa del Summit. Misma logica que cov_missing, aplicada al reves para depurar el mapa.
+# OJO (error propio, corregido): un primer intento talló rayos desde la pose hasta cada punto
+# del snapshot. Es INVALIDO -- 'pts' es el mapa de obstaculos ACUMULADO del robot, no el
+# barrido instantaneo, asi que esos rayos nunca existieron; abria los flancos del vano.
+try:
+    _esp = {(int(c[0]), int(c[1]))
+            for c in json.load(open("/ws/celdas_espurias.json"))["cells"]}
+    _np, _nm = len(pared_cells), len(mueble_cells)
+    pared_cells -= _esp
+    mueble_cells -= _esp
+    log("limpieza por creencia del G1: -%d celdas de pared, -%d de mueble" % (
+        _np - len(pared_cells), _nm - len(mueble_cells)))
+except Exception as _e:
+    log("AVISO: sin limpieza por creencia (%s)" % _e)
 
 # --- escena ---
 create_new_stage()
@@ -385,6 +403,6 @@ UsdGeom.Xformable(key.GetPrim()).AddRotateXYZOp().Set(Gf.Vec3f(-50, 25, 0))
 UsdLux.DomeLight.Define(stage, "/World/Dome").CreateIntensityAttr(320.0)
 
 stage.GetRootLayer().Export("/ws/office3d.usd")
-log("USD: /ws/office3d.usd (v17)")
-log("=== OFICINA v17 OK ===")
+log("USD: /ws/office3d.usd (v18)")
+log("=== OFICINA v18 OK ===")
 app.close()
