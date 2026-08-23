@@ -1,0 +1,215 @@
+{
+ "runs": [
+  {
+   "i": 0,
+   "destino": "B",
+   "fichero": "20260823_123029_ours_B.json",
+   "estado": "reached",
+   "wall_s": 14.4
+  },
+  {
+   "i": 1,
+   "destino": "A",
+   "fichero": "20260823_123045_ours_A.json",
+   "estado": "reached",
+   "wall_s": 32.3
+  },
+  {
+   "i": 2,
+   "destino": "B",
+   "fichero": "20260823_123119_ours_B.json",
+   "estado": "reached",
+   "wall_s": 25.6
+  },
+  {
+   "i": 3,
+   "destino": "A",
+   "fichero": "20260823_123146_ours_A.json",
+   "estado": "reached",
+   "wall_s": 15.4
+  },
+  {
+   "i": 4,
+   "destino": "B",
+   "fichero": "20260823_123203_ours_B.json",
+   "estado": "reached",
+   "wall_s": 24.2
+  },
+  {
+   "i": 5,
+   "destino": "A",
+   "fichero": "20260823_123229_ours_A.json",
+   "estado": "reached",
+   "wall_s": 21.8
+  },
+  {
+   "i": 6,
+   "destino": "B",
+   "fichero": "20260823_123252_ours_B.json",
+   "estado": "reached",
+   "wall_s": 41.6
+  },
+  {
+   "i": 7,
+   "destino": "A",
+   "fichero": "20260823_123335_ours_A.json",
+   "estado": "reached",
+   "wall_s": 20.8
+  },
+  {
+   "i": 8,
+   "destino": "B",
+   "fichero": "20260823_123357_ours_B.json",
+   "estado": "reached",
+   "wall_s": 33.6
+  },
+  {
+   "i": 9,
+   "destino": "A",
+   "fichero": "20260823_123432_ours_A.json",
+   "estado": "reached",
+   "wall_s": 20.2
+  },
+  {
+   "i": 10,
+   "destino": "B",
+   "fichero": "20260823_123454_ours_B.json",
+   "estado": "reached",
+   "wall_s": 19.2
+  },
+  {
+   "i": 11,
+   "destino": "A",
+   "fichero": "20260823_123515_ours_A.json",
+   "estado": "reached",
+   "wall_s": 19.2
+  },
+  {
+   "i": 12,
+   "destino": "B",
+   "fichero": "20260823_123535_ours_B.json",
+   "estado": "reached",
+   "wall_s": 30.0
+  },
+  {
+   "i": 13,
+   "destino": "A",
+   "fichero": "20260823_123607_ours_A.json",
+   "estado": "reached",
+   "wall_s": 25.5
+  },
+  {
+   "i": 14,
+   "destino": "B",
+   "fichero": "20260823_123634_ours_B.json",
+   "estado": "reached",
+   "wall_s": 33.7
+  },
+  {
+   "i": 15,
+   "destino": "A",
+   "fichero": "20260823_123709_ours_A.json",
+   "estado": "reached",
+   "wall_s": 20.8
+  },
+  {
+   "i": 16,
+   "destino": "B",
+   "fichero": "20260823_123732_ours_B.json",
+   "estado": "reached",
+   "wall_s": 21.7
+  },
+  {
+   "i": 17,
+   "destino": "A",
+   "fichero": "20260823_123755_ours_A.json",
+   "estado": "reached",
+   "wall_s": 13.0
+  },
+  {
+   "i": 18,
+   "destino": "B",
+   "fichero": "20260823_123809_ours_B.json",
+   "estado": "reached",
+   "wall_s": 25.5
+  },
+  {
+   "i": 19,
+   "destino": "A",
+   "fichero": "20260823_123836_ours_A.json",
+   "estado": "reached",
+   "wall_s": 20.1
+  },
+  {
+   "i": 20,
+   "destino": "B",
+   "fichero": "20260823_123858_ours_B.json",
+   "estado": "reached",
+   "wall_s": 25.5
+  },
+  {
+   "i": 21,
+   "destino": "A",
+   "fichero": "20260823_123925_ours_A.json",
+   "estado": "reached",
+   "wall_s": 13.6
+  },
+  {
+   "i": 22,
+   "destino": "B",
+   "fichero": "20260823_123940_ours_B.json",
+   "estado": "reached",
+   "wall_s": 36.5
+  },
+  {
+   "i": 23,
+   "destino": "A",
+   "fichero": "20260823_124018_ours_A.json",
+   "estado": "reached",
+   "wall_s": 20.1
+  },
+  {
+   "i": 24,
+   "destino": "B",
+   "fichero": "20260823_124040_ours_B.json",
+   "estado": "reached",
+   "wall_s": 30.6
+  },
+  {
+   "i": 25,
+   "destino": "A",
+   "fichero": "20260823_124112_ours_A.json",
+   "estado": "reached",
+   "wall_s": 18.8
+  },
+  {
+   "i": 26,
+   "destino": "B",
+   "fichero": "20260823_124132_ours_B.json",
+   "estado": "reached",
+   "wall_s": 23.7
+  },
+  {
+   "i": 27,
+   "destino": "A",
+   "fichero": "20260823_124157_ours_A.json",
+   "estado": "reached",
+   "wall_s": 20.9
+  },
+  {
+   "i": 28,
+   "destino": "B",
+   "fichero": "20260823_124220_ours_B.json",
+   "estado": "reached",
+   "wall_s": 17.6
+  },
+  {
+   "i": 29,
+   "destino": "A",
+   "fichero": "20260823_124239_ours_A.json",
+   "estado": "reached",
+   "wall_s": 25.2
+  }
+ ],
+ "n_objetivo": 30
+}
