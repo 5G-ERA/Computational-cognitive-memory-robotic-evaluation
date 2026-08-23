@@ -1,258 +1,190 @@
-#!/usr/bin/env python3
-"""DCC: ventanas de interfaz, resolucion de roles y verificacion del titular.
+# -*- coding: utf-8 -*-
+"""Resolucion de ROL cognitivo (Z_t) para el protocolo DCC de Renxi — paso 2 del §8.
 
-Las CUATRO condiciones del protocolo salen de combinar dos ejes, y este modulo es el unico
-sitio donde viven, para que el nivel de replay y el fisico no puedan divergir:
+    A_meta = 1[ Z_t = delta_t(y_t) ]
 
-                        interfaz I0 (original)     interfaz I1 (revisada)
-  verificacion titular        C1                          C3
-  resolucion distribuida      C2                          C4
+`delta_t` viene del guion del experimento (§4.2 del mapeo: lo que el robot DEBERIA resolver,
+conocido por construccion). `Z_t` es lo que el robot resuelve DE VERDAD con su propia
+evidencia, y es lo que faltaba: sin el, el desenlace primario no se puede computar.
 
-DECISION DE DISENO QUE IMPORTA: C2 no esta "empeorado" a mano. Es el MISMO resolutor que C4
-mirando por una ventana que no expone las distinciones. Falla, cuando falla, porque esta ciego
--- que es justo lo que predice el Teorema 1 (Contextual Aliasing Bound) y lo que el protocolo
-pide proteger: "prevent hidden history leakage in original-interface conditions". La ventana se
-aplica BORRANDO campos, no confiando en que el resolutor no los mire.
+DOS PROPIEDADES DELIBERADAS
+---------------------------
+1. **Funcion pura sobre una muestra.** No toca estado global ni el control. Se puede llamar
+   en vivo desde g1_goto.py y tambien sobre muestras YA grabadas, asi que cualquier run con
+   los campos necesarios se puede puntuar a posteriori sin repetirla.
 
-Los seis roles y las salidas gobernadas son los del protocolo, con su redaccion:
-  motion          Regulate motion to protect the payload.
-  sensor          Use sensing evidence within its operating envelope.
-  object          Plan motion relative to a reliably identified object.
-  energy          Adapt the delivery plan to available energy.
-  lidar_coverage  Navigate under degraded spatial observation.
-  illumination    Interpret or withhold RGB-based object semantics under degraded lighting.
-  no_use / review / defer   salidas gobernadas (no son roles)
+2. **Observa, no actua.** El §5.3 del protocolo (Authority Partitioning) exige que "la
+   confianza del sensor no se convierta en autoridad de control automaticamente". Este modulo
+   EMITE el rol resuelto; no modifica ninguna orden. Que el rol influya en el control es la
+   diferencia entre C1..C4 y se construye en el paso 5, no aqui.
 
-NADA DE ESTE MODULO TOCA EL MANDO. La particion de autoridad exige que la evidencia no se
-convierta en permiso de control por si sola; aqui solo se interpreta y se resuelve.
+EVIDENCIA AUSENTE NO ES EVIDENCIA DE AUSENCIA
+---------------------------------------------
+Si el fundamento de un rol no esta instrumentado en esa muestra, el rol NO puede reclamarse.
+Cuando ademas hay una pregunta de objeto pendiente, esa ausencia es exactamente el fallo de
+Contextual Span del §4.2 (confundir "no hay objeto" con "no hay observacion fiable") y se
+resuelve `review`, nunca una conclusion de objeto.
+
+UMBRALES
+--------
+Todos salen de medida sobre 132 runs reales (38779 muestras) o de un contrato ya congelado,
+y viven en UN solo sitio para que una ablacion pueda permutarlos:
+
+  bateria          p5=26 p25=48 mediana=72. Regla operativa ya vigente y medida: por debajo
+                   del 60% la tasa de desplazamiento lateral cae un 46%. Critico a 35 (< p5).
+  cov_blind        fraccion de rumbos informativos dentro del recorte ciego del fabricante.
+                   p75=0.14, p95=0.54 -> 0.30 separa "algo de ceguera" de "ciego de verdad".
+  cov_missing      celdas de la referencia de SESION ausentes 2 barridos. p50=1 p75=2 p95=4.
+  laser_trust      validez retrospectiva del laser (Renxi). p5=0.85 -> por debajo de 0.70 es
+                   una cola clara, no ruido.
+  illum            EMA(0.2) de la luma media. Contrato congelado en
+                   tasks/VISUAL_QUALITY_CONTRACT.md: >99 = RGB inadmisible.
+  conf de objeto   detecciones reales no-puerta: p25=0.55 mediana=0.68. Se exige >=0.55.
 """
 
-import os
+ROLES = ("motion", "lidar_quality", "illumination", "object", "energy",
+         "review", "defer", "no_use")
 
-ROLES = ("motion", "sensor", "object", "energy", "lidar_coverage", "illumination")
-GOBERNADAS = ("no_use", "review", "defer")
+# --- umbrales declarados (un solo sitio; una ablacion los permuta aqui) ---
+BAT_CRIT      = 35.0    # por debajo: la capacidad limita la tarea entera
+BAT_BAJA      = 60.0    # por debajo: replanificar, regla operativa medida
+COV_BLIND_MAL = 0.30
+COV_MISS_MAL  = 3
+TRUST_MAL     = 0.70
+ILLUM_MAX     = 99.0    # contrato visual congelado
+CONF_MIN      = 0.55
+C0_BLOQUEO    = 0.35    # holgura dura por debajo de la cual el avance esta efectivamente vetado
 
-# --- I0: lo que la interfaz original expone (mapa global/local, lecturas ACTUALES, pose,
-#     carga y bateria). Sin historia, sin calidad, sin incertidumbre, sin autoridad.
-I0_CAMPOS = frozenset((
-    "t", "x", "y", "yaw", "phase", "d", "goal_err", "carrot_err", "plan_n", "spd", "cmd", "sent",
-    "c0", "c0_hard", "clearance_m", "clearL_m", "clearR_m", "clear_left", "clear_right", "balance",
-    "nobs", "n_hard", "perc_n", "dets", "door_b", "bat",
-))
-# --- I1 = I0 + historia seleccionada, calidad, incertidumbre y autoridad.
-I1_EXTRA = frozenset((
-    "cov_def", "cov_blind", "cov_n",            # cobertura de lidar (fraccion legada; ver cov_missing)
-    "cov_missing",                              # celdas predichas y AUSENTES >=2 snapshots seguidos
-    "laser_trust", "laser_noise", "scan_churn", "scan_fresh", "filt_rej",   # calidad e historia
-    "iface_q", "door_contra", "perc_age", "map_add", "map_del",
-    "illum_q", "illum_state",                   # calidad visual (pendiente del contrato)
-    "authority",                                # autoridad aplicable
-    "phase_sent",                               # fase ACTUADA (tick anterior) CON marcadores de guardia
-))
-I1_CAMPOS = I0_CAMPOS | I1_EXTRA
-
-# Umbrales. Son parametros del RESOLUTOR (capa bajo prueba), no del robot: se calibran en
-# material de desarrollo y se congelan antes de lo confirmatorio.
-UMBRAL = {
-    # cov_def 0.20 (twin) RETIRADO como disparador el 20-ago (tarde): en el robot real la fraccion satura
-    # (mediana 0.96 contra el mapa Summit -- solape de celdas ~50% -- y ~0.45 incluso contra un
-    # mapa de visibilidad propio, porque cambia de golpe al girar y el mobiliario deriva entre
-    # semanas). El disparador pasa a cov_missing: celdas del mapa de visibilidad predichas y
-    # ausentes en >=2 snapshots consecutivos -- localizado y con persistencia. Validado con
-    # cristal sintetico sobre las 8 runs reales del 20-ago: deteccion 8/8 con K=4, ~3 eventos
-    # falsos/run atribuibles a la deriva del mapa historico; en confirmatorio la referencia se
-    # congela POR SESION (vueltas de calibracion). cov_def se sigue EMITIENDO como evidencia.
-    "cov_missing": 4,       # celdas persistentemente ausentes que invocan el rol
-    # ^ 4 vale para el campo de REPLAY (base acumulada, mapa historico). El campo ONLINE con
-    #   referencia DE SESION es mucho mas limpio (ensayo en gemelo 20-ago: normal <=1, cristal
-    #   pico 4) y usa un umbral menor via G1_DCC_COV_MISSING. Dos variantes del mismo campo,
-    #   dos bases de evidencia declaradas, dos umbrales.
-    "bat_baja": 45.0,       # % de bateria que hace relevante la energia
-    "det_conf": 0.50,       # confianza minima para "objeto fiablemente identificado"
-    "obj_cerca": 2.5,       # m: mas alla, un objeto no gobierna la marcha
-    "obj_no_mapeado": 0.30, # m que el barrido se adelanta al mapa = algo que el mapa no explica
-}
-if os.environ.get("G1_DCC_COV_MISSING"):
-    UMBRAL["cov_missing"] = int(os.environ["G1_DCC_COV_MISSING"])
+# Precedencia declarada. La energia entra DOS veces a proposito: critica manda sobre los
+# fundamentos de sensado (si no se puede completar la tarea, interpretar mejor no ayuda),
+# y baja queda por debajo de ellos (una limitacion del plan no gobierna un boundary concreto
+# por encima de no poder ver). Es una decision de diseno, no una verdad: esta escrita aqui
+# para que Renxi la pueda cambiar y para que la ablacion "role-level removal" la permute.
+PRECEDENCIA = ("no_use", "energy_crit", "defer", "review",
+               "lidar_quality", "illumination", "object", "energy_baja", "motion")
 
 
-def vista(muestra, nivel):
-    """Aplica la ventana de interfaz BORRANDO lo que esa interfaz no expone."""
-    permitidos = I0_CAMPOS if nivel == "I0" else I1_CAMPOS
-    return {k: v for k, v in muestra.items() if k in permitidos}
+def _num(m, k):
+    v = m.get(k)
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
 
-def _pregunta_de_objeto(v):
-    """Se plantea AQUI una pregunta de objeto?
+def autoridad(m):
+    """Que capa autorizo LA ORDEN EMITIDA, leida de los marcadores de guardia de phase_sent.
 
-    Corregido tras el primer humo (17-ago): la regla de incertidumbre visual se disparaba en
-    cada tick y devolvia review el 100% del tiempo, tragandose todos los demas roles. Eso
-    confundia "no puedo responder a la pregunta del objeto" con "aqui no se plantea ninguna
-    pregunta del objeto" -- un fallo de Semantic Locality por mi parte, de la misma clase que
-    el protocolo advierte. La incertidumbre visual solo es decisiva cuando hay algo delante que
-    habria que identificar, o cuando ya hay una deteccion cuya fiabilidad esta en duda."""
-    # SEGUNDA correccion (mismo dia): "hay una pared a dos metros" NO es una pregunta de objeto.
-    # Con c0<=2.5 la puerta quedaba abierta casi siempre en una oficina y todo seguia saliendo
-    # review. La pregunta se plantea cuando hay algo delante QUE EL MAPA NO EXPLICA -- ahi si
-    # importa que es -- o cuando ya hay una deteccion cuya fiabilidad esta en duda.
-    c0 = v.get("c0"); ch = v.get("c0_hard")
-    if (isinstance(c0, (int, float)) and isinstance(ch, (int, float))
-            and c0 <= UMBRAL["obj_cerca"] and (ch - c0) > UMBRAL["obj_no_mapeado"]):
-        return True
-    return bool(v.get("dets"))
-
-
-def _det_fiable(v):
-    """Hay un objeto identificado con suficiente confianza y suficientemente cerca?"""
-    for d in (v.get("dets") or []):
-        try:
-            conf = float(d[1]); rng = d[3]
-        except (TypeError, IndexError, ValueError):
-            continue
-        if conf >= UMBRAL["det_conf"] and rng is not None and float(rng) <= UMBRAL["obj_cerca"]:
-            return True
-    return False
-
-
-def resolve_distributed(v):
-    """E-DCA: reconstruye los roles disponibles y resuelve el actual (C2 con I0, C4 con I1).
-
-    Devuelve (salida, motivo). 'salida' es un rol o una gobernada. El orden de precedencia esta
-    declarado a proposito y es revisable: se emite ademas la lista de fundamentos aplicables
-    (ver grounds()) para poder re-resolver en replay sin repetir runs."""
-    # 1) Energia: limita la CAPACIDAD, no el conocimiento. Va primero porque un plan que no cabe
-    #    en la bateria no mejora por ver mejor.
-    b = v.get("bat")
-    if isinstance(b, (int, float)) and b <= UMBRAL["bat_baja"]:
-        return ("energy", "bateria %.0f%% <= %.0f" % (b, UMBRAL["bat_baja"]))
-
-    # 2) Cobertura degradada. SOLO visible con I1: con I0 este rol es literalmente inalcanzable,
-    #    y esa imposibilidad es el resultado que el experimento quiere medir, no un defecto.
-    cm = v.get("cov_missing")
-    if isinstance(cm, (int, float)) and cm >= UMBRAL["cov_missing"]:
-        return ("lidar_coverage", "cov_missing %d >= %d" % (cm, UMBRAL["cov_missing"]))
-
-    # 3) Iluminacion. Requiere el contrato de calidad visual, que AUN NO EXISTE (la luminancia
-    #    media no vale: la aplana la auto-exposicion). Mientras no exista, una deteccion negativa
-    #    no puede leerse como "no hay objeto": eso seria exactamente el aliasing del protocolo.
-    est = v.get("illum_state")
-    if _pregunta_de_objeto(v):
-        if est == "inadequate":
-            return ("illumination", "iluminacion inadecuada con pregunta de objeto pendiente")
-        if est is None and not _det_fiable(v):
-            # hay algo que identificar y NO se puede saber si el RGB estaba en condiciones:
-            # "no hay objeto" y "no puedo verlo" son indistinguibles -> no se fuerza
-            return ("review", "pregunta de objeto sin evidencia de iluminacion: indistinguible")
-
-    # 4) Objeto identificado con fiabilidad.
-    if _det_fiable(v):
-        return ("object", "deteccion fiable dentro de %.1f m" % UMBRAL["obj_cerca"])
-
-    # 5) Sensado dentro de su envolvente.
-    lt = v.get("laser_trust")
-    if isinstance(lt, (int, float)) and lt < 0.6:
-        return ("sensor", "laser_trust %.2f fuera de envolvente" % lt)
-
-    # 6) Titular: regular la marcha para proteger la carga.
-    return ("motion", "sin fundamento que desplace al titular")
-
-
-def verify_incumbent(v):
-    """Verificacion TEMPORAL del titular (C1 con I0, C3 con I1).
-
-    Pregunta solo si la memoria movimiento->carga SIGUE siendo aplicable. Espacio de salida
-    retain / reject / unresolved. No puede reconstruir un rol alternativo: esa incapacidad es la
-    linea base del protocolo, no un fallo -- y por eso 'unresolved' es una respuesta responsable
-    y no se penaliza como error."""
-    b = v.get("bat")
-    if isinstance(b, (int, float)) and b <= UMBRAL["bat_baja"]:
-        return ("reject", "la capacidad disponible ya no sostiene el plan")
-    cm = v.get("cov_missing")
-    if isinstance(cm, (int, float)) and cm >= UMBRAL["cov_missing"]:
-        return ("unresolved", "cobertura degradada: aplicabilidad no verificable")
-    if _pregunta_de_objeto(v):
-        if v.get("illum_state") == "inadequate":
-            return ("unresolved", "iluminacion inadecuada: aplicabilidad no verificable")
-        if not _det_fiable(v):
-            return ("unresolved", "pregunta de objeto sin observacion fiable")
-    lt = v.get("laser_trust")
-    if isinstance(lt, (int, float)) and lt < 0.6:
-        return ("unresolved", "sensado fuera de envolvente")
-    return ("retain", "sigue aplicando")
-
-
-def grounds(v):
-    """Todos los fundamentos APLICABLES, no solo el que gana la precedencia.
-
-    Semantic Locality exige mantenerlos distintos aunque varios recomienden frenar; emitirlos
-    todos deja la precedencia auditable y permite re-resolver en replay sin repetir runs."""
-    g = []
-    b = v.get("bat")
-    if isinstance(b, (int, float)) and b <= UMBRAL["bat_baja"]:
-        g.append("energy")
-    cm = v.get("cov_missing")
-    if isinstance(cm, (int, float)) and cm >= UMBRAL["cov_missing"]:
-        g.append("lidar_coverage")
-    if v.get("illum_state") == "inadequate" and _pregunta_de_objeto(v):
-        g.append("illumination")
-    if _det_fiable(v):
-        g.append("object")
-    lt = v.get("laser_trust")
-    if isinstance(lt, (int, float)) and lt < 0.6:
-        g.append("sensor")
-    return g
-
-
-def authority_of(m):
-    """Que autoridad limito el mando en este tick. Se DERIVA de lo ya emitido: la sesion del
-    20-ago no lleva codigo nuevo sin validar en el gemelo.
-
-    Authority Partitioning exige separar evidencia, interpretacion, meta-decision, seguridad y
-    ejecucion. Sin este campo el par W4 -- evidencia ausente frente a autoridad no resuelta -- no
-    es escenificable, porque las dos mitades se ven igual desde fuera: el robot no avanza.
-
-    LA SENAL SON LAS MARCAS DE FASE, no 'sent' contra 'cmd'. Un primer intento comparo esos dos
-    campos y dio 71% de 'safety', que es absurdo; la causa es que 'sent' es lo enviado el tick
-    ANTERIOR y ya lleva la rampa dentro, asi que la comparacion mezcla la aceleracion normal con
-    la accion del guardia. Las marcas, en cambio, las pone cada guardia al actuar:
-        !H  guardia duro: frena segun holgura contra obstaculos persistentes
-        !D  guardia de puerta
-        !C  !c  bloqueo por camara
-        !S  tope de la maquina META
-        ~   limitador de RAMPA -- NO es autoridad, solo acota el cambio entre ticks
-    Precedencia declarada: operador > seguridad > gobernanza > meta.
+    Los marcadores los pone el propio control cuando una guardia modifica la orden:
+      !H HARD-GUARD (obstaculo duro)     !C/!c COLOR-BRAKE (obstaculo solo-camara)  -> safety
+      !S META-SM (DEGRADED/BLIND)        !M META2 (techo de la analogia DCE)        -> meta
+      !D DOOR-GUARD (suelo de zona-vano)                                            -> nav
+    Sin marcador manda el controlador. La seguridad es la ultima palabra cuando coinciden.
     """
-    if m.get("meta_state") == "ASSIST":
-        return ("operator", "mando cedido al operador")
-    # Desde el 20-ago (noche) el robot EMITE phase_sent: la fase actuada el tick anterior con
-    # los marcadores puestos por cada guardia (espejo de 'sent'). Es campo I1: en I0 la vista
-    # lo borra y la derivacion cae a 'phase' sin marcadores -> 'nav' siempre, que es EXACTAMENTE
-    # el aliasing que W4 escenifica (evidencia ausente y autoridad no resuelta se ven igual).
-    ph = str(m.get("phase_sent") or m.get("phase", ""))
-    for marca, motivo in (("!H", "guardia duro por holgura"),
-                          ("!D", "guardia de puerta"),
-                          ("!C", "bloqueo por camara"),
-                          ("!c", "avance minimo por camara")):
-        if marca in ph:
-            return ("safety", motivo)
-    if m.get("meta2_cap") is not None:
-        return ("governance", "techo de gobernanza vigente")
-    if "!S" in ph:
-        return ("meta", "tope de la maquina META")
-    return ("nav", "autoridad normal de navegacion")
+    ph = m.get("phase_sent") or m.get("phase") or ""
+    if not isinstance(ph, str):
+        return "controller"
+    if "ASSIST" in ph:
+        return "human"
+    if "!H" in ph or "!C" in ph or "!c" in ph:
+        return "safety"
+    if "!S" in ph or "!M" in ph:
+        return "meta"
+    if "!D" in ph:
+        return "nav"
+    return "controller"
 
 
-def condicion(muestra, cond):
-    """Resuelve una muestra bajo C1..C4. Devuelve dict con salida, motivo y fundamentos."""
-    nivel = "I0" if cond in ("C1", "C2") else "I1"
-    v = vista(muestra, nivel)
-    if cond in ("C1", "C3"):
-        out, why = verify_incumbent(v)
-        modo = "incumbent"
-    else:
-        out, why = resolve_distributed(v)
-        modo = "distributed"
-    auth, auth_why = authority_of(muestra)      # la autoridad NO depende de la ventana:
-    return {"cond": cond, "iface": nivel, "mode": modo,   # es un hecho del tick, no evidencia
-            "out": out, "why": why, "grounds": grounds(v),
-            "authority": auth, "authority_why": auth_why}
+def resuelve_rol(m, cfg=None):
+    """Devuelve (role, role_reason, authority) para UNA muestra.
+
+    `m` es el dict de muestra tal cual se graba en dataset/*.json.
+    """
+    c = cfg or {}
+    bat_crit = c.get("BAT_CRIT", BAT_CRIT); bat_baja = c.get("BAT_BAJA", BAT_BAJA)
+    cb_mal = c.get("COV_BLIND_MAL", COV_BLIND_MAL); cm_mal = c.get("COV_MISS_MAL", COV_MISS_MAL)
+    tr_mal = c.get("TRUST_MAL", TRUST_MAL); il_max = c.get("ILLUM_MAX", ILLUM_MAX)
+    cf_min = c.get("CONF_MIN", CONF_MIN); c0_blk = c.get("C0_BLOQUEO", C0_BLOQUEO)
+
+    aut = autoridad(m)
+    cand = {}          # nombre de precedencia -> (rol emitido, razon)
+
+    # --- no_use: el problema cae fuera de todo rol preservado ---
+    if aut == "human":
+        cand["no_use"] = ("no_use", "assist:humano interviene")
+    elif m.get("err"):
+        cand["no_use"] = ("no_use", "fault:err=%s" % m.get("err"))
+
+    # --- energia ---
+    bat = _num(m, "bat")
+    if bat is not None:
+        if bat < bat_crit:
+            cand["energy_crit"] = ("energy", "bat=%.0f<%.0f critico" % (bat, bat_crit))
+        elif bat < bat_baja:
+            cand["energy_baja"] = ("energy", "bat=%.0f<%.0f replanificar" % (bat, bat_baja))
+
+    # --- calidad de lidar / cobertura ---
+    cov_blind = _num(m, "cov_blind"); cov_miss = _num(m, "cov_missing")
+    trust = _num(m, "laser_trust"); cov_n = _num(m, "cov_n")
+    lidar_evid = any(v is not None for v in (cov_blind, cov_miss, trust))
+    lidar_mal = False; r_lidar = []
+    if cov_blind is not None and cov_blind >= cb_mal:
+        lidar_mal = True; r_lidar.append("cov_blind=%.2f>=%.2f" % (cov_blind, cb_mal))
+    if cov_miss is not None and cov_miss >= cm_mal:
+        lidar_mal = True; r_lidar.append("cov_missing=%.0f>=%d" % (cov_miss, cm_mal))
+    if trust is not None and trust < tr_mal:
+        lidar_mal = True; r_lidar.append("laser_trust=%.2f<%.2f" % (trust, tr_mal))
+    if cov_n is not None and cov_n <= 0:
+        lidar_mal = True; r_lidar.append("cov_n=0 sin rumbos informativos")
+    if lidar_mal:
+        cand["lidar_quality"] = ("lidar_quality", "cobertura:" + ",".join(r_lidar))
+
+    # --- iluminacion: el contrato visual decide si la semantica RGB es admisible ---
+    illum = _num(m, "illum_b")
+    rgb_inadmisible = illum is not None and illum > il_max
+    if rgb_inadmisible:
+        cand["illumination"] = ("illumination",
+                                "contrato:illum=%.0f>%.0f RGB inadmisible" % (illum, il_max))
+
+    # --- objeto: identificado con fiabilidad Y con la semantica RGB admitida ---
+    dets = [z for z in (m.get("dets") or []) if z and z[0] != "door"]
+    mejor = None
+    for z in dets:
+        if len(z) >= 2 and isinstance(z[1], (int, float)) and z[1] >= cf_min:
+            if mejor is None or z[1] > mejor[1]:
+                mejor = z
+    if mejor is not None and not rgb_inadmisible and illum is not None:
+        cand["object"] = ("object", "objeto:%s conf=%.2f admisible" % (mejor[0], mejor[1]))
+
+    # --- insuficiencia CONJUNTA: nunca una conclusion de objeto forzada (§4.2) ---
+    # "inadecuado" incluye NO INSTRUMENTADO: ausencia de evidencia no es evidencia de ausencia.
+    lidar_inadecuado = lidar_mal or not lidar_evid
+    rgb_inadecuado = rgb_inadmisible or illum is None
+    if lidar_inadecuado and rgb_inadecuado:
+        por = []
+        por.append("lidar " + ("degradado" if lidar_mal else "sin instrumentar"))
+        por.append("rgb " + ("inadmisible" if rgb_inadmisible else "sin instrumentar"))
+        c0h = _num(m, "c0_hard")
+        enviado = m.get("sent") or []
+        parado = (isinstance(enviado, (list, tuple)) and len(enviado) >= 1
+                  and abs(float(enviado[0])) < 0.02)
+        bloqueado = (c0h is not None and c0h < c0_blk) or aut == "safety" or parado
+        if bloqueado:
+            cand["defer"] = ("defer", "conjunta:" + "+".join(por) + ";avance vetado")
+        else:
+            cand["review"] = ("review", "conjunta:" + "+".join(por))
+
+    # --- resolucion por precedencia ---
+    for k in PRECEDENCIA:
+        if k in cand:
+            rol, razon = cand[k]
+            return rol, razon, aut
+    return "motion", "defecto:sin fundamento activo", aut
+
+
+def anota(muestras, cfg=None):
+    """Anota una lista de muestras en sitio. Devuelve el recuento por rol."""
+    from collections import Counter
+    cnt = Counter()
+    for m in muestras:
+        r, why, a = resuelve_rol(m, cfg)
+        m["role"], m["role_reason"], m["authority"] = r, why, a
+        cnt[r] += 1
+    return cnt

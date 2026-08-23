@@ -388,6 +388,16 @@ SC_RANGE = float(os.environ.get("G1_SC_RANGE", "2.6"))    # m: solo se penaliza 
 # GATE DE ROTACION: al girar rapido la nube 'location' se proyecta con la pose RETRASADA -> los barridos se
 # ensucian (laser_noise +65% girando, observado). No es fiable meterlos en el mapa. Si |yaw_rate|>YAW_GATE
 # CONGELAMOS el mapa (ni inserta ni decae): usamos lo capturado yendo recto/lento. 0 = desactiva. (G1_YAWGATE)
+# --- RESOLUCION DE ROL (protocolo DCC, paso 2 del §8) ---
+# Emite role / role_reason / authority por muestra: es Z_t, sin el cual A_meta = 1[Z_t = delta_t]
+# no se puede computar. El modulo OBSERVA, no actua: no toca ninguna orden (§5.3, Authority
+# Partitioning). Import defensivo a proposito -- que falte el fichero no puede tumbar una sesion.
+try:
+    from dcc_roles import resuelve_rol as _dcc_rol
+except Exception as _e_rol:
+    _dcc_rol = None
+    print("  [DCC] sin resolucion de rol (%s)" % _e_rol)
+
 YAW_GATE = float(os.environ.get("G1_YAWGATE", "30.0"))    # >0 = gate ACTIVO (G1_YAWGATE=0 lo desactiva). yaw_rate solo se loguea (yr=)
 # El gate mira el giro COMANDADO (|rx|), NO el yaw medido: el bamboleo de la marcha mete 30-66 deg/s de yaw
 # yendo RECTO (medido, rx=0) -> con umbral por yaw medido el gate congelaba caminando de frente (run 164456).
@@ -556,6 +566,12 @@ class RunRecorder:
                "cmd": [round(float(v), 2) for v in cmd] if cmd else None}
         if extra:
             rec.update({k: v for k, v in extra.items() if v is not None})
+        if _dcc_rol is not None:
+            try:
+                _r, _why, _aut = _dcc_rol(rec)
+                rec["role"], rec["role_reason"], rec["authority"] = _r, _why, _aut
+            except Exception:
+                pass                       # jamas romper la grabacion por el resolutor
         self.rec["samples"].append(rec)
 
     def event(self, kind, t, x, y, extra=None):

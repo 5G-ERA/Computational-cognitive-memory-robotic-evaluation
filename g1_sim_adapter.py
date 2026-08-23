@@ -273,10 +273,18 @@ def _dummy_frame():
         from PIL import Image
         import io, base64
         base_rgb = (126, 116, 104)                       # luma ~117.7
+        # UNA SOLA FUENTE DE VERDAD PARA LA LUZ DECLARADA (23-ago). Antes G1_SIM_LUZ movia
+        # el emulador de deteccion y G1_SIM_PERC_LUMA el brillo del fotograma, por separado:
+        # un episodio podia declarar "luces apagadas" y entregar un fotograma iluminado, con
+        # lo que el gate de iluminacion y Omega_t discrepaban sin que nadie lo viera. (Me paso
+        # al validar el rol: puse LUZ=85 y la luma siguio en 118.) Ahora la luz declarada la
+        # fija G1_SIM_LUZ y el fotograma la sigue; G1_SIM_PERC_LUMA queda como anulacion
+        # EXPLICITA para escenificar una discrepancia a proposito, que es un testigo util
+        # (el detector ve una cosa y el fotograma dice otra), no un descuido.
         try:
-            objetivo = float(os.environ.get("G1_SIM_PERC_LUMA", "0") or 0)
+            objetivo = float(os.environ.get("G1_SIM_PERC_LUMA", "") or SIM_LUZ)
         except ValueError:
-            objetivo = 0
+            objetivo = SIM_LUZ
         if objetivo > 0:
             f = objetivo / 117.7
             base_rgb = tuple(max(0, min(255, int(round(c * f)))) for c in base_rgb)
