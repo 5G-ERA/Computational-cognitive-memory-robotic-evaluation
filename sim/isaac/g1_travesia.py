@@ -36,6 +36,8 @@ from PIL import Image
 CKPT = os.environ.get("CKPT", "/ws/IsaacLab/logs/rsl_rl/g1_flat/2026-08-22_21-31-53_g1_noche")
 SEGS = float(os.environ.get("SEGS", "90"))
 DIR = os.environ.get("DIR", "/ws/video_travesia")
+CAM_D = float(os.environ.get("CAM_D", "2.7"))
+CAM_H = float(os.environ.get("CAM_H", "3.05"))
 
 # --- geometria REAL, la misma que ve el robot fisico -------------------------
 AX, AY, AYAW = 0.99, 0.57, math.radians(-120.0)   # pose A (isaac_bridge.py)
@@ -180,10 +182,13 @@ for k in range(pasos):
         th = rumbo()
         dth = (th - cam_th + math.pi) % (2 * math.pi) - math.pi
         cam_th += 0.06 * dth
-        D, H = 2.5, 1.75
+        # Los muros de la oficina miden hasta 2.7 m: a 1.75 m la camara se metia
+        # DENTRO de ellos en los tramos estrechos y salian fotogramas planos
+        # (10 de 67 muestreados). Por encima de 2.7 no ocluye nunca.
+        D, H = CAM_D, CAM_H
         cx, cy = px - D * math.cos(cam_th), py - D * math.sin(cam_th)
         OT.Set(Gf.Vec3d(cx, cy, H))
-        OR_.Set(Gf.Vec3f(90.0 + math.degrees(math.atan2(pz + 0.35 - H, D)), 0.0,
+        OR_.Set(Gf.Vec3f(90.0 + math.degrees(math.atan2(pz + 0.45 - H, D)), 0.0,
                          math.degrees(cam_th) - 90.0))
         d_ = ann.get_data()
         if d_ is not None and len(d_):

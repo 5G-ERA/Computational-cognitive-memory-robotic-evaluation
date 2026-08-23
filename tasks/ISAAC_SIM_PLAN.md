@@ -640,3 +640,68 @@ stop kimi-dev.service` (left **enabled**, so it returns by itself on reboot) fre
 The effect is immediate: training went from 512 environments at 13,601 steps/s to **4096
 environments at 88,597 steps/s - 6.5x**. A full 3000-iteration run is now under way at proper
 scale, which removes the sample-diversity caveat declared for the overnight policy.
+
+## Rung 6, phase 4 — the G1 walks the real route (23 Aug 2026)
+
+**Policy.** `Isaac-Velocity-Flat-G1-v0`, rsl_rl PPO, **4096 envs, 3000
+iterations**, ~1.15 s/iteration (~57 min wall clock on one RTX 3090). Final mean
+reward **28.16**, best **28.61**. The overnight 512-env run plateaued near 25
+after 4000 iterations, so the wide run is both better and cheaper. Exported to
+`sim/isaac/politicas/g1_full_exported/` (`policy.pt`, `policy.onnx`, and the
+env config it was trained against).
+
+Note: `train.py` does **not** export. `play.py` does. Run it with `--load_run`
+after training or there is no `exported/` directory to load from.
+
+**Result.** 6 of 6 waypoints, 26.8 s simulated, zero falls, zero joint errors,
+tracking ~0.7 m/s against a 0.70 command. Same route as the physical robot:
+pose A (0.99, 0.57) at −120° from `isaac_bridge.py`, doorway centre
+(−3.90, 1.25) and crossing axis 135° from `g1_goto.py`.
+
+Video: `G1_IsaacSim_marcha_real_A_B.mp4` (26.7 s, 960×540, 25 fps).
+
+### Four quiet failures, and how each was caught
+
+None of these announced itself. Each needed a measurement, not a reading.
+
+1. **The office was never loading.** `office3d.usd` declares no `defaultPrim`,
+   so `add_reference_to_stage` left the reference unresolved. The only symptom
+   was a log line reading `colision en 0 prims`. *Fix:* name the root prim
+   explicitly (`GetReferences().AddReference(..., primPath="/World")`) and stamp
+   a `defaultPrim` in the generator.
+
+2. **Recording was impossible — and Replicator was not the culprit.** Headless
+   without `enable_cameras` makes Kit load an experience file with **no render
+   channel**, so there is no graph to wrap: `Invalid object in Py_Graph in
+   getWrappedGraphFromNode`. *Fix:* `args.enable_cameras = True`, decided
+   **before** `AppLauncher` starts. Captured on the first attempt afterwards.
+
+3. **Physics froze silently.** The decorative G1 baked into the office USD still
+   declares ~40 joints although its rigid bodies were stripped in v18. PhysX
+   fails on every one (`CreateJoint - no bodies defined at body0 and body1`) and
+   leaves the scene broken. The tell was pathognomonic: the real robot reported
+   `|jvel| = 0.750` and `|v| = 0.102` — **constant to three decimals for 78
+   seconds** — while its position never changed. Non-zero velocity with a frozen
+   pose means stale buffers, not a robot standing still (that would jitter).
+   *Fix:* `SetActive(False)`. `MakeInvisible()` hides the prim but leaves it in
+   the physics scene.
+
+4. **The heading controller sat outside the training distribution.** The policy
+   was trained with `heading_command: true` and `rel_heading_envs: 1.0`, so it
+   only ever saw yaw rates of `0.5 × heading_error` clipped to [−1, 1]
+   (`heading_control_stiffness`), and `lin_vel_x` sampled in (0, 1] — never
+   zero. Driving it at gain 1.6 with `vx = 0` on large heading errors left the
+   robot standing. *Fix:* reproduce the training convention exactly; never
+   command `vx = 0`.
+
+The decisive experiment for (3) and (4) was the `OFI=0` switch: the same route
+on flat ground completed 6/6 while the office run froze, which split the
+hypothesis space in one 30-second run.
+
+**Camera.** The office walls reach 2.7 m; a chase camera at 1.75 m clipped
+*inside* them, producing 10 flat frames out of 67 sampled. Raised to 3.05 m
+(`CAM_H`), only the render warm-up frame is flat, and it is dropped at encode.
+
+**Still open.** The office reads visually as a forest of separate blocks rather
+than continuous walls — an honest rendering of the occupancy reconstruction, but
+worth merging into continuous surfaces before this becomes a thesis figure.
