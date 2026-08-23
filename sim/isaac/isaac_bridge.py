@@ -37,8 +37,14 @@ QUIETO = os.environ.get("G1_ISAAC_LIDAR_QUIETO", "") == "1"
 # contra 0.178 real (2.2x), 46% del tiempo parado contra 23%, y frenado x4.4 -- arrancaba y
 # paraba en seco. Ademas el puente publicaba odometria a 10 Hz cuando el robot real entrega
 # ~3.2 muestras/s, asi que el lazo corria 3x mas rapido que la realidad.
-TAU = float(os.environ.get("G1_ISAAC_TAU", "0.55"))        # retardo de actuacion (s)
-ESCALA_V = float(os.environ.get("G1_ISAAC_VSCALE", "0.62"))  # perdida real mando->velocidad
+# RECALIBRADO 23-ago CON EL FRENO PUESTO (analysis/calibra_vscale_tau.py). Los valores
+# anteriores (0.62 / 0.55) se derivaron bajo el regimen SIN freno, donde el tiempo de
+# simulacion corria ~7.45x el de pared; con freno el gemelo dejaba de completar la ruta
+# (15 de 15 piernas a B fallidas). Ajuste offline reproduciendo las ordenes REALES de 127
+# runs a traves de este mismo modelo: razon camino_gemelo/camino_real = 1.0008 en la muestra
+# de ajuste y 0.973 en las 84 runs reservadas (antes: 0.852).
+TAU = float(os.environ.get("G1_ISAAC_TAU", "0.42"))        # retardo de actuacion (s)
+ESCALA_V = float(os.environ.get("G1_ISAAC_VSCALE", "0.70"))  # perdida real mando->velocidad
 HZ_ODOM = float(os.environ.get("G1_ISAAC_HZ", "3.2"))      # cadencia real de muestras
 
 ESTADO = {"x": X0, "y": Y0, "yaw": YAW0, "vx": 0.0, "vy": 0.0, "wz": 0.0,
