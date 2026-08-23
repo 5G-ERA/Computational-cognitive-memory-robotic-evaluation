@@ -26,6 +26,7 @@ from pxr import UsdGeom, Gf
 
 PORT = int(os.environ.get("G1_ISAAC_PORT", "8766"))
 ESCENA = os.environ.get("G1_ISAAC_SCENE", "/ws/office3d.usd")
+PACE = os.environ.get("G1_ISAAC_PACE", "1") == "1"   # freno de reloj de pared
 X0, Y0, YAW0 = 0.99, 0.57, math.radians(-120.0)
 H_LIDAR = 0.55
 DT = 0.05
@@ -400,14 +401,15 @@ while True:
     # rapido como la maquina dejara. En la GPU con estado rancio salian ~20 pasos/s de
     # casualidad; tras reiniciar el contenedor, 149 -- y la campana de varianza salio con
     # duraciones 3.4x cortas. El realismo temporal se IMPONE, no se hereda de la carga.
-    if "_t_pace" not in globals():
-        globals()["_t_pace"] = time.time()
-    globals()["_t_pace"] += DT
-    _resto = globals()["_t_pace"] - time.time()
-    if _resto > 0:
-        time.sleep(_resto)
-    elif _resto < -2.0:
-        globals()["_t_pace"] = time.time()      # si nos quedamos atras, no acumular deuda
+    if PACE:
+        if "_t_pace" not in globals():
+            globals()["_t_pace"] = time.time()
+        globals()["_t_pace"] += DT
+        _resto = globals()["_t_pace"] - time.time()
+        if _resto > 0:
+            time.sleep(_resto)
+        elif _resto < -2.0:
+            globals()["_t_pace"] = time.time()  # si nos quedamos atras, no acumular deuda
     # OJO: grabar cada 2 pasos a 1280x720 hundia el ritmo del lazo y el robot se movia a
     # tirones respecto al reloj real (el cmd_vel caduca en 0.6 s de reloj de pared), tanto que
     # no completaba la travesia. A 960x540 y 1 de cada 6 pasos el ritmo se mantiene.
