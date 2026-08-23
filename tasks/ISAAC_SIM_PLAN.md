@@ -705,3 +705,68 @@ hypothesis space in one 30-second run.
 **Still open.** The office reads visually as a forest of separate blocks rather
 than continuous walls — an honest rendering of the occupancy reconstruction, but
 worth merging into continuous surfaces before this becomes a thesis figure.
+
+## Office v19 groundwork — what the Summit cloud still has to give (23 Aug 2026)
+
+Adrián approved merging the block forest into continuous surfaces, with one
+condition: re-examine the Summit 3D cloud first, use every photo we have, and
+take his lab knowledge as input. Done — `analysis/mide_nube.py`,
+`analysis/corta_muro.py`, `analysis/pinta_nube.py`, `analysis/foto_zona.py`.
+
+### Measured in the cloud (930,438 points, G1 frame)
+
+- **Ceiling at ~2.65 m** (4,076 points, 652 cells). v18 has no ceiling.
+- **Real wall faces behind furniture ramps.** Perpendicular cuts: E wall shows
+  p90 height climbing 1.24 → 2.49 m over ~2 m up to a tall face at s≈+1.1–1.6,
+  then density collapses. That monotonic ramp is furniture tiered in front of a
+  real wall — drift would smear one wall without a height gradient. N wall:
+  tall face near (−0.8, 5.4). The thick red bands in the top-down map are
+  furniture + wall, not registration error.
+- **The door partition returns no lidar plane** (flat profile, ~0 points
+  >2.5 m): consistent with the glass partition we already model.
+- **20% of points lie outside the modelled enclosure** — but see Z6 below
+  before modelling any of it.
+
+### Adrián's zone labels (2026-08-23), photo-checked where possible
+
+- **Z5 (centre of room A):** real desk island — CONFIRMED by photo: beech
+  drawer pedestals with light-cyan divider panels.
+- **Z2 (N wall):** windows ("cristales") with a desk against them. No photo
+  reaches it; the robot never faces that wall up close.
+- **Z7 (SE wall):** a door that opens to the university corridor, and next to
+  it the giant wooden crate the Summit XL was delivered in. Photo attempt: too
+  blurry/floor-only.
+- **Z4 (room B):** Renisa's office — desks, cardboard boxes near the entrance
+  door (CONFIRMED by photo), sofas (cream, CONFIRMED); the unmapped back-right
+  is more desks.
+- **Z6 (beyond N wall):** LIDAR ARTIFACT through the window glass. Do NOT
+  build geometry from cloud points in that region. (It is also a real sensor
+  behaviour worth reproducing: windows pass through, like the interior glass.)
+
+### Photo inventory (honest accounting)
+
+- `dataset/`: 6,733 jpgs, but 4,247 are a 1,587-byte placeholder (WebRTC
+  frames that never arrived). ~2,500 real at 320×180.
+- Photos are geolocatable: `RUNID_tNNNs.jpg` → pose interpolated from the run
+  JSON `samples` (t, x, y, yaw). `analysis/foto_zona.py` selects photos facing
+  a target zone. Limit found: the walking camera tilts down, so photos only
+  resolve things within ~2 m — near-route furniture yes, far walls no.
+- `calib_luz/2026-08-21/`: 170 photos, ~170 KB HQ — but they look at the
+  FLOOR (light calibration). Good for carpet material only.
+
+### Materials from photos
+
+Blue carpet tiles with visible seams (already measured RGB 80,84,98), beech
+furniture, light-cyan divider panels, black office chairs, cream sofas, white
+walls, cardboard boxes.
+
+### v19 build plan
+
+1. Continuous walls: extract E/S wall planes from tall-point density peaks;
+   N wall = window band (glass) with desk in front; door partition stays glass.
+2. Ceiling plane at 2.65 m.
+3. Z5 as one continuous beech island with cyan dividers.
+4. Room B: desks + boxes near the door + cream sofas; back-right filled with
+   desks per Adrián (cloud has no data there).
+5. The Summit crate + corridor door on the Z7 wall.
+6. Discard all cloud geometry in the Z6 window-artifact sector.
