@@ -611,3 +611,32 @@ declared limitation of whatever policy comes out.
 
 **Overnight run launched:** `Isaac-Velocity-Flat-G1-v0`, 512 envs, 4000 iterations, headless.
 Rate observed: ~190 iterations in 3 minutes, so roughly an hour for the full run.
+
+
+## Rung 6, phase 3: THE G1 WALKS with our own policy
+
+**Result:** `sim/isaac/g1_locomocion.py` runs the G1 under the policy trained overnight and it
+walks - **11.51 m in 20 s, upright at 0.68 m throughout, zero falls**, 37 joints driven by the
+network. Training took the mean reward from **-5.9 to +25.0** over 4000 iterations.
+
+**Why the first attempt segfaulted, and the fix.** Loading the G1 "by hand" with an H1-style
+`PolicyController` crashed inside `world.reset()` with no Python traceback. The reason is that
+the policy was trained against **Isaac Lab's** robot definition - a different USD
+(`ISAACLAB_NUCLEUS_DIR/.../g1_minimal.usd`, not the Isaac one), its own articulation solver
+settings, actuator gains and initial joint pose. Using `G1_MINIMAL_CFG` directly makes the
+robot *exactly* the one the policy knows, and it works first time.
+
+**Three more tooling traps banked:**
+- `omni.replicator` is not importable under `AppLauncher` headless until the extension is
+  explicitly enabled - and even then its graph fails in this context, so frame capture had to
+  be made optional and the physics question answered first.
+- Isaac Lab's `play.py --video` breaks the physics tensor view ("Failed to get DOF velocities
+  from backend"); without `--video` it runs fine.
+- A stale GPU state makes every run fail with "peer access is already enabled" plus that same
+  DOF error. **Restarting the container clears it** - worth trying before debugging anything.
+
+**Kimi paused, with Adrián's authorisation.** It held ~20.7 GB of each GPU. `systemctl --user
+stop kimi-dev.service` (left **enabled**, so it returns by itself on reboot) freed all 48 GB.
+The effect is immediate: training went from 512 environments at 13,601 steps/s to **4096
+environments at 88,597 steps/s - 6.5x**. A full 3000-iteration run is now under way at proper
+scale, which removes the sample-diversity caveat declared for the overnight policy.
