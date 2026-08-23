@@ -290,15 +290,98 @@ for c in cristal_blob:
 cristal_cells = set(_pane.values())
 log("cristal: pegote de %d celdas -> panel fino de %d (el resto, artefactos tras-cristal, borrado)" % (
     len(cristal_blob), len(cristal_cells)))
-bandas = {}
-for c in pared_cells:
-    h = altura(c, 2.2)
-    if h < 1.5:
-        h = max(h, 1.8)
-    bandas.setdefault(("P", int(round(h/BANDA)), False), set()).add(c)
-for c in mueble_cells:
-    h = min(altura(c, 0.8), 1.4)
-    bandas.setdefault(("M", max(1, int(round(h/BANDA))), False), set()).add(c)
+# --- v19: FUSION en superficies continuas ---
+# El "bosque de bloques" nacia de agrupar por banda de altura: celdas vecinas con alturas
+# distintas acababan en torres distintas. El /scan es un plano 2D a ~0.35 m, asi que la
+# altura de un bloque NO cambia la firma del laser mientras supere ese plano: se puede
+# unificar la altura POR REGION (componente conexa) sin tocar la metrologia. La huella en
+# planta queda IDENTICA celda a celda.
+def componentes(cs):
+    cs = set(cs); vis = set(); out = []
+    for c in cs:
+        if c in vis:
+            continue
+        pila = [c]; vis.add(c); comp = []
+        while pila:
+            a = pila.pop(); comp.append(a)
+            for dx_ in (-1, 0, 1):
+                for dy_ in (-1, 0, 1):
+                    b = (a[0]+dx_, a[1]+dy_)
+                    if b in cs and b not in vis:
+                        vis.add(b); pila.append(b)
+        out.append(comp)
+    return out
+
+# la CAJA del Summit (medida en la nube: bloque 1.45x1.34, z98 2.63, rincon SE): sus celdas
+# se ceden a la pieza con nombre para no duplicar geometria
+import math as _m
+_A45 = _m.radians(135.0); _cux, _cuy = _m.cos(_A45), _m.sin(_A45)
+def _uv(x, y):
+    return (x*_cux + y*_cuy, -x*_cuy + y*_cux)
+def en_caja_summit(c):
+    uu, vv = _uv(c[0]*OC, c[1]*OC)
+    return -3.46 <= uu <= -2.01 and -4.01 <= vv <= -2.67
+_nc = len(pared_cells) + len(mueble_cells)
+pared_cells = {c for c in pared_cells if not en_caja_summit(c)}
+mueble_cells = {c for c in mueble_cells if not en_caja_summit(c)}
+log("celdas cedidas a la caja del Summit:", _nc - len(pared_cells) - len(mueble_cells))
+
+regiones = []                       # (clase, altura, celdas)
+# v19c: el "canon" nacia de forzar TODA region P a >=1.8 m. En la sala real desde A se ve
+# POR ENCIMA de las mesas (fotos): solo la pared del edificio es alta seguro. El plano del
+# laser esta a ~0.35 m, asi que la altura por encima de eso no toca el /scan. Regla:
+#   - region sobre una linea de envolvente -> pared del edificio: minimo 1.8
+#   - region interior -> la altura que diga la NUBE, con 0.9 (mesa) de defecto si calla
+_LINEAS_U = (-3.64, 3.87, 6.95)
+_LINEAS_V = (-4.03, 3.11, -3.90, 3.02)
+import math as _m2
+def _en_linea(comp):
+    cx_ = sum(c[0] for c in comp)/len(comp)*OC; cy_ = sum(c[1] for c in comp)/len(comp)*OC
+    uu, vv = _uv(cx_, cy_)
+    return min(abs(uu-l) for l in _LINEAS_U) < 0.55 or min(abs(vv-l) for l in _LINEAS_V) < 0.55
+def altura_region(comp, defecto):
+    """Altura a nivel de REGION, no de celda. El pasillo es donde mas gente paso durante el
+    mapeo: celda a celda, los transeuntes llenan las bandas altas y el umbral del 8% se
+    cumple. Agregando la region entera, una banda real (frente de mesa, armario) aporta
+    cientos de retornos y un rastro humano se diluye: se exige max(25, 10%) por banda."""
+    zs = []
+    for c in comp:
+        zs.extend(zpor.get((c[0], c[1]), ()))
+    if len(zs) < 30:
+        return defecto
+    cx_ = sum(c[0] for c in comp)/len(comp)*OC; cy_ = sum(c[1] for c in comp)/len(comp)*OC
+    f = fa*cx_ + fb*cy_ + fc
+    rel = np.array(zs) - f
+    rel = rel[(rel > 0.05) & (rel < 2.8)]
+    if len(rel) < 25:
+        return defecto
+    need = max(25, int(0.10 * len(rel)))
+    tope = defecto
+    for b_ in range(9):
+        lo, hi = b_ * 0.3, (b_ + 1) * 0.3
+        if int(((rel >= lo) & (rel < hi)).sum()) >= need:
+            tope = hi
+    return float(tope)
+
+for comp in componentes(pared_cells):
+    if _en_linea(comp):
+        h = max(altura_region(comp, 2.2), 1.8)
+    else:
+        h = min(max(altura_region(comp, 0.9), 0.5), 1.6)
+    regiones.append(("P", h, comp))
+_sofas = [(o["x"], o["y"]) for o in objetos.get("couch", []) if o.get("n", 0) >= 6]
+for comp in componentes(mueble_cells):
+    h = min(max(altura_region(comp, 0.8), 0.5), 1.4)
+    cx_ = sum(c[0] for c in comp)/len(comp)*OC; cy_ = sum(c[1] for c in comp)/len(comp)*OC
+    cls = "M"
+    if any(_m.hypot(cx_-sx, cy_-sy) < 0.9 for sx, sy in _sofas):
+        cls = "SOFA"; h = min(h, 0.85)
+    else:
+        uu, vv = _uv(cx_, cy_)
+        if 3.5 < uu < 5.2 and _m.hypot(uu-4.4, vv-2.0) < 1.6:
+            cls = "CARTON"          # cajas junto a la puerta de entrada de B (Adrian + foto)
+    regiones.append((cls, h, comp))
+log("v19: %d regiones continuas (antes, bandas por altura)" % len(regiones))
 
 def rects(cs):
     libres = set(cs); out = []
@@ -330,6 +413,13 @@ mat_pared = material("/World/Looks/Pared", tuple(col["pared"]), rug=0.9)
 mat_mueble = material("/World/Looks/Mobiliario", (0.46, 0.40, 0.34), rug=0.8)
 mat_suelo = material("/World/Looks/Moqueta", tuple(col["suelo"]), rug=0.95)
 mat_vidrio = material("/World/Looks/Cristal", (0.16, 0.20, 0.24), opac=0.22, ior=1.52, rug=0.04)
+# v19: materiales medidos en las fotos del propio G1 (cajoneras de haya, sofa crema,
+# carton, paredes blancas del edificio)
+mat_haya = material("/World/Looks/Haya", (0.69, 0.53, 0.35), rug=0.65)
+mat_sofa = material("/World/Looks/Sofa", (0.88, 0.84, 0.74), rug=0.9)
+mat_carton = material("/World/Looks/Carton", (0.72, 0.58, 0.40), rug=0.9)
+mat_blanco = material("/World/Looks/ParedReal", (0.90, 0.89, 0.86), rug=0.9)
+mat_techo = material("/World/Looks/Techo", (0.93, 0.93, 0.91), rug=0.95)
 
 piso = UsdGeom.Cube.Define(stage, "/World/Moqueta"); piso.GetSizeAttr().Set(1.0)
 pf = UsdGeom.Xformable(piso.GetPrim())
@@ -338,9 +428,21 @@ UsdShade.MaterialBindingAPI(piso.GetPrim()).Bind(mat_suelo)
 
 UsdGeom.Xform.Define(stage, "/World/Estructura")
 n = 0
-for (cls, b, vid), cs in sorted(bandas.items()):
-    alto = b * BANDA
-    mt = mat_vidrio if vid else (mat_pared if cls == "P" else mat_mueble)
+# v19b: el "gris pared" de colores_reales (0.47) venia de fotos subexpuestas y mataba el
+# rebote de luz -- el interior salia cueva por ALBEDO, no por falta de vatios. Regla por
+# posicion: una region P pegada a una linea de envolvente ES pared del edificio (blanca);
+# una region P interior es armariada (haya). Las lineas, medidas en la nube (extrae_paredes2).
+_LINEAS_U = (-3.64, 3.87, 6.95)
+_LINEAS_V = (-4.03, 3.11, -3.90, 3.02)
+def _mat_pared_pos(cs):
+    cx_ = sum(c[0] for c in cs)/len(cs)*OC; cy_ = sum(c[1] for c in cs)/len(cs)*OC
+    uu, vv = _uv(cx_, cy_)
+    if min(abs(uu-l) for l in _LINEAS_U) < 0.55 or min(abs(vv-l) for l in _LINEAS_V) < 0.55:
+        return mat_blanco
+    return mat_haya
+MT = {"M": mat_haya, "SOFA": mat_sofa, "CARTON": mat_carton}
+for cls, alto, cs in regiones:
+    mt = _mat_pared_pos(cs) if cls == "P" else MT[cls]
     for (x0, y0, w, h) in rects(cs):
         cb = UsdGeom.Cube.Define(stage, "/World/Estructura/%s%d" % (cls.lower(), n))
         cb.GetSizeAttr().Set(1.0)
@@ -349,7 +451,7 @@ for (cls, b, vid), cs in sorted(bandas.items()):
         xf.AddScaleOp().Set(Gf.Vec3f(w*OC, h*OC, alto))
         UsdShade.MaterialBindingAPI(cb.GetPrim()).Bind(mt)
         n += 1
-log("prims de estructura:", n)
+log("prims de estructura (v19, altura por region):", n)
 
 # --- CRISTAL A TIRAS (patron 5 visibles / 4 doNotCastRays = 44.4% ausencia frontal) ---
 ANCHO_TIRA = 0.0333
@@ -387,6 +489,103 @@ for c in sorted(cristal_cells):
         nt += 1
 log("tiras de cristal:", nt, "(patron calibrado 3v/5i)")
 
+# --- v19: ENVOLVENTE REAL (extraida de la nube Summit, analysis/extrae_paredes2.py) ---
+# Caras de pared medidas como picos de densidad de puntos z>1.75 en el frame girado 45:
+# el laser del G1 casi nunca las alcanza (CAP 3.7 y mobiliario delante), asi que son
+# geometria VISUAL que ademas tapa los huecos entre bloques igual que la pared de verdad.
+# La particion A|B NO lleva placa: su cristal calibrado a tiras es el instrumento y no se toca.
+Z_TECHO = 2.65
+def placa(path, u0, u1, vpos, eje, mt, h0=0.0, h1=Z_TECHO, grosor=0.12):
+    """Muro continuo en el frame girado: eje="u" -> constante en v, y viceversa."""
+    cu, cv = (u0+u1)/2.0, vpos
+    if eje == "u":
+        cx_, cy_ = cu*_cux - cv*_cuy, cu*_cuy + cv*_cux
+        rot, L = -45.0, (u1-u0)
+    else:
+        cx_, cy_ = cv*_cux - cu*_cuy, cv*_cuy + cu*_cux
+        rot, L = 45.0, (u1-u0)
+    cb = UsdGeom.Cube.Define(stage, path); cb.GetSizeAttr().Set(1.0)
+    xf = UsdGeom.Xformable(cb.GetPrim())
+    xf.AddTranslateOp().Set(Gf.Vec3d(cx_, cy_, (h0+h1)/2.0))
+    xf.AddRotateZOp().Set(rot)
+    xf.AddScaleOp().Set(Gf.Vec3f(L, grosor, h1-h0))
+    UsdShade.MaterialBindingAPI(cb.GetPrim()).Bind(mt)
+    return cb
+
+UsdGeom.Xform.Define(stage, "/World/Envolvente")
+# sala A (u: eje de cruce 135; medidas de la nube, JSON en el commit)
+placa("/World/Envolvente/muroE", -3.84, 2.32, -3.64, "v", mat_blanco)       # tras A
+placa("/World/Envolvente/muroS", -3.44, 3.59, -4.03, "u", mat_blanco)       # lado caja/pasillo
+# muro N = VENTANAS: vidrio + montantes + banda alta. El vidrio de ventana es geometria para
+# el ray-march (devuelve), pero queda a >3 m de la ruta con CAP 3.7: efecto marginal, anotado.
+placa("/World/Envolvente/ventN_vidrio", -3.44, 3.59, 3.11, "u", mat_vidrio, h0=0.15, h1=2.20, grosor=0.05)
+placa("/World/Envolvente/ventN_banda", -3.44, 3.59, 3.11, "u", mat_blanco, h0=2.20, h1=Z_TECHO)
+for i_ in range(5):
+    um_ = -3.44 + (i_+0.5) * (3.59+3.44)/5.0
+    placa("/World/Envolvente/ventN_montante%d" % i_, um_-0.05, um_+0.05, 3.11, "u", mat_blanco, h0=0.0, h1=2.20)
+# sala B (oficina de Renisa)
+placa("/World/Envolvente/fondoB", -0.73, 3.39, 6.95, "v", mat_blanco)
+placa("/World/Envolvente/muroS_B", 4.33, 6.95, -3.90, "u", mat_blanco)
+placa("/World/Envolvente/muroN_B", 4.41, 7.16, 3.02, "u", mat_blanco)
+log("envolvente: 8 placas (paredes medidas + ventanas N)")
+
+# TECHO a una cara (normal hacia ABAJO): visible desde dentro, transparente desde arriba,
+# para que la camara persecutora del video (H=3.05) siga viendo la sala.
+techo = UsdGeom.Mesh.Define(stage, "/World/Envolvente/Techo")
+_tx0, _tx1, _ty0, _ty1 = -9.0, 7.0, -4.0, 7.0
+techo.CreatePointsAttr([Gf.Vec3f(_tx0,_ty0,Z_TECHO), Gf.Vec3f(_tx0,_ty1,Z_TECHO),
+                        Gf.Vec3f(_tx1,_ty1,Z_TECHO), Gf.Vec3f(_tx1,_ty0,Z_TECHO)])
+techo.CreateFaceVertexCountsAttr([4])
+techo.CreateFaceVertexIndicesAttr([0, 1, 2, 3])   # orden: normal -z
+techo.CreateDoubleSidedAttr(False)
+UsdShade.MaterialBindingAPI(techo.GetPrim()).Bind(mat_techo)
+log("techo a 2.65 m (una cara, medido en la nube: z medio 2.65)")
+
+# CAJA del Summit: bloque de madera 1.45 x 1.34 x 2.6 en el rincon SE (nube + Adrian)
+_cu0, _cu1, _cv0, _cv1 = -3.46, -2.01, -4.01, -2.67
+_ccu, _ccv = (_cu0+_cu1)/2.0, (_cv0+_cv1)/2.0
+caja = UsdGeom.Cube.Define(stage, "/World/Envolvente/CajaSummit"); caja.GetSizeAttr().Set(1.0)
+xf_ = UsdGeom.Xformable(caja.GetPrim())
+xf_.AddTranslateOp().Set(Gf.Vec3d(_ccu*_cux - _ccv*_cuy, _ccu*_cuy + _ccv*_cux, 1.30))
+xf_.AddRotateZOp().Set(-45.0)
+xf_.AddScaleOp().Set(Gf.Vec3f(_cu1-_cu0, _cv1-_cv0, 2.60))
+UsdShade.MaterialBindingAPI(caja.GetPrim()).Bind(mat_carton)
+log("caja del Summit: 1.45 x 1.34 x 2.60 en el rincon SE")
+
+# FONDO de la oficina de Renisa: la nube no llega ("la zona no mapeada, es de mesas" --
+# Adrian, 23-ago; confirmacion: pendiente de foto). Mesas sencillas de haya.
+for j_, (mu0, mu1, mv0, mv1) in enumerate([(5.4, 6.7, -3.0, -2.3), (5.4, 6.7, -1.6, -0.9)]):
+    mm = UsdGeom.Cube.Define(stage, "/World/Envolvente/MesaRenisa%d" % j_); mm.GetSizeAttr().Set(1.0)
+    xj = UsdGeom.Xformable(mm.GetPrim())
+    _mu, _mv = (mu0+mu1)/2.0, (mv0+mv1)/2.0
+    xj.AddTranslateOp().Set(Gf.Vec3d(_mu*_cux - _mv*_cuy, _mu*_cuy + _mv*_cux, 0.37))
+    xj.AddRotateZOp().Set(-45.0)
+    xj.AddScaleOp().Set(Gf.Vec3f(mu1-mu0, mv1-mv0, 0.74))
+    UsdShade.MaterialBindingAPI(mm.GetPrim()).Bind(mat_haya)
+log("fondo de Renisa: 2 mesas por testimonio (sin dato de nube)")
+
+# --- v19: LUZ INTERIOR ---
+# Al cerrar la envolvente (techo + 8 placas), la DistantLight y el domo quedan FUERA y el
+# interior sale negro (medido en el primer render). La oficina real se ilumina con paneles
+# de techo: rejilla de RectLight bajo el techo, 3x2 en la sala A y 2 en la de Renisa.
+# La DistantLight y el domo se quedan para el exterior visible por las ventanas.
+def panel_luz(path, x, y, inten=90000.0):
+    pl = UsdLux.RectLight.Define(stage, path)
+    pl.CreateWidthAttr(1.1); pl.CreateHeightAttr(0.55)
+    pl.CreateIntensityAttr(inten)
+    pl.CreateColorAttr(Gf.Vec3f(1.0, 0.98, 0.93))
+    xp = UsdGeom.Xformable(pl.GetPrim())
+    xp.AddTranslateOp().Set(Gf.Vec3d(x, y, Z_TECHO - 0.06))
+    xp.AddRotateXOp().Set(180.0)                  # emite hacia ABAJO
+    return pl
+_nl = 0
+for uu in (-2.2, 0.2, 2.6):
+    for vv in (-2.2, 0.6):
+        panel_luz("/World/Envolvente/Luz%d" % _nl, uu*_cux - vv*_cuy, uu*_cuy + vv*_cux); _nl += 1
+for uu in (5.0, 6.2):
+    panel_luz("/World/Envolvente/Luz%d" % _nl, uu*_cux - 0.8*_cuy, uu*_cuy + 0.8*_cux); _nl += 1
+log("luz interior: %d paneles de techo" % _nl)
+
 add_reference_to_stage(usd_path=root + "/Isaac/Robots/Unitree/G1/g1.usd", prim_path="/World/G1")
 g1 = stage.GetPrimAtPath("/World/G1")
 xg = UsdGeom.Xformable(g1); xg.ClearXformOpOrder()
@@ -406,6 +605,6 @@ UsdLux.DomeLight.Define(stage, "/World/Dome").CreateIntensityAttr(320.0)
 # con la referencia sin resolver y la oficina no aparece.
 stage.SetDefaultPrim(stage.GetPrimAtPath("/World"))
 stage.GetRootLayer().Export("/ws/office3d.usd")
-log("USD: /ws/office3d.usd (v18)")
-log("=== OFICINA v18 OK ===")
+log("USD: /ws/office3d.usd (v19)")
+log("=== OFICINA v19 OK ===")
 app.close()
