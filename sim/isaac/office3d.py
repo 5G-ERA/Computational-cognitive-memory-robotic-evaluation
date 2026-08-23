@@ -402,6 +402,9 @@ key = UsdLux.DistantLight.Define(stage, "/World/Key"); key.CreateIntensityAttr(1
 UsdGeom.Xformable(key.GetPrim()).AddRotateXYZOp().Set(Gf.Vec3f(-50, 25, 0))
 UsdLux.DomeLight.Define(stage, "/World/Dome").CreateIntensityAttr(320.0)
 
+# defaultPrim: sin el, quien referencie este USD (en vez de abrirlo) se queda
+# con la referencia sin resolver y la oficina no aparece.
+stage.SetDefaultPrim(stage.GetPrimAtPath("/World"))
 stage.GetRootLayer().Export("/ws/office3d.usd")
 log("USD: /ws/office3d.usd (v18)")
 log("=== OFICINA v18 OK ===")

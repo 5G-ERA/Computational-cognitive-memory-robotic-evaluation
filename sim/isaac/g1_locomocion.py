@@ -9,12 +9,22 @@ configuracion, asi que el robot es EXACTAMENTE el que la politica conoce.
 """
 import math, os, time
 
+# REC y DEV se leen ANTES de arrancar la app: enable_cameras decide que fichero
+# de experiencia carga Kit, y eso no se puede cambiar despues.
+REC = os.environ.get("REC", "0") == "1"
+DEV = os.environ.get("DEV", "cuda:0")
+
 import argparse
 from isaaclab.app import AppLauncher
 _p = argparse.ArgumentParser()
 AppLauncher.add_app_launcher_args(_p)
 args, _ = _p.parse_known_args()
 args.headless = True
+# CLAVE: en headless SIN enable_cameras, Kit carga la experiencia sin canal de
+# render y Replicator falla con "Invalid object in Py_Graph in
+# getWrappedGraphFromNode". Con el flag activo carga la variante .rendering.kit
+# y la camara si produce imagen.
+args.enable_cameras = REC
 app_launcher = AppLauncher(args)
 sim_app = app_launcher.app
 
@@ -39,7 +49,7 @@ _O = open("/ws/g1lab_result.txt", "w")
 def log(*a):
     s = " ".join(str(x) for x in a); print(s, flush=True); _O.write(s + "\n"); _O.flush()
 
-sim = SimulationContext(sim_utils.SimulationCfg(dt=1/200, device="cuda:0"))
+sim = SimulationContext(sim_utils.SimulationCfg(dt=1/200, device=DEV))
 stage = omni.usd.get_context().get_stage()
 
 # suelo y luz
@@ -48,15 +58,19 @@ sim_utils.DomeLightCfg(intensity=2500.0).func("/World/Luz", sim_utils.DomeLightC
 
 X0, Y0 = (0.99, 0.57) if ESCENA == "oficina" else (0.0, 0.0)
 if ESCENA == "oficina":
-    add_reference_to_stage(usd_path="/ws/office3d.usd", prim_path="/Oficina")
+    # office3d.usd NO declara defaultPrim, asi que add_reference_to_stage deja la
+    # referencia sin resolver y la oficina no llega a cargarse (se veia como
+    # "colision en 0 prims"). Hay que nombrar el prim raiz a mano.
+    _ofi = stage.DefinePrim("/Oficina", "Xform")
+    _ofi.GetReferences().AddReference(assetPath="/ws/office3d.usd", primPath="/World")
     n = 0
-    for grupo in ("/Oficina/World/Estructura", "/Oficina/World/Cristal"):
+    for grupo in ("/Oficina/Estructura", "/Oficina/Cristal", "/Oficina/Moqueta"):
         pr = stage.GetPrimAtPath(grupo)
         if pr and pr.IsValid():
             for c in pr.GetChildren():
                 if not c.HasAPI(UsdPhysics.CollisionAPI):
                     UsdPhysics.CollisionAPI.Apply(c); n += 1
-    g1v = stage.GetPrimAtPath("/Oficina/World/G1")
+    g1v = stage.GetPrimAtPath("/Oficina/G1")
     if g1v and g1v.IsValid():
         UsdGeom.Imageable(g1v).MakeInvisible()
     log("oficina cargada, colision en %d prims" % n)
@@ -66,8 +80,7 @@ cfg.init_state.pos = (X0, Y0, 0.74)
 robot = Articulation(cfg)
 log("G1 creado con la configuracion de Isaac Lab")
 
-# GRABACION opcional (REC=1). Primero interesa la respuesta: ¿camina o no?
-REC = os.environ.get("REC", "0") == "1"
+# GRABACION opcional (REC=1).
 ann = None
 if REC:
     from isaacsim.core.utils.extensions import enable_extension
@@ -86,7 +99,7 @@ if REC:
 sim.reset()
 log("simulacion lista")
 
-politica = torch.jit.load(CKPT + "/exported/policy.pt").to("cuda:0").eval()
+politica = torch.jit.load(CKPT + "/exported/policy.pt").to(DEV).eval()
 log("politica cargada: %s" % CKPT.split("/")[-1])
 
 dev = robot.device
