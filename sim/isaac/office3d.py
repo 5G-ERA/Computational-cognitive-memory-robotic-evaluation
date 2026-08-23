@@ -126,9 +126,11 @@ try:
     _np, _nm = len(pared_cells), len(mueble_cells)
     pared_cells -= _lib
     mueble_cells -= _lib
+    CELDAS_PROTEGIDAS = set(_lib)     # por aqui PASO el robot: nada puede volver a ocuparlas
     log("limpieza por trayectoria: -%d celdas de pared, -%d de mueble (%d transitadas)" % (
         _np - len(pared_cells), _nm - len(mueble_cells), len(_lib)))
 except Exception as _e:
+    CELDAS_PROTEGIDAS = set()
     log("AVISO: sin limpieza por trayectoria (%s)" % _e)
 
 # --- SEGUNDA LIMPIEZA (v18): la CREENCIA DEL PROPIO G1 ---
@@ -363,15 +365,73 @@ def altura_region(comp, defecto):
             tope = hi
     return float(tope)
 
+# v19d: ALISADO de cimas. Las regiones interiores salian cada una con su altura y la isla
+# parecia almenada. Se ajustan a niveles de mobiliario real {0.65 mesa baja, 0.90 mesa,
+# 1.20 separador, 1.55 armario} SIN cruzar el plano del lidar (0.55 m): una region que
+# medya por debajo se queda como esta (invisible al /scan, y asi debe seguir).
+def alisa(h):
+    if h < 0.55:
+        return h
+    return min((0.65, 0.90, 1.20, 1.55), key=lambda l: abs(l - h))
+
+def en_isla_Z5(comp):
+    """Zona Z5 (isla central de mesas, Adrian 23-ago). En esa zona el tope es altura de
+    mesa+separador (1.20): los fantasmas de gente inflaban la banda alta justo alli."""
+    cx_ = sum(c[0] for c in comp)/len(comp)*OC; cy_ = sum(c[1] for c in comp)/len(comp)*OC
+    return -0.5 <= cx_ <= 3.6 and -1.5 <= cy_ <= 3.2
+
+def rellena_huecos(cs, tope=3):
+    """Huecos interiores de <=tope celdas: ruido del mapa, no pasillos. Rellenarlos quita
+    las almenas del techo de la isla sin cerrar ningun paso real."""
+    cs = set(cs)
+    if not cs:
+        return cs
+    xs = [c[0] for c in cs]; ys = [c[1] for c in cs]
+    x0, x1, y0, y1 = min(xs)-1, max(xs)+1, min(ys)-1, max(ys)+1
+    fuera = set()
+    pila = [(x0, y0)]
+    caja = {(x, y) for x in range(x0, x1+1) for y in range(y0, y1+1)}
+    vis = {(x0, y0)}
+    while pila:
+        a = pila.pop()
+        fuera.add(a)
+        for dx_ in (-1, 0, 1):
+            for dy_ in (-1, 0, 1):
+                b = (a[0]+dx_, a[1]+dy_)
+                if b in caja and b not in cs and b not in vis:
+                    vis.add(b); pila.append(b)
+    huecos = caja - cs - fuera
+    # solo bolsas pequenas
+    vis2 = set(); relleno = set()
+    for h0 in huecos:
+        if h0 in vis2:
+            continue
+        pila = [h0]; vis2.add(h0); bolsa = []
+        while pila:
+            a = pila.pop(); bolsa.append(a)
+            for dx_ in (-1, 0, 1):
+                for dy_ in (-1, 0, 1):
+                    b = (a[0]+dx_, a[1]+dy_)
+                    if b in huecos and b not in vis2:
+                        vis2.add(b); pila.append(b)
+        if len(bolsa) <= tope and not any(b in CELDAS_PROTEGIDAS for b in bolsa):
+            # una bolsa que contiene celdas TRANSITADAS no es ruido: es el tunel que la
+            # limpieza por trayectoria excavo (rellenarlo cegaba el scan: 57/180 sectores)
+            relleno |= set(bolsa)
+    return cs | relleno
+
 for comp in componentes(pared_cells):
     if _en_linea(comp):
         h = max(altura_region(comp, 2.2), 1.8)
     else:
-        h = min(max(altura_region(comp, 0.9), 0.5), 1.6)
-    regiones.append(("P", h, comp))
+        tope_h = 1.2 if en_isla_Z5(comp) else 1.6
+        h = alisa(min(max(altura_region(comp, 0.9), 0.5), tope_h))
+    regiones.append(("P", h, rellena_huecos(comp)))
 _sofas = [(o["x"], o["y"]) for o in objetos.get("couch", []) if o.get("n", 0) >= 6]
 for comp in componentes(mueble_cells):
-    h = min(max(altura_region(comp, 0.8), 0.5), 1.4)
+    tope_h = 1.2 if en_isla_Z5(comp) else 1.4
+    h = alisa(min(max(altura_region(comp, 0.8), 0.5), tope_h))
+    comp = list(rellena_huecos(comp))
     cx_ = sum(c[0] for c in comp)/len(comp)*OC; cy_ = sum(c[1] for c in comp)/len(comp)*OC
     cls = "M"
     if any(_m.hypot(cx_-sx, cy_-sy) < 0.9 for sx, sy in _sofas):
@@ -458,7 +518,11 @@ ANCHO_TIRA = 0.0333
 UsdGeom.Xform.Define(stage, "/World/Cristal")
 nt = 0
 for c in sorted(cristal_cells):
-    h = max(altura(c, 2.2), 1.8)
+    # v19: altura UNICA del panel (2.30, z98 medido de la particion: 2.37). Antes cada celda
+    # llevaba su altura y el cristal salia escalonado como muro roto. El patron 3v/5i y el
+    # ancho de tira NO cambian: la calibracion del lidar es horizontal, y el plano del scan
+    # (0.55 m) queda igual de cruzado.
+    h = 2.30
     x0 = c[0]*OC - OC/2.0
     y0 = c[1]*OC - OC/2.0
     ntiras = int(round(OC / ANCHO_TIRA))

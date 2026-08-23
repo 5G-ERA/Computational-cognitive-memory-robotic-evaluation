@@ -181,11 +181,17 @@ for k in range(pasos):
         # tirones. Suavizada para que el giro no maree.
         th = rumbo()
         dth = (th - cam_th + math.pi) % (2 * math.pi) - math.pi
-        cam_th += 0.06 * dth
+        # ganancia ADAPTATIVA: 0.06 en recta (suave), hasta 0.30 en giros. Con ganancia fija
+        # la camara se quedaba mirando la pared durante el giro de 180 en B (medido: ~3 s de
+        # fotogramas contra la particion en el video v19a).
+        cam_th += (0.06 + min(0.24, 1.8 * abs(dth))) * dth
         # Los muros de la oficina miden hasta 2.7 m: a 1.75 m la camara se metia
         # DENTRO de ellos en los tramos estrechos y salian fotogramas planos
         # (10 de 67 muestreados). Por encima de 2.7 no ocluye nunca.
-        D, H = CAM_D, CAM_H
+        # en giro cerrado la orbita a radio fijo barre A TRAVES de las paredes (medido
+        # en el giro de B): mejor acercarse al robot mientras dura el giro.
+        D = CAM_D * (1.0 - 0.55 * min(1.0, abs(dth) / 0.5))
+        H = CAM_H
         cx, cy = px - D * math.cos(cam_th), py - D * math.sin(cam_th)
         OT.Set(Gf.Vec3d(cx, cy, H))
         OR_.Set(Gf.Vec3f(90.0 + math.degrees(math.atan2(pz + 0.45 - H, D)), 0.0,
