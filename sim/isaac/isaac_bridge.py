@@ -44,7 +44,13 @@ QUIETO = os.environ.get("G1_ISAAC_LIDAR_QUIETO", "") == "1"
 # runs a traves de este mismo modelo: razon camino_gemelo/camino_real = 1.0008 en la muestra
 # de ajuste y 0.973 en las 84 runs reservadas (antes: 0.852).
 TAU = float(os.environ.get("G1_ISAAC_TAU", "0.42"))        # retardo de actuacion (s)
-ESCALA_V = float(os.environ.get("G1_ISAAC_VSCALE", "0.70"))  # perdida real mando->velocidad
+# GANANCIA, no perdida: >1 a proposito. Es un factor AGREGADO, no la eficiencia del motor.
+# Con TAU=0.42 y ordenes que se refrescan cada 0.30 s (la cadencia real de decision, ver
+# G1_SIM_IFACE_LAT en g1_sim_adapter.py), la velocidad solo alcanza ~la mitad de su asintota
+# dentro de cada tic; para REALIZAR el 0.82 de la orden que realiza el robot real hace falta
+# una asintota mayor que 1. Medido en barrido cerrado con la latencia puesta:
+#   VSCALE 0.70 -> v/cmd 0.45 | 0.95 -> 0.62 | 1.20 -> 0.79-0.80   (real: 0.82)
+ESCALA_V = float(os.environ.get("G1_ISAAC_VSCALE", "1.20"))
 HZ_ODOM = float(os.environ.get("G1_ISAAC_HZ", "3.2"))      # cadencia real de muestras
 
 ESTADO = {"x": X0, "y": Y0, "yaw": YAW0, "vx": 0.0, "vy": 0.0, "wz": 0.0,

@@ -216,6 +216,18 @@ SIM_PERC_PORT = int(os.environ.get("G1_SIM_PERC_PORT", "8010"))
 SP_DOOR = (float(os.environ.get("G1_DOOR_X", "-3.90")),
            float(os.environ.get("G1_DOOR_Y", "1.25")))     # mismo centro que usa g1_goto
 SP_LAT = float(os.environ.get("G1_SIM_PERC_LAT", "0.28"))  # latencia media (s)
+
+# LATENCIA DE INTERFAZ (23-ago). El lazo de control es el MISMO codigo en real y en gemelo
+# (duerme 0.1 s fijos al final del tic); lo que cambia es cuanto tarda la interfaz en
+# responder. Medido sobre 38647 tics reales: periodo 0.300 s [IQR 0.290-0.340], es decir la
+# interfaz consume 0.200 s por tic. El gemelo consumia 0.000 y ticaba a 10 Hz rigidos, o sea
+# TOMABA EL TRIPLE DE DECISIONES que el robot real, y ademas sobre odometria repetida: el
+# 68.7% de sus muestras consecutivas llevaban pose IDENTICA (real: 2.7%).
+# La tasa de frontera de decision no es cosmetica en este banco, es una meta-variable.
+# OJO: esto solo es correcto CON EL FRENO DE RELOJ puesto en el puente. Sin el, bloquear
+# 0.2 s de pared adelantaria ~1.5 s de simulacion y el efecto seria el contrario.
+IFACE_LAT = float(os.environ.get("G1_SIM_IFACE_LAT", "0.20"))   # s por tic (0 = desactiva)
+IFACE_JIT = float(os.environ.get("G1_SIM_IFACE_JIT", "0.035"))  # dispersion medida
 SP_DROP = float(os.environ.get("G1_SIM_PERC_DROP", "0.04"))  # dropout de respuesta
 SP_BNOISE = float(os.environ.get("G1_SIM_PERC_BDEG", "1.5"))  # ruido de bearing (deg)
 
@@ -476,6 +488,9 @@ class SimCDP:
         if "__relocbuf_t" in e:
             return int(self._cloud_t * 1000)
         if "JSON.stringify({pose:" in e:                  # read_pose()
+            # el tic real se bloquea aqui esperando a la interfaz; el gemelo no lo hacia
+            if IFACE_LAT > 0:
+                time.sleep(max(0.02, random.gauss(IFACE_LAT, IFACE_JIT)))
             po = self._pose7()
             return json.dumps({"pose": po, "reloc": None, "map": po, "pcd": "SIM",
                                "pt": int(time.time() * 1000), "rt": 0})
