@@ -398,6 +398,29 @@ except Exception as _e_rol:
     _dcc_rol = None
     print("  [DCC] sin resolucion de rol (%s)" % _e_rol)
 
+# --- MEMORIA DE VOXELS EN LA BANDA CIEGA (Renxi 14-ago) + BARRIDO POR RAYOS (24-ago) ---
+# MEDIDO: 107 de 193 colisiones reales ocurrieron con el laser declarando libre >0.6 m, y 29
+# estuvieron precedidas de ceguera medible (mediana 2.2 s, p90 4.1 s): el laser vio el
+# obstaculo y lo perdio al acercarse. El costmap local borra en el mismo tick lo que deja de
+# verse, asi que el planificador traza contra un obstaculo invisible.
+# LA MITAD QUE FALTABA: la v1 solo caducaba por TTL, y cada barrido que reconfirma una celda
+# le refresca el sello -> una celda que fue real UNA VEZ (una silla que se movio) no caduca
+# nunca mientras el robot ronde cerca. Campana del gemelo: 5/6 neutral y 1/6 CATASTROFICO,
+# 7 impactos en el mismo punto, 41 celdas de mediana y 67 de pico contra 17-24 sanas.
+# Un TTL dice "ha pasado tiempo"; un rayo dice "he MIRADO y no hay nada". vox_rayos.despeja
+# suelta en el acto toda celda que un rayo del barrido actual atraviesa terminando mas alla,
+# y NUNCA dentro de NEAR_BLIND, que es justo la zona para la que la memoria existe.
+VOXMEM = os.environ.get("G1_VOXMEM", "") == "1"                  # OFF por defecto
+VOXMEM_RAYS = os.environ.get("G1_VOXMEM_RAYS", "1") == "1"       # la mitad negativa (ablacion: =0)
+VOXMEM_TTL = float(os.environ.get("G1_VOXMEM_TTL", "3.0"))       # s (3 s cubre el 69% de las cegueras)
+VOXMEM_R = float(os.environ.get("G1_VOXMEM_R", "1.2"))           # m: radio donde aplica la memoria
+VOXMEM_K = int(os.environ.get("G1_VOXMEM_K", "2"))               # confirmaciones sanas para memorizar
+VOXMEM_MAX = int(os.environ.get("G1_VOXMEM_MAX", "400"))         # tope de celdas recordadas
+try:
+    from vox_rayos import despeja as _vox_despeja
+except Exception as _e_vox:
+    _vox_despeja = None
+
 YAW_GATE = float(os.environ.get("G1_YAWGATE", "30.0"))    # >0 = gate ACTIVO (G1_YAWGATE=0 lo desactiva). yaw_rate solo se loguea (yr=)
 # El gate mira el giro COMANDADO (|rx|), NO el yaw medido: el bamboleo de la marcha mete 30-66 deg/s de yaw
 # yendo RECTO (medido, rx=0) -> con umbral por yaw medido el gate congelaba caminando de frente (run 164456).
@@ -1728,6 +1751,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     ss2 = {"reliability": 1.0, "laser_noise": 0.0, "loc_conf": 1.0, "c0_std": 0.0,
            "scan_churn": 0.0, "reloc_rate10s": 0}      # ultimo update FRESCO del SensingMonitor (se reusa en ticks stale)
     loc = None
+    vox_mem = {}; vox_seen = {}   # memoria de voxels: celda -> t de la ultima confirmacion sana
+    vox_inj = 0; vox_ray = 0      # (diag) celdas sostenidas y celdas soltadas por rayo en el tick
 
     def diag_summary():
         """Resumen de diagnostico de sensado para summary del run (todo medido, nada estimado)."""
@@ -1988,6 +2013,38 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                          if math.hypot(c[0] * g.OCELL - x, c[1] * g.OCELL - y) >= g.NEAR_BLIND)
                 filt_rej = (1.0 - len(confirmed) / lf) if lf else 0.0
                 rej_sum += filt_rej; rej_n += 1
+            # --- MEMORIA DE VOXELS + BARRIDO POR RAYOS (ver cabecera) ---
+            vox_inj = 0; vox_ray = 0
+            if VOXMEM:
+                if scan_fresh:
+                    for c in confirmed:               # ya filtrado a distancia SANA
+                        vox_seen[c] = vox_seen.get(c, 0) + 1
+                        if vox_seen[c] >= VOXMEM_K:
+                            vox_mem[c] = now
+                    # evidencia POSITIVA de ausencia: los rayos del barrido de ESTE tick.
+                    # Los extremos son los centros de las celdas vivas; lo que el rayo
+                    # atraviesa antes de llegar esta demostrado libre.
+                    if VOXMEM_RAYS and _vox_despeja is not None and vox_mem:
+                        _pts = [(c[0] * g.OCELL, c[1] * g.OCELL) for c in live]
+                        _libres, _, _ = _vox_despeja((x, y), _pts, set(vox_mem),
+                                                     g.OCELL, g.NEAR_BLIND, True)
+                        for c in _libres:
+                            vox_mem.pop(c, None); vox_seen.pop(c, None)
+                        vox_ray = len(_libres)
+                if vox_mem:
+                    _add = []
+                    for c, ts in list(vox_mem.items()):
+                        if now - ts > VOXMEM_TTL:
+                            vox_mem.pop(c, None); vox_seen.pop(c, None); continue
+                        if math.hypot(c[0] * g.OCELL - x, c[1] * g.OCELL - y) > VOXMEM_R:
+                            continue                  # fuera de la banda: manda el barrido
+                        if scan_fresh and c in live:
+                            continue                  # el barrido la ve: no hace falta memoria
+                        _add.append((ts, c))
+                    _add.sort(reverse=True)
+                    _keep = {c for _, c in _add[:VOXMEM_MAX]}
+                    vox_inj = len(_keep)
+                    confirmed |= _keep
             # --- FIX C: marco de puerta pegajoso (ver cabecera). Cuenta confirmaciones REALES
             # (post-filtro, a distancia sana) y fija la celda; el bypass reinyecta las fijadas
             # aunque el robot este encima (NEAR_BLIND) -> c0_hard estable durante el cruce.
@@ -2863,6 +2920,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                              "cov_def": cov_def,                               # cobertura: predichos por el mapa y AUSENTES
                              "cov_blind": cov_blind,                           # ...y los inobservables por el recorte del fabricante
                              "cov_n": cov_n,                                   # rumbos que informan (0 = sin mapa)
+                             "vox_inj": (vox_inj if VOXMEM else None),   # celdas sostenidas por memoria
+                             "vox_ray": (vox_ray if VOXMEM else None),   # celdas soltadas por rayo este tick
                              "cov_missing": cov_missing,                       # celdas de la ref de SESION ausentes 2 barridos (None = sin G1_COVREF)
                              "meta_state": (meta_state if METASM else None),   # estado de la MAQUINA META
                              "iface_q": (iface_q if METASM else None),         # calidad de la interfaz (Renxi)
