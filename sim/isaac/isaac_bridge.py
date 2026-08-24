@@ -50,7 +50,13 @@ TAU = float(os.environ.get("G1_ISAAC_TAU", "0.42"))        # retardo de actuacio
 # dentro de cada tic; para REALIZAR el 0.82 de la orden que realiza el robot real hace falta
 # una asintota mayor que 1. Medido en barrido cerrado con la latencia puesta:
 #   VSCALE 0.70 -> v/cmd 0.45 | 0.95 -> 0.62 | 1.20 -> 0.79-0.80   (real: 0.82)
-ESCALA_V = float(os.environ.get("G1_ISAAC_VSCALE", "1.20"))
+# 1.20 fue un error mio con nombre: lo ajuste contra v/cmd computado a escala nativa, donde
+# el temblor de pose del robot real inflaba el objetivo (ver analysis/escala_pose.py y el
+# commit 078be70). Reajustado en barrido cerrado CONTRA EL OBJETIVO A ESCALA DECLARADA
+# (real 0.43 a k=8): 0.70->0.41, 0.78->0.46, interpolado 0.74. La prediccion registrada
+# antes del barrido (con ~0.75 la duracion vuelve al IQR real) se cumplio: 63-95 s dentro
+# de [54.4, 101.9]. Notese que el ajuste offline original daba 0.70: estaba casi bien.
+ESCALA_V = float(os.environ.get("G1_ISAAC_VSCALE", "0.74"))
 HZ_ODOM = float(os.environ.get("G1_ISAAC_HZ", "3.2"))      # cadencia real de muestras
 
 ESTADO = {"x": X0, "y": Y0, "yaw": YAW0, "vx": 0.0, "vy": 0.0, "wz": 0.0,
