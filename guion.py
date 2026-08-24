@@ -27,14 +27,21 @@ GUIONES = {
     "T1":  [(0.0, {"luz": LUZ_ON,  "cristal": CRISTAL_VANO}, "lidar_quality")],
     "T2":  [(0.0, {"luz": LUZ_ON,  "cristal": CRISTAL_VANO}, "lidar_quality"),
             (25.0, {"luz": LUZ_ON, "cristal": ""},            "motion")],
-    "T3":  [(0.0, {"luz": LUZ_ON,  "cristal": ""},            "motion"),
-            (20.0, {"luz": LUZ_OFF, "cristal": ""},           "illumination")],
-    "T4":  [(0.0, {"luz": LUZ_OFF, "cristal": ""},            "illumination"),
-            (20.0, {"luz": LUZ_ON, "cristal": ""},            "motion")],
-    "T8":  [(0.0, {"luz": LUZ_ON,  "cristal": ""},            "motion"),
-            (18.0, {"luz": LUZ_OFF, "cristal": CRISTAL_VANO}, "defer")],
-    "T9":  [(0.0, {"luz": LUZ_OFF, "cristal": CRISTAL_VANO},  "defer"),
-            (22.0, {"luz": LUZ_ON, "cristal": ""},            "motion")],
+    # T3/T4 EN LA DIRECCION MEDIDA (D2): en este sistema es la luz PLENA la que inadmite
+    # el RGB (contrato congelado), asi que illumination gobierna con luz alta y motion con
+    # luz baja -- el inverso del supuesto clasico de la tabla. La renumeracion es de Renxi.
+    "T3":  [(0.0, {"luz": LUZ_OFF, "cristal": ""},           "motion"),
+            (20.0, {"luz": LUZ_ON, "cristal": ""},            "illumination")],
+    "T4":  [(0.0, {"luz": LUZ_ON,  "cristal": ""},           "illumination"),
+            (20.0, {"luz": LUZ_OFF, "cristal": ""},           "motion")],
+    # T8/T9 EN NUESTRO SISTEMA (cazado por A_Omega, 24-ago: C4=0% con el guion clasico).
+    # El supuesto clasico dice "oscuro degrada el RGB"; nuestro contrato congelado mide lo
+    # contrario (la luz plena lo inadmite). Insuficiencia conjunta AQUI = luz PLENA (RGB
+    # inadmisible) + cristal (laser degradado). El retorno de T9: luz baja y cristal fuera.
+    "T8":  [(0.0, {"luz": LUZ_OFF, "cristal": ""},           "motion"),
+            (18.0, {"luz": LUZ_ON, "cristal": CRISTAL_VANO},  "defer")],
+    "T9":  [(0.0, {"luz": LUZ_ON,  "cristal": CRISTAL_VANO}, "defer"),
+            (22.0, {"luz": LUZ_OFF, "cristal": ""},           "motion")],
     # T7: bateria como TRAYECTORIA DECLARADA (D3). Cruza la banda de energia (60) dentro
     # de la run, con luz baja para que el RGB sea admisible y no interfiera la iluminacion.
     "T7":  [(0.0, {"luz": LUZ_OFF, "cristal": "", "bat": 75}, "motion"),
@@ -61,6 +68,16 @@ def main():
 
     # estado inicial ANTES de arrancar el robot: el guion fija el mundo, no lo hereda
     json.dump(guion[0][1], open(a.escena, "w"))
+    # CERTIFICADO DE REFERENCIA (Omega_t): se escribe EN EL MISMO ACTO que escenifica.
+    # El §3 exige que la referencia venga del guion y no de la telemetria; aqui el guion es
+    # quien mueve el mundo, asi que certificado y evento no pueden divergir -- no son dos
+    # fuentes. Cada segmento: instante de pared, delta_t declarada y el estado que la
+    # justifica. dcc_omega.carga_referencia lo mapea al tiempo de la run via `started`.
+    ref_f = "/tmp/g1_omega_ref_%s.json" % a.config
+    ref = {"config": a.config, "destino": a.destino,
+           "segmentos": [{"t_pared": time.time(), "delta": guion[0][2],
+                          "estado": guion[0][1]}]}
+    json.dump(ref, open(ref_f, "w"))
     time.sleep(0.5)
 
     env = dict(os.environ,
@@ -86,6 +103,8 @@ def main():
             while pendientes and ahora >= pendientes[0][0]:
                 t, est, d = pendientes.pop(0)
                 json.dump(est, open(a.escena, "w"))
+                ref["segmentos"].append({"t_pared": time.time(), "delta": d, "estado": est})
+                json.dump(ref, open(ref_f, "w"))
                 print("  [GUION] t=%.1fs declarado %s (delta_t -> %s)" % (ahora, est, d), flush=True)
             if proc.poll() is not None:
                 break
@@ -93,6 +112,7 @@ def main():
         proc.wait()
     print("\nrun: %s" % (fichero or "(sin fichero)"))
     print("registro independiente: %s" % a.registro)
+    print("certificado de referencia: %s" % ref_f)
 
 if __name__ == "__main__":
     main()
