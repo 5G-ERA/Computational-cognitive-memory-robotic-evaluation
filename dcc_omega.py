@@ -95,6 +95,35 @@ def puntua_run(run, segs, evalua_todas, usa_pose, ventana=2.0):
         if any(abs(t - s["desde"]) < ventana for s in segs[1:]):
             continue
         delta = seg["delta"]
+        # DELTA DERIVADA (24-ago): delta_t no es una etiqueta por segmento sino una FUNCION
+        # del estado declarado y la pose, computable a priori -- el §4.2 en codigo. El caso
+        # que lo forzo: en T8 el robot CRUZA y deja el cristal atras; su cobertura se
+        # recupera y defer deja de ser lo correcto aunque el segmento declarado siga. Con
+        # luz alta fuera de la zona del cristal lo esperable es illumination; dentro, la
+        # insuficiencia es conjunta y la abstencion (defer o review, §4.2 admite ambas) es
+        # la respuesta. La pose viene del robot: limitacion §3, ya declarada.
+        if delta in ("defer", "review"):
+            est = seg.get("estado") or {}
+            luz_mala = float(est.get("luz", 0)) > 99.0
+            en_zona = False
+            rects = [r for r in str(est.get("cristal") or "").split(";") if r.strip()]
+            for r_ in rects:
+                try:
+                    x0, y0, x1, y1 = (float(t_) for t_ in r_.split(","))
+                except ValueError:
+                    continue
+                cx = min(max(m.get("x", 0), min(x0, x1)), max(x0, x1))
+                cy = min(max(m.get("y", 0), min(y0, y1)), max(y0, y1))
+                if math.hypot(m.get("x", 0) - cx, m.get("y", 0) - cy) <= 2.0:
+                    en_zona = True; break
+            if en_zona and luz_mala:
+                delta = ("defer", "review")
+            elif luz_mala:
+                delta = "illumination"
+            elif en_zona:
+                delta = "lidar_quality"
+            else:
+                delta = "motion"
         # segmentos de OBJETO: delta por muestra segun identificabilidad
         if delta == "object":
             objs = (seg.get("estado") or {}).get("objetos") or []
@@ -107,12 +136,13 @@ def puntua_run(run, segs, evalua_todas, usa_pose, ventana=2.0):
                     ident = True; break
             if not ident:
                 delta = "motion"
-        acepta = FUNDAMENTO.get(delta, ())
+        deltas_ok = delta if isinstance(delta, tuple) else (delta,)
+        acepta = tuple(f for d_ in deltas_ok for f in FUNDAMENTO.get(d_, ()))
         r = evalua_todas(m, usa_pose=usa_pose)
         for c, res in r.items():
             a = out.setdefault(c, {"meta": 0, "omega": 0, "n": 0})
             a["n"] += 1
-            ok_meta = res["Z"] == delta
+            ok_meta = res["Z"] in deltas_ok
             if ok_meta:
                 a["meta"] += 1
                 if fundamento_de(res["razon"]) in acepta:

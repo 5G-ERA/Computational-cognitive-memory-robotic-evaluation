@@ -131,8 +131,16 @@ def resuelve_rol(m, cfg=None):
         lidar_mal = True; r_lidar.append("cov_missing=%.0f>=%d" % (cov_miss, cm_mal))
     if trust is not None and trust < tr_mal:
         lidar_mal = True; r_lidar.append("laser_trust=%.2f<%.2f" % (trust, tr_mal))
-    if cov_n is not None and cov_n <= 0:
-        lidar_mal = True; r_lidar.append("cov_n=0 sin rumbos informativos")
+    # POCOS RUMBOS INFORMATIVOS (24-ago, cazado por la escenificacion de T8): el cristal no
+    # dispara cov_def -- le roba el DENOMINADOR al instrumento (cov_n 24 -> 10 de mediana,
+    # min 3). Una tasa certificada sobre <10 rumbos no certifica nada. Umbral 10, con la
+    # salvedad medida: el 12.6% de las muestras reales cae debajo, pero esas provienen de la
+    # sesion del 21-ago con la referencia DELIBERADAMENTE fina (30 celdas, a oscuras) y a
+    # 3.6 m del vano de mediana -- es el instrumento fino, no cobertura limitada real. Con
+    # la referencia densificada (pendiente, K_online sin congelar) el umbral se re-mide.
+    if cov_n is not None and cov_n < 10:
+        lidar_mal = True
+        r_lidar.append("cov_n=%.0f<10 pocos rumbos informativos" % cov_n)
     if lidar_mal:
         cand["lidar_quality"] = ("lidar_quality", "cobertura:" + ",".join(r_lidar))
 

@@ -6,9 +6,11 @@ from dcc_omega import carga_referencia, puntua_run
 
 RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
 CASOS = [
+    ("T5", "20260824_124430_ours_B.json"),
+    ("T6", "20260824_124545_ours_A.json"),
     ("T3", "20260824_121500_ours_A.json"),
     ("T7", "20260824_120632_ours_A.json"),
-    ("T8", "20260824_121046_ours_A.json"),
+    ("T8", "20260824_141540_ours_B.json"),
 ]
 
 tot = {c: {"meta": 0, "omega": 0, "n": 0} for c in CONDICIONES}

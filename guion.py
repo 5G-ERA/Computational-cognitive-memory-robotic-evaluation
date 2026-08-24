@@ -17,7 +17,9 @@ Cubre hoy las siete configuraciones que dependen de luz y cristal. Las que falta
   T10    bloqueo     -> exige geometria nueva en el USD, no un cambio de escena
   T12    sucesor     -> propiedad del REGISTRO, no del mundo: no necesita canal
 """
-import argparse, json, os, subprocess, sys, time
+import argparse, json, math, os, re, subprocess, sys, time
+
+_POS_RE = re.compile(r"pos=\((?P<x>[-+0-9.]+),(?P<y>[-+0-9.]+)\)")
 
 LUZ_ON, LUZ_OFF = 116.0, 85.0            # los dos estados declarados, medidos el 21-ago
 CRISTAL_VANO = "-4.3,0.6,-3.5,1.9"       # rectangulo del flanco del vano (frame del mapa)
@@ -38,8 +40,10 @@ GUIONES = {
     # El supuesto clasico dice "oscuro degrada el RGB"; nuestro contrato congelado mide lo
     # contrario (la luz plena lo inadmite). Insuficiencia conjunta AQUI = luz PLENA (RGB
     # inadmisible) + cristal (laser degradado). El retorno de T9: luz baja y cristal fuera.
+    # transicion a t=28: el robot esta ya EN la aproximacion al vano, donde el cristal
+    # domina la banda de cobertura (a t=18 aun estaba lejos y cov_n no caia)
     "T8":  [(0.0, {"luz": LUZ_OFF, "cristal": ""},           "motion"),
-            (18.0, {"luz": LUZ_ON, "cristal": CRISTAL_VANO},  "defer")],
+            ({"zona": [-3.90, 1.25, 3.0]}, {"luz": LUZ_ON, "cristal": CRISTAL_VANO}, "defer")],
     "T9":  [(0.0, {"luz": LUZ_ON,  "cristal": CRISTAL_VANO}, "defer"),
             (22.0, {"luz": LUZ_OFF, "cristal": ""},           "motion")],
     # T5/T6: el objeto entra/sale de la escena via el canal del emulador. Luz BAJA a
@@ -70,7 +74,9 @@ def main():
     guion = GUIONES[a.config]
     print("== %s -> %s ==" % (a.config, a.destino))
     for t, est, d in guion:
-        print("   t=%5.1fs  %-46s  delta_t esperado: %s" % (t, json.dumps(est), d))
+        cuando = ("zona %.1f m de (%.2f, %.2f)" % (t["zona"][2], t["zona"][0], t["zona"][1])
+                  if isinstance(t, dict) else "t=%5.1fs" % t)
+        print("   %-28s %-46s  delta_t esperado: %s" % (cuando, json.dumps(est), d))
     if a.seco:
         return
 
@@ -103,12 +109,28 @@ def main():
                             text=True, bufsize=1)
     fichero = None
     pendientes = [g for g in guion[1:]]
+    pos = None
+    def _disparado(trig, ahora):
+        # zona: la transicion se dispara por POSICION. Motivo (medido): el arranque del
+        # adaptador varia varios segundos entre runs, y un instante fijo cae donde quiere
+        # respecto a la geometria -- T8 a t=28 acabo aplicandose con el robot ya al otro
+        # lado del vano. Una condicion ligada a la posicion se dispara por posicion; el
+        # registro de pared sigue siendo el certificado.
+        if isinstance(trig, dict) and "zona" in trig:
+            if pos is None:
+                return False
+            zx, zy, zr = trig["zona"]
+            return math.hypot(pos[0] - zx, pos[1] - zy) <= zr
+        return ahora >= float(trig)
     try:
         for linea in proc.stdout:
             if "travesia guardada" in linea:
                 fichero = linea.strip().split("-> ")[-1]
+            m_ = _POS_RE.search(linea)
+            if m_:
+                pos = (float(m_.group("x")), float(m_.group("y")))
             ahora = time.time() - t0
-            while pendientes and ahora >= pendientes[0][0]:
+            while pendientes and _disparado(pendientes[0][0], ahora):
                 t, est, d = pendientes.pop(0)
                 json.dump(est, open(a.escena, "w"))
                 ref["segmentos"].append({"t_pared": time.time(), "delta": d, "estado": est})
