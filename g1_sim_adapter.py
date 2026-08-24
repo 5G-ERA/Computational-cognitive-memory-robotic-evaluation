@@ -241,6 +241,71 @@ SP_BNOISE = float(os.environ.get("G1_SIM_PERC_BDEG", "1.5"))  # ruido de bearing
 #       que es lo que empujo el cruce a +0.134 y provoco el golpe. Se reproduce aqui para
 #       poder ENSAYAR el gate de iluminacion antes de la sesion real.
 SIM_LUZ = float(os.environ.get("G1_SIM_LUZ", "116"))
+
+# --- CANAL DE ESCENIFICACION (24-ago): las doce configuraciones son TRANSICIONES ----------
+# Hasta hoy la escena del gemelo eran constantes de modulo leidas del entorno al importar,
+# asi que solo sabia correr una condicion FIJA. Ninguna de las T1-T12 es una condicion fija:
+# todas son un cambio en un instante. (Efecto lateral util: por eso ninguna configuracion
+# reservada ha podido contaminarse durante el desarrollo -- era estructuralmente imposible
+# escenificar una transicion, no una precaucion que tomamos.)
+#
+# El canal hace DOS cosas con un solo mecanismo, y esa union es deliberada:
+#   1. aplica el cambio declarado en el instante declarado, y
+#   2. escribe el REGISTRO INDEPENDIENTE de cuando ocurrio.
+# El §3 de la pre-registracion exige que Omega_t venga del guion del experimento y no de la
+# telemetria del sistema bajo prueba. Aqui el guion ES quien mueve la escena, asi que el
+# registro no se infiere: se emite en el mismo acto que provoca la transicion. No hay forma
+# de que diverjan porque no son dos fuentes.
+ESCENA_F = os.environ.get("G1_SIM_ESCENA", "")          # JSON que el guion reescribe en vivo
+ESCENA_LOG = os.environ.get("G1_SIM_ESCENA_LOG", "/tmp/g1_escena_registro.jsonl")
+_escena_mtime = 0.0
+_escena_estado = {}
+
+
+def _escena_aplica(nuevo_estado, motivo="guion"):
+    """Aplica un estado de escena declarado y ANOTA la transicion. Devuelve lo que cambio."""
+    global SIM_LUZ, SIM_GLASS, _DUMMY_URI, _escena_estado
+    cambios = {}
+    if "luz" in nuevo_estado:
+        v = float(nuevo_estado["luz"])
+        if abs(v - SIM_LUZ) > 1e-6:
+            cambios["luz"] = [SIM_LUZ, v]
+            SIM_LUZ = v
+            try:
+                _DUMMY_URI = _dummy_frame() if SIM_PERC else ""   # la luma sigue a la luz
+            except Exception:
+                pass
+    if "cristal" in nuevo_estado:
+        v = _rects(nuevo_estado["cristal"] or "")
+        if v != SIM_GLASS:
+            cambios["cristal"] = [len(SIM_GLASS), len(v)]
+            SIM_GLASS = v
+    if cambios:
+        _escena_estado = dict(nuevo_estado)
+        reg = {"t_pared": time.time(), "motivo": motivo, "cambios": cambios,
+               "estado": dict(nuevo_estado)}
+        try:
+            with open(ESCENA_LOG, "a") as fh:
+                fh.write(json.dumps(reg) + "\n")
+        except Exception:
+            pass
+        print("  [ESCENA] %s -> %s" % (motivo, cambios), flush=True)
+    return cambios
+
+
+def _escena_vigila():
+    """Relee el fichero de escena cuando cambia. Hilo aparte: no toca el lazo de control."""
+    global _escena_mtime
+    while True:
+        try:
+            m = os.path.getmtime(ESCENA_F)
+            if m > _escena_mtime:
+                _escena_mtime = m
+                _escena_aplica(json.load(open(ESCENA_F)), motivo="fichero")
+        except Exception:
+            pass
+        time.sleep(0.2)
+
 SIM_DOOR_BIAS = float(os.environ.get("G1_SIM_DOOR_BIAS", "8.8"))   # sesgo con luz plena
 SIM_DOOR_P_LUZ = float(os.environ.get("G1_SIM_DOOR_P_LUZ", "0.95"))
 SIM_DOOR_P_OSC = float(os.environ.get("G1_SIM_DOOR_P_OSC", "0.30"))
@@ -582,6 +647,9 @@ def main():
 
     print(f">>> SIM ADAPTER: conectando a rosbridge {SIM_URL} ...")
     bridge = RosBridge(SIM_URL)
+    if ESCENA_F:
+        threading.Thread(target=_escena_vigila, daemon=True).start()
+        print("  [ESCENA] canal activo: %s (registro -> %s)" % (ESCENA_F, ESCENA_LOG))
     cdp = SimCDP(bridge)
     print("  esperando /odom (hasta 30s; el mundo del lab tarda en cargar)...", end="", flush=True)
     for i in range(120):
