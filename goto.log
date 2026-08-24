@@ -69137,3 +69137,429 @@ STRAFE-CAL-RESUMEN lx>0 -> -0.7080463032979128cm/tick ; lx<0 -> 2.15691217484718
 TURN-CAL-RESUMEN rx>0 -> medido~-30.780909871386072deg/s (modelo<0) ; rx<0 -> medido~23.213183845166213deg/s (modelo>0) :: OK (modelo correcto)
 FASES {'DWA-F': 57, 'DOOR-CTR': 2, 'DOOR-GO': 5, 'ENG-F': 11, 'ENG-T': 3, 'ENG-AL': 8, 'ENG-AL.': 9, 'ENG-GO': 27, 'ENG-RE': 2, 'DWA-T': 55, 'BRK-BK': 2, 'BRK-TR': 17}
 FIN
+
+=== GOTO 2026-08-24 07:26:19 ===
+
+=== RUN ours 'A' -> (+0.99,+0.57)  2026-08-24 07:26:19 env=sim/lab_v1 ===
+FRAME-CHECK start=(+0.99,+0.57) wp_mas_cercano=A(+0.99,+0.57) offset=0.00m
+PERC-TEST OK dets=0 cells=0 lat=300ms floorcolor=off
+GLOBALMAP src=static walls=961 static=0 soft=9.0/4.0
+REACHED A err=0.00 ncol=0 2026-08-24 07:26:20
+FIN
+
+=== GOTO 2026-08-24 07:26:45 ===
+
+=== RUN ours 'B' -> (-4.73,+3.04)  2026-08-24 07:26:45 env=sim/lab_v1 ===
+FRAME-CHECK start=(+0.99,+0.57) wp_mas_cercano=A(+0.99,+0.57) offset=0.00m
+PERC-TEST OK dets=0 cells=0 lat=378ms floorcolor=off
+GLOBALMAP src=static walls=961 static=0 soft=9.0/4.0
+[VIS] perc_n=0 age=- free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t=  0.4 DWA-F pos=(+0.99,+0.57) yaw=-120.0 d=6.23 goal_err=-83 carrot_err= -62 c0=2.50 clear=1.00 prog=0.00 rel=1.00 bal=+0.16 obs=30 hard=30 obsc=30 yr=  0  nz=0.00 flt=0.42 dmap=+30/-0 shz=0.0 plan=34 cmd=(lx=+0.00,ly=+0.40,rx=+0.45)
+t=  0.7 DWA-F pos=(+0.99,+0.57) yaw=-120.0 d=6.23 goal_err=-83 carrot_err= -62 c0=2.50 clear=1.00 prog=0.00 rel=0.69 bal=+0.16 obs=30 hard=30 obsc=30 yr=  0G nz=0.00 flt=0.42 dmap=+0/-0 shz=0.0 plan=34 cmd=(lx=+0.00,ly=+0.40,rx=+0.45)
+t=  1.0 DWA-F pos=(+0.97,+0.54) yaw=-125.0 d=6.23 goal_err=-79 carrot_err= -60 c0=2.50 clear=1.00 prog=0.03 rel=0.69 bal=+0.20 obs=31 hard=31 obsc=31 yr= 18G nz=0.00 flt=0.37 dmap=+1/-0 shz=1.7 plan=34 cmd=(lx=+0.00,ly=+0.40,rx=+0.45)
+t=  1.3 DWA-F pos=(+0.92,+0.48) yaw=-135.0 d=6.21 goal_err=-69 carrot_err= -54 c0=2.50 clear=1.00 prog=0.09 rel=0.62 bal=+0.22 obs=31 hard=31 obsc=31 yr= 35G nz=0.02 flt=0.35 dmap=+0/-0 shz=2.3 plan=34 cmd=(lx=+0.00,ly=+0.40,rx=+0.45)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t=  1.6 DWA-F pos=(+0.85,+0.42) yaw=-147.3 d=6.17 goal_err=-58 carrot_err= -31 c0=2.50 clear=1.00 prog=0.17 rel=0.69 bal=+0.25 obs=31 hard=31 obsc=31 yr= 35G nz=0.02 flt=0.42 dmap=+0/-0 shz=2.4 plan=34 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  1.9 DWA-F pos=(+0.75,+0.37) yaw=-162.3 d=6.09 goal_err=-44 carrot_err= -20 c0=1.75 clear=1.00 prog=0.30 rel=0.65 bal=+0.31 obs=49 hard=49 obsc=56 yr= 55  nz=0.03 flt=0.43 dmap=+18/-0 shz=2.7 plan=33 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  2.3 DWA-F pos=(+0.64,+0.34) yaw=-169.2 d=6.01 goal_err=-37 carrot_err= -15 c0=1.45 clear=0.96 prog=0.38 rel=0.35 bal=+0.36 obs=71 hard=68 obsc=80 yr= 18  nz=0.54 flt=0.37 dmap=+22/-0 shz=2.6 plan=33 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  2.6 DWA-F pos=(+0.54,+0.33) yaw=-172.5 d=5.93 goal_err=-35 carrot_err= -13 c0=1.37 clear=0.91 prog=0.55 rel=0.22 bal=+0.41 obs=85 hard=79 obsc=93 yr= 12  nz=0.74 flt=0.31 dmap=+15/-1 shz=2.8 plan=33 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t=  2.9 DWA-F pos=(+0.43,+0.31) yaw=-174.0 d=5.84 goal_err=-34 carrot_err= -12 c0=1.27 clear=0.84 prog=0.69 rel=0.18 bal=+0.47 obs=94 hard=86 obsc=104 yr=  5  nz=0.80 flt=0.28 dmap=+10/-1 shz=2.8 plan=33 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  3.2 DWA-F pos=(+0.31,+0.30) yaw=-174.8 d=5.73 goal_err=-34 carrot_err= -13 c0=1.15 clear=0.77 prog=0.82 rel=0.20 bal=+0.34 obs=91 hard=93 obsc=119 yr=  2  nz=0.74 flt=0.17 dmap=+10/-13 shz=2.9 plan=33 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  3.5 DWA-F pos=(+0.20,+0.29) yaw=-175.1 d=5.64 goal_err=-34 carrot_err=  +2 c0=1.05 clear=0.70 prog=0.91 rel=0.57 bal=+0.34 obs=99 hard=88 obsc=115 yr=  1  nz=0.38 flt=0.19 dmap=+13/-5 shz=2.9 plan=30 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @+5/4.09m -> IGNORADA (gate=- perc_n=0)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+5/4.09m]
+t=  3.8 DWA-F pos=(+0.09,+0.28) yaw=-175.2 d=5.56 goal_err=-35 carrot_err= +13 c0=0.95 clear=0.63 prog=0.93 rel=0.59 bal=+0.36 obs=102 hard=90 obsc=125 yr=  0  nz=0.31 flt=0.14 dmap=+10/-7 shz=2.9 plan=30 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+META-SM: NORMAL -> BLIND (trust=1.00 contra=0 iface=1.00 near=0.95) t=4s
+[VIS] YOLO ve refrigerator conf=0.45 @+5/4.09m -> IGNORADA (gate=- perc_n=0)
+[VIS] perc_n=0 age=0.3 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+5/4.09m]
+t=  4.1 DWA-F pos=(-0.01,+0.27) yaw=-175.3 d=5.47 goal_err=-35 carrot_err= +15 c0=1.04 clear=0.69 prog=0.98 rel=0.57 bal=+0.37 obs=107 hard=90 obsc=122 yr=  0  nz=0.30 flt=0.18 dmap=+9/-4 shz=2.9 plan=30 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @+4/4.04m -> IGNORADA (gate=- perc_n=0)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+4/4.04m]
+t=  4.4 DWA-F pos=(-0.12,+0.27) yaw=-175.3 d=5.38 goal_err=-36 carrot_err= +12 c0=1.13 clear=0.75 prog=0.97 rel=0.71 bal=+0.42 obs=112 hard=94 obsc=127 yr=  0  nz=0.21 flt=0.16 dmap=+9/-4 shz=3.0 plan=30 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @+6/3.4m -> USADA (en mapa)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+6/3.4m]
+t=  4.7 DWA-F pos=(-0.22,+0.26) yaw=-175.3 d=5.30 goal_err=-36 carrot_err= +14 c0=1.04 clear=0.69 prog=0.98 rel=0.73 bal=+0.55 obs=110 hard=95 obsc=128 yr=  0  nz=0.16 flt=0.21 dmap=+3/-5 shz=3.0 plan=30 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @+6/3.4m -> USADA (en mapa)
+[VIS] perc_n=0 age=0.3 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+6/3.4m]
+t=  5.0 DWA-F pos=(-0.32,+0.25) yaw=-175.3 d=5.22 goal_err=-37 carrot_err= +11 c0=1.33 clear=0.89 prog=0.97 rel=0.73 bal=+0.60 obs=114 hard=98 obsc=130 yr=  0  nz=0.15 flt=0.12 dmap=+8/-4 shz=3.1 plan=30 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  5.3 DWA-F pos=(-0.44,+0.24) yaw=-175.3 d=5.12 goal_err=-38 carrot_err= +13 c0=1.21 clear=0.81 prog=1.00 rel=0.72 bal=+0.66 obs=116 hard=100 obsc=131 yr=  0  nz=0.24 flt=0.28 dmap=+5/-3 shz=3.1 plan=27 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  5.6 DWA-F pos=(-0.55,+0.23) yaw=-175.3 d=5.04 goal_err=-39 carrot_err=  -3 c0=1.12 clear=0.74 prog=0.97 rel=0.65 bal=+0.70 obs=117 hard=99 obsc=134 yr=  0  nz=0.23 flt=0.19 dmap=+3/-2 shz=3.1 plan=27 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  5.9 DWA-F pos=(-0.65,+0.22) yaw=-175.3 d=4.96 goal_err=-39 carrot_err=  -3 c0=1.21 clear=0.81 prog=0.96 rel=0.76 bal=+0.73 obs=127 hard=105 obsc=144 yr=  0  nz=0.19 flt=0.07 dmap=+10/-0 shz=3.1 plan=27 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] perc_n=0 age=0.3 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t=  6.2 DWA-F pos=(-0.76,+0.21) yaw=-175.3 d=4.87 goal_err=-40 carrot_err=  -3 c0=2.28 clear=1.00 prog=0.95 rel=0.74 bal=+0.70 obs=126 hard=106 obsc=148 yr=  0  nz=0.21 flt=0.20 dmap=+5/-6 shz=3.1 plan=27 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @-21/2.58m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=0/14 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@-21/2.58m]
+t=  6.5 DWA-F pos=(-0.89,+0.20) yaw=-175.3 d=4.78 goal_err=-41 carrot_err=  -4 c0=2.01 clear=1.00 prog=0.95 rel=0.27 bal=+0.72 obs=129 hard=111 obsc=165 yr=  0  nz=0.71 flt=0.12 dmap=+8/-5 shz=3.1 plan=27 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=-21.1 dets=[-]
+t=  6.8 DWA-F pos=(-0.99,+0.19) yaw=-175.3 d=4.70 goal_err=-42 carrot_err=  -5 c0=1.90 clear=1.00 prog=0.94 rel=0.19 bal=+0.66 obs=131 hard=108 obsc=153 yr=  0  nz=0.80 flt=0.21 dmap=+7/-5 shz=3.1 plan=24 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  7.1 DWA-F pos=(-1.10,+0.19) yaw=-175.3 d=4.62 goal_err=-43 carrot_err=  -6 c0=1.80 clear=1.00 prog=0.92 rel=0.21 bal=+0.63 obs=135 hard=109 obsc=157 yr=  0  nz=0.76 flt=0.11 dmap=+8/-4 shz=3.1 plan=24 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  7.4 DWA-F pos=(-1.23,+0.18) yaw=-175.3 d=4.52 goal_err=-44 carrot_err=  -6 c0=1.67 clear=1.00 prog=0.95 rel=0.28 bal=+0.50 obs=129 hard=109 obsc=160 yr=  0  nz=0.71 flt=0.15 dmap=+4/-10 shz=3.1 plan=24 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @+2/2.17m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.0 free_c=- vismap=5/15 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+2/2.17m]
+t=  7.7 DWA-F pos=(-1.33,+0.17) yaw=-175.3 d=4.45 goal_err=-45 carrot_err= -20 c0=1.57 clear=1.00 prog=0.93 rel=0.40 bal=+0.50 obs=136 hard=109 obsc=169 yr=  0  nz=0.57 flt=0.10 dmap=+10/-3 shz=3.1 plan=24 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  8.0 DWA-F pos=(-1.44,+0.16) yaw=-175.3 d=4.37 goal_err=-46 carrot_err= -29 c0=1.47 clear=0.98 prog=0.92 rel=0.66 bal=+0.43 obs=140 hard=109 obsc=163 yr=  0  nz=0.30 flt=0.13 dmap=+9/-5 shz=3.1 plan=24 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  8.4 DWA-F pos=(-1.55,+0.15) yaw=-175.3 d=4.30 goal_err=-47 carrot_err= -21 c0=1.37 clear=0.91 prog=0.87 rel=0.65 bal=+0.44 obs=140 hard=106 obsc=162 yr=  0  nz=0.28 flt=0.02 dmap=+4/-4 shz=3.1 plan=21 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  8.6 DWA-F pos=(-1.68,+0.14) yaw=-175.3 d=4.21 goal_err=-48 carrot_err= -24 c0=1.25 clear=0.83 prog=0.90 rel=0.67 bal=+0.45 obs=139 hard=112 obsc=161 yr=  0  nz=0.30 flt=0.14 dmap=+4/-5 shz=3.2 plan=21 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t=  8.9 DWA-F pos=(-1.78,+0.13) yaw=-175.3 d=4.14 goal_err=-49 carrot_err= -28 c0=1.15 clear=0.76 prog=0.86 rel=0.66 bal=+0.28 obs=136 hard=109 obsc=162 yr=  0  nz=0.29 flt=0.07 dmap=+4/-7 shz=3.2 plan=21 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+t=  9.2 DWA-F pos=(-1.89,+0.12) yaw=-175.3 d=4.07 goal_err=-50 carrot_err= -39 c0=1.15 clear=0.77 prog=0.84 rel=0.67 bal=+0.25 obs=143 hard=114 obsc=162 yr=  0  nz=0.28 flt=0.15 dmap=+8/-1 shz=3.2 plan=21 cmd=(lx=+0.00,ly=+0.40,rx=+0.45)
+t=  9.6 DWA-F pos=(-2.00,+0.11) yaw=-177.9 d=4.00 goal_err=-49 carrot_err= -43 c0=1.05 clear=0.70 prog=0.80 rel=0.64 bal=+0.05 obs=144 hard=115 obsc=163 yr=  7G nz=0.29 flt=0.11 dmap=+1/-0 shz=3.2 plan=21 cmd=(lx=+0.00,ly=+0.40,rx=+0.45)
+t=  9.9 DWA-F pos=(-2.12,+0.12) yaw=+171.6 d=3.92 goal_err=-40 carrot_err= -30 c0=1.08 clear=0.72 prog=0.81 rel=0.79 bal=+0.01 obs=147 hard=118 obsc=166 yr= 33G nz=0.21 flt=0.42 dmap=+3/-0 shz=3.2 plan=18 cmd=(lx=+0.00,ly=+0.40,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 10.2 DOOR-GO pos=(-2.23,+0.14) yaw=+162.0 d=3.83 goal_err=-31 carrot_err= -23 c0=0.90 clear=0.60 prog=0.83 rel=0.73 bal=-0.00 obs=160 hard=121 obsc=186 yr= 27  nz=0.15 flt=0.41 dmap=+18/-5 shz=3.1 plan=18 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+META-SM: NORMAL -> BLIND (trust=1.00 contra=0 iface=1.00 near=0.90) t=10s
+t= 10.5 DOOR-GO pos=(-2.32,+0.18) yaw=+157.4 d=3.74 goal_err=-27 carrot_err= -20 c0=0.80 clear=0.53 prog=0.82 rel=0.69 bal=-0.02 obs=171 hard=128 obsc=198 yr= 16  nz=0.22 flt=0.28 dmap=+13/-2 shz=3.2 plan=18 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 10.8 DOOR-GO pos=(-2.41,+0.21) yaw=+155.0 d=3.66 goal_err=-26 carrot_err= -12 c0=0.70 clear=0.47 prog=0.85 rel=0.60 bal=-0.04 obs=178 hard=131 obsc=209 yr=  8  nz=0.27 flt=0.18 dmap=+9/-2 shz=3.2 plan=18 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+DOOR-ENG start t=11s pos=(-2.48,+0.25) sgn=AB
+DOOR-CENTER medido: off=-0.11m gap=0.99m (jambas L=+0.39 R=-0.60)
+t= 11.1 ENG-F pos=(-2.48,+0.25) yaw=+154.1 d=3.59 goal_err=-25 carrot_err= -12 c0=0.63 clear=0.42 prog=0.85 rel=0.61 bal=-0.14 obs=181 hard=137 obsc=218 yr=  3  nz=0.29 flt=0.15 dmap=+11/-8 shz=3.2 plan=18 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @-11/3.74m -> IGNORADA (gate=- perc_n=13)
+[VIS] YOLO ve chair conf=0.45 @-18/1.77m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.0 free_c=- vismap=4/13 color=- carpet=- cnear=- crmin=- door=-9.4 dets=[chair@-11/3.74m,chair@-18/1.77m]
+DOOR-VIS activo: bearing=-9.4 (mapa he=-18.7)
+t= 11.4 ENG-F pos=(-2.54,+0.28) yaw=+153.7 d=3.53 goal_err=-25 carrot_err= -12 c0=0.57 clear=0.38 prog=0.87 rel=0.59 bal=-0.63 obs=175 hard=140 obsc=229 yr=  1  nz=0.29 flt=0.14 dmap=+13/-19 shz=3.2 plan=16 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @-11/3.74m -> IGNORADA (gate=- perc_n=13)
+[VIS] YOLO ve chair conf=0.45 @-18/1.77m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.3 free_c=- vismap=4/13 color=- carpet=- cnear=- crmin=- door=-9.4 dets=[chair@-11/3.74m,chair@-18/1.77m]
+t= 11.7 ENG-F pos=(-2.54,+0.28) yaw=+153.7 d=3.53 goal_err=-25 carrot_err= -12 c0=0.57 clear=0.38 prog=0.70 rel=0.73 bal=-0.63 obs=175 hard=140 obsc=229 yr=  0  nz=0.23 flt=0.14 dmap=+0/-0 shz=3.2 plan=16 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] YOLO ve couch conf=0.77 @-10/1.43m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.0 free_c=- vismap=8/13 color=- carpet=- cnear=- crmin=- door=- dets=[couch@-10/1.43m]
+t= 12.0 ENG-F pos=(-2.60,+0.30) yaw=+153.5 d=3.47 goal_err=-26 carrot_err= -13 c0=0.67 clear=0.45 prog=0.68 rel=0.73 bal=-0.54 obs=174 hard=136 obsc=218 yr=  1  nz=0.23 flt=0.18 dmap=+8/-9 shz=3.1 plan=16 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] YOLO ve couch conf=0.77 @-10/1.43m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.3 free_c=- vismap=13/13 color=- carpet=- cnear=- crmin=- door=- dets=[couch@-10/1.43m]
+t= 12.3 ENG-F pos=(-2.66,+0.34) yaw=+153.4 d=3.40 goal_err=-26 carrot_err=  -9 c0=0.71 clear=0.47 prog=0.65 rel=0.73 bal=-0.13 obs=184 hard=133 obsc=217 yr=  0  nz=0.13 flt=0.24 dmap=+16/-6 shz=3.1 plan=16 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 12.6 ENG-F pos=(-2.72,+0.37) yaw=+153.4 d=3.34 goal_err=-26 carrot_err=  -9 c0=0.64 clear=0.43 prog=0.60 rel=0.74 bal=-0.12 obs=177 hard=129 obsc=217 yr=  0  nz=0.12 flt=0.15 dmap=+5/-12 shz=3.1 plan=16 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 12.9 ENG-F pos=(-2.78,+0.40) yaw=+153.4 d=3.28 goal_err=-27 carrot_err= -10 c0=0.65 clear=0.43 prog=0.57 rel=0.69 bal=-0.12 obs=176 hard=130 obsc=213 yr=  0  nz=0.11 flt=0.15 dmap=+9/-10 shz=3.1 plan=16 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @-13/3.03m -> IGNORADA (gate=- perc_n=13)
+[VIS] YOLO ve couch conf=0.79 @-19/1.13m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.0 free_c=- vismap=6/13 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-13/3.03m,couch@-19/1.13m]
+t= 13.2 ENG-F pos=(-2.85,+0.43) yaw=+153.4 d=3.22 goal_err=-28 carrot_err= -19 c0=0.77 clear=0.51 prog=0.58 rel=0.69 bal=-0.53 obs=174 hard=132 obsc=216 yr=  0  nz=0.11 flt=0.16 dmap=+5/-7 shz=3.1 plan=15 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 13.5 ENG-F pos=(-2.91,+0.46) yaw=+153.4 d=3.16 goal_err=-28 carrot_err= -21 c0=0.71 clear=0.47 prog=0.70 rel=0.67 bal=-0.34 obs=176 hard=134 obsc=211 yr=  0  nz=0.12 flt=0.17 dmap=+8/-6 shz=3.1 plan=15 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 13.8 ENG-F pos=(-2.96,+0.49) yaw=+153.4 d=3.10 goal_err=-29 carrot_err= -22 c0=0.65 clear=0.43 prog=0.68 rel=0.76 bal=-0.32 obs=176 hard=140 obsc=215 yr=  0  nz=0.11 flt=0.23 dmap=+10/-10 shz=3.1 plan=15 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 14.1 ENG-F pos=(-3.02,+0.52) yaw=+153.4 d=3.05 goal_err=-29 carrot_err= -23 c0=0.58 clear=0.39 prog=0.65 rel=0.65 bal=-0.33 obs=175 hard=138 obsc=211 yr=  0  nz=0.11 flt=0.12 dmap=+7/-8 shz=3.1 plan=15 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=-15.0 dets=[-]
+DOOR-ENG at-position t=14s err=0.22m
+t= 14.4 ENG-AL pos=(-3.09,+0.55) yaw=+153.4 d=2.98 goal_err=-30 carrot_err= -25 c0=0.51 clear=0.34 prog=0.67 rel=0.63 bal=-0.35 obs=174 hard=134 obsc=209 yr=  0  nz=0.14 flt=0.23 dmap=+4/-5 shz=3.1 plan=15 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-6deg/s OK
+t= 14.7 ENG-AL. pos=(-3.14,+0.58) yaw=+151.8 d=2.93 goal_err=-29 carrot_err= -25 c0=0.78 clear=0.52 prog=0.67 rel=0.57 bal=-0.35 obs=175 hard=135 obsc=210 yr=  6G nz=0.17 flt=0.17 dmap=+1/-0 shz=3.2 plan=15 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=-10.1 dets=[-]
+t= 15.0 ENG-AL pos=(-3.17,+0.59) yaw=+146.4 d=2.90 goal_err=-24 carrot_err= -10 c0=0.75 clear=0.50 prog=0.60 rel=0.58 bal=-0.36 obs=183 hard=139 obsc=215 yr= 19  nz=0.20 flt=0.49 dmap=+12/-4 shz=3.2 plan=14 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] perc_n=0 age=0.3 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=-10.1 dets=[-]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-22deg/s OK
+t= 15.3 ENG-AL. pos=(-3.18,+0.60) yaw=+139.7 d=2.89 goal_err=-17 carrot_err=  -4 c0=0.74 clear=0.49 prog=0.51 rel=0.56 bal=-0.39 obs=183 hard=139 obsc=215 yr= 22G nz=0.20 flt=0.50 dmap=+0/-0 shz=3.2 plan=14 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] perc_n=0 age=0.6 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=-10.1 dets=[-]
+t= 15.6 ENG-AL pos=(-3.18,+0.60) yaw=+131.8 d=2.89 goal_err=-9 carrot_err=  +4 c0=0.91 clear=0.60 prog=0.41 rel=0.56 bal=-0.39 obs=190 hard=146 obsc=227 yr= 25  nz=0.21 flt=0.57 dmap=+12/-5 shz=3.2 plan=14 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] YOLO ve couch conf=0.45 @-1/2.54m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=0/14 color=- carpet=- cnear=- crmin=- door=9.1 dets=[couch@-1/2.54m]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-21deg/s OK
+t= 15.9 ENG-AL. pos=(-3.18,+0.61) yaw=+125.4 d=2.88 goal_err=-3 carrot_err= +11 c0=1.02 clear=0.68 prog=0.31 rel=0.41 bal=-0.40 obs=192 hard=148 obsc=229 yr= 21G nz=0.23 flt=0.27 dmap=+2/-0 shz=3.2 plan=14 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+META-SM: BLIND -> NORMAL (trust=1.00 contra=2 iface=1.00 near=1.02) t=16s
+[VIS] YOLO ve couch conf=0.45 @-1/2.54m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.3 free_c=- vismap=0/14 color=- carpet=- cnear=- crmin=- door=9.1 dets=[couch@-1/2.54m]
+t= 16.1 ENG-AL pos=(-3.18,+0.61) yaw=+125.4 d=2.88 goal_err=-3 carrot_err= +11 c0=1.02 clear=0.68 prog=0.19 rel=0.43 bal=-0.40 obs=192 hard=148 obsc=229 yr=  0  nz=0.32 flt=0.27 dmap=+0/-0 shz=3.2 plan=14 cmd=(lx=+0.00,ly=+0.00,rx=-0.45)
+[VIS] YOLO ve couch conf=0.83 @+9/0.85m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.0 free_c=- vismap=1/12 color=- carpet=- cnear=- crmin=- door=- dets=[couch@+9/0.85m]
+  TURN-CAL rx=-0.45 esperado=+46deg/s medido=-17deg/s >>> SIGNO INVERTIDO <<<
+t= 16.4 ENG-AL. pos=(-3.19,+0.61) yaw=+121.3 d=2.88 goal_err=+1 carrot_err= +15 c0=1.01 clear=0.68 prog=0.17 rel=0.43 bal=-0.38 obs=194 hard=150 obsc=231 yr= 17G nz=0.32 flt=0.35 dmap=+2/-0 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.80 @+16/1.29m -> USADA (en mapa)
+[VIS] YOLO ve couch conf=0.79 @+5/0.88m -> USADA (en mapa)
+[VIS] perc_n=24 age=0.0 free_c=- vismap=4/24 color=- carpet=- cnear=- crmin=- door=17.3 dets=[chair@+16/1.29m,couch@+5/0.88m]
+t= 16.7 ENG-AL pos=(-3.19,+0.61) yaw=+125.6 d=2.88 goal_err=-3 carrot_err= +11 c0=0.73 clear=0.49 prog=0.04 rel=0.40 bal=-0.38 obs=204 hard=165 obsc=267 yr= 12  nz=0.27 flt=0.22 dmap=+16/-6 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.00,rx=-0.45)
+[VIS] YOLO ve chair conf=0.75 @+6/1.24m -> USADA (en mapa)
+[VIS] YOLO ve couch conf=0.80 @-1/1.01m -> USADA (en mapa)
+[VIS] perc_n=20 age=0.0 free_c=- vismap=3/20 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+6/1.24m,couch@-1/1.01m]
+  TURN-CAL rx=-0.45 esperado=+46deg/s medido=+0deg/s OK
+t= 17.1 ENG-AL. pos=(-3.19,+0.61) yaw=+125.6 d=2.88 goal_err=-3 carrot_err= +11 c0=0.73 clear=0.49 prog=0.02 rel=0.50 bal=-0.38 obs=204 hard=165 obsc=267 yr=  0G nz=0.28 flt=0.22 dmap=+0/-0 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.75 @+6/1.24m -> USADA (en mapa)
+[VIS] YOLO ve couch conf=0.80 @-1/1.01m -> USADA (en mapa)
+[VIS] perc_n=20 age=0.3 free_c=- vismap=17/20 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+6/1.24m,couch@-1/1.01m]
+t= 17.3 ENG-AL. pos=(-3.19,+0.61) yaw=+131.2 d=2.88 goal_err=-9 carrot_err=  +5 c0=0.72 clear=0.48 prog=0.01 rel=0.50 bal=-0.38 obs=212 hard=163 obsc=256 yr= 20  nz=0.28 flt=0.38 dmap=+16/-8 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @+9/2.89m -> IGNORADA (gate=- perc_n=26)
+[VIS] YOLO ve chair conf=0.74 @+7/1.04m -> USADA (en mapa)
+[VIS] perc_n=26 age=0.0 free_c=- vismap=12/26 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+9/2.89m,chair@+7/1.04m]
+DOOR-ENG aligned t=18s yaw=+137 he=-1.6
+t= 17.6 ENG-GO pos=(-3.19,+0.61) yaw=+136.6 d=2.88 goal_err=-14 carrot_err=  -0 c0=0.73 clear=0.49 prog=0.00 rel=0.43 bal=-0.38 obs=213 hard=172 obsc=272 yr= 19  nz=0.34 flt=0.45 dmap=+12/-11 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=-2.5 dets=[-]
+t= 17.9 ENG-GO pos=(-3.19,+0.61) yaw=+139.4 d=2.88 goal_err=-17 carrot_err=  -3 c0=0.73 clear=0.48 prog=0.01 rel=0.46 bal=-0.38 obs=205 hard=168 obsc=271 yr=  9  nz=0.28 flt=0.22 dmap=+5/-13 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] perc_n=0 age=0.4 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=-2.5 dets=[-]
+t= 18.3 ENG-GO pos=(-3.21,+0.63) yaw=+140.4 d=2.85 goal_err=-18 carrot_err=  -4 c0=0.70 clear=0.47 prog=0.05 rel=0.62 bal=-0.39 obs=203 hard=161 obsc=263 yr=  3  nz=0.09 flt=0.17 dmap=+9/-11 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 18.6 ENG-GO pos=(-3.24,+0.66) yaw=+140.9 d=2.81 goal_err=-19 carrot_err=  -5 c0=0.65 clear=0.43 prog=0.13 rel=0.64 bal=-0.39 obs=201 hard=161 obsc=259 yr=  2  nz=0.10 flt=0.18 dmap=+9/-11 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 18.8 ENG-GO pos=(-3.30,+0.70) yaw=+141.2 d=2.75 goal_err=-20 carrot_err=  -6 c0=0.59 clear=0.39 prog=0.26 rel=0.68 bal=-0.39 obs=194 hard=153 obsc=248 yr=  1  nz=0.13 flt=0.14 dmap=+3/-10 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 19.1 ENG-GO pos=(-3.34,+0.74) yaw=+141.3 d=2.69 goal_err=-20 carrot_err=  -7 c0=0.71 clear=0.47 prog=0.36 rel=0.67 bal=-0.38 obs=195 hard=153 obsc=243 yr=  0  nz=0.17 flt=0.25 dmap=+8/-7 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 19.4 ENG-GO pos=(-3.39,+0.78) yaw=+141.3 d=2.63 goal_err=-21 carrot_err=  -7 c0=0.65 clear=0.43 prog=0.47 rel=0.65 bal=-0.31 obs=201 hard=159 obsc=239 yr=  0  nz=0.15 flt=0.16 dmap=+7/-1 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 19.7 ENG-GO pos=(-3.44,+0.82) yaw=+141.3 d=2.57 goal_err=-21 carrot_err=  -8 c0=0.59 clear=0.39 prog=0.58 rel=0.61 bal=-0.24 obs=203 hard=161 obsc=242 yr=  0  nz=0.14 flt=0.16 dmap=+4/-2 shz=3.1 plan=14 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 20.0 ENG-GO pos=(-3.50,+0.86) yaw=+141.3 d=2.50 goal_err=-22 carrot_err=  +1 c0=0.73 clear=0.49 prog=0.70 rel=0.55 bal=-0.23 obs=205 hard=163 obsc=247 yr=  0  nz=0.15 flt=0.28 dmap=+6/-4 shz=3.1 plan=13 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 20.3 ENG-GO pos=(-3.55,+0.90) yaw=+141.3 d=2.44 goal_err=-22 carrot_err=  -1 c0=0.67 clear=0.45 prog=0.69 rel=0.56 bal=-0.17 obs=209 hard=170 obsc=252 yr=  0  nz=0.17 flt=0.16 dmap=+8/-4 shz=3.1 plan=13 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] perc_n=0 age=0.6 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 20.5 ENG-GO pos=(-3.55,+0.90) yaw=+141.3 d=2.44 goal_err=-22 carrot_err=  -1 c0=0.67 clear=0.45 prog=0.62 rel=0.56 bal=-0.17 obs=209 hard=170 obsc=252 yr=  0  nz=0.17 flt=0.16 dmap=+0/-0 shz=3.1 plan=13 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 20.8 ENG-GO pos=(-3.66,+0.99) yaw=+141.3 d=2.31 goal_err=-24 carrot_err=  -1 c0=0.53 clear=0.35 prog=0.73 rel=0.56 bal=-0.18 obs=215 hard=164 obsc=253 yr=  0  nz=0.17 flt=0.16 dmap=+9/-3 shz=3.1 plan=13 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 21.1 ENG-GO pos=(-3.71,+1.03) yaw=+141.3 d=2.25 goal_err=-24 carrot_err=  -1 c0=0.52 clear=0.34 prog=0.73 rel=0.54 bal=-0.18 obs=217 hard=166 obsc=255 yr=  0  nz=0.19 flt=0.29 dmap=+6/-4 shz=3.1 plan=13 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 21.5 ENG-GO pos=(-3.76,+1.07) yaw=+141.3 d=2.19 goal_err=-25 carrot_err= -20 c0=0.46 clear=0.30 prog=0.72 rel=0.49 bal=-0.11 obs=223 hard=173 obsc=263 yr=  0  nz=0.21 flt=0.16 dmap=+9/-3 shz=3.1 plan=11 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 21.7 ENG-GO pos=(-3.76,+1.07) yaw=+141.3 d=2.19 goal_err=-25 carrot_err= -20 c0=0.46 clear=0.30 prog=0.58 rel=0.54 bal=-0.11 obs=223 hard=173 obsc=263 yr=  0  nz=0.19 flt=0.16 dmap=+0/-0 shz=3.1 plan=11 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 22.0 ENG-GO pos=(-3.81,+1.11) yaw=+141.3 d=2.13 goal_err=-26 carrot_err= -22 c0=0.62 clear=0.41 prog=0.58 rel=0.54 bal=-0.08 obs=228 hard=174 obsc=266 yr=  0  nz=0.19 flt=0.16 dmap=+7/-2 shz=3.1 plan=11 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 22.3 ENG-GO pos=(-3.87,+1.16) yaw=+141.3 d=2.07 goal_err=-27 carrot_err= -19 c0=0.58 clear=0.39 prog=0.70 rel=0.55 bal=-0.07 obs=225 hard=171 obsc=271 yr=  0  nz=0.15 flt=0.28 dmap=+8/-11 shz=3.1 plan=11 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 22.7 ENG-GO pos=(-3.92,+1.20) yaw=+141.3 d=2.01 goal_err=-28 carrot_err= -20 c0=0.52 clear=0.34 prog=0.53 rel=0.50 bal=-0.22 obs=227 hard=172 obsc=268 yr=  0  nz=0.14 flt=0.20 dmap=+7/-5 shz=3.1 plan=11 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 23.0 ENG-GO pos=(-3.97,+1.24) yaw=+141.3 d=1.95 goal_err=-29 carrot_err= -22 c0=0.45 clear=0.30 prog=0.55 rel=0.48 bal=-0.18 obs=229 hard=172 obsc=270 yr=  0  nz=0.14 flt=0.23 dmap=+9/-7 shz=3.1 plan=11 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 23.3 ENG-GO pos=(-4.02,+1.28) yaw=+141.3 d=1.89 goal_err=-29 carrot_err= -24 c0=0.39 clear=0.26 prog=0.55 rel=0.43 bal=-0.09 obs=232 hard=171 obsc=271 yr=  0  nz=0.15 flt=0.27 dmap=+5/-2 shz=3.1 plan=10 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 23.6 ENG-GO pos=(-4.08,+1.33) yaw=+141.3 d=1.83 goal_err=-31 carrot_err= -31 c0=0.57 clear=0.38 prog=0.66 rel=0.36 bal=-0.10 obs=237 hard=177 obsc=282 yr=  0  nz=0.18 flt=0.13 dmap=+14/-9 shz=3.1 plan=10 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 23.9 ENG-GO pos=(-4.13,+1.36) yaw=+141.3 d=1.78 goal_err=-32 carrot_err= -33 c0=0.51 clear=0.34 prog=0.65 rel=0.48 bal=-0.10 obs=240 hard=181 obsc=279 yr=  0  nz=0.17 flt=0.20 dmap=+10/-7 shz=3.1 plan=10 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 24.1 ENG-GO pos=(-4.17,+1.40) yaw=+141.3 d=1.73 goal_err=-33 carrot_err= -36 c0=0.46 clear=0.30 prog=0.64 rel=0.49 bal=-0.26 obs=242 hard=183 obsc=279 yr=  0  nz=0.14 flt=0.18 dmap=+6/-4 shz=3.1 plan=10 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+t= 24.4 ENG-GO pos=(-4.23,+1.45) yaw=+141.3 d=1.67 goal_err=-34 carrot_err= -30 c0=0.59 clear=0.39 prog=0.66 rel=0.49 bal=-0.28 obs=243 hard=184 obsc=284 yr=  0  nz=0.13 flt=0.14 dmap=+6/-5 shz=3.1 plan=10 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] YOLO ve chair conf=0.74 @-8/1.11m -> USADA (en mapa)
+[VIS] perc_n=12 age=0.0 free_c=- vismap=0/12 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-8/1.11m]
+t= 24.7 ENG-GO pos=(-4.28,+1.49) yaw=+141.3 d=1.62 goal_err=-35 carrot_err= -32 c0=2.50 clear=1.00 prog=0.65 rel=0.52 bal=-0.29 obs=246 hard=194 obsc=299 yr=  0  nz=0.14 flt=0.19 dmap=+9/-6 shz=3.1 plan=10 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+META-SM: BLIND -> NORMAL (trust=1.00 contra=0 iface=1.00 near=2.50) t=25s
+[VIS] YOLO ve chair conf=0.74 @-8/1.11m -> USADA (en mapa)
+[VIS] perc_n=12 age=0.3 free_c=- vismap=12/12 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-8/1.11m]
+t= 25.0 ENG-C pos=(-4.33,+1.53) yaw=+141.3 d=1.56 goal_err=-37 carrot_err= -60 c0=0.82 clear=0.55 prog=0.64 rel=0.00 bal=-0.52 obs=261 hard=195 obsc=300 yr=  0  nz=1.00 flt=0.14 dmap=+19/-4 shz=3.1 plan=10 cmd=(lx=+0.34,ly=+0.00,rx=+0.00)
+  STRAFE-CAL lx=+0.34 medido=-0.9cm/tick DCHA
+t= 25.3 ENG-C pos=(-4.37,+1.57) yaw=+141.3 d=1.51 goal_err=-38 carrot_err= -63 c0=2.50 clear=1.00 prog=0.61 rel=0.00 bal=-0.50 obs=250 hard=194 obsc=304 yr=  0  nz=1.00 flt=0.16 dmap=+5/-16 shz=3.1 plan=10 cmd=(lx=+0.34,ly=+0.00,rx=+0.00)
+  STRAFE-CAL lx=+0.34 medido=-5.8cm/tick DCHA
+t= 25.7 ENG-GO pos=(-4.36,+1.64) yaw=+141.3 d=1.45 goal_err=-37 carrot_err= -63 c0=2.50 clear=1.00 prog=0.61 rel=0.00 bal=-0.42 obs=248 hard=191 obsc=292 yr=  0  nz=1.00 flt=0.12 dmap=+5/-7 shz=3.1 plan=10 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] YOLO ve chair conf=0.74 @-8/0.9m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=3/13 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-8/0.9m]
+t= 25.9 ENG-GO pos=(-4.34,+1.69) yaw=+141.3 d=1.40 goal_err=-35 carrot_err= -63 c0=1.01 clear=0.68 prog=0.59 rel=0.00 bal=-0.29 obs=243 hard=193 obsc=297 yr=  0  nz=1.00 flt=0.31 dmap=+4/-9 shz=3.1 plan=10 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+[VIS] YOLO ve chair conf=0.74 @-8/0.9m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.4 free_c=- vismap=13/13 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-8/0.9m]
+t= 26.3 ENG-GO pos=(-4.36,+1.74) yaw=+141.3 d=1.35 goal_err=-35 carrot_err= -62 c0=0.63 clear=0.42 prog=0.56 rel=0.00 bal=-0.29 obs=252 hard=193 obsc=297 yr=  0  nz=1.00 flt=0.23 dmap=+13/-4 shz=3.1 plan=10 cmd=(lx=+0.00,ly=+0.28,rx=+0.00)
+META-SM: NORMAL -> BLIND (trust=1.00 contra=0 iface=1.00 near=0.63) t=26s
+[VIS] YOLO ve chair conf=0.74 @-8/0.9m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.7 free_c=- vismap=12/12 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-8/0.9m]
+t= 26.6 DWA-F pos=(-4.40,+1.79) yaw=+141.3 d=1.30 goal_err=-36 carrot_err= -65 c0=0.64 clear=0.43 prog=0.55 rel=0.00 bal=-0.26 obs=255 hard=193 obsc=299 yr=  0  nz=1.00 flt=0.23 dmap=+8/-5 shz=3.1 plan=9 cmd=(lx=+0.00,ly=+0.28,rx=+0.45)
+DOOR-GUARD techo de zona-vano t=27s pos=(-4.40,+1.79)
+t= 26.9 DWA-T pos=(-4.45,+1.84) yaw=+140.1 d=1.24 goal_err=-37 carrot_err= -68 c0=0.58 clear=0.38 prog=0.57 rel=0.00 bal=-0.24 obs=257 hard=197 obsc=301 yr=  4G nz=1.00 flt=0.27 dmap=+2/-0 shz=3.1 plan=9 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-19deg/s OK
+t= 27.3 DWA-T pos=(-4.49,+1.88) yaw=+133.7 d=1.19 goal_err=-32 carrot_err= -66 c0=0.60 clear=0.40 prog=0.55 rel=0.00 bal=-0.01 obs=260 hard=200 obsc=303 yr= 19G nz=1.00 flt=0.48 dmap=+3/-0 shz=3.1 plan=9 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-33deg/s OK
+t= 27.6 DWA-T pos=(-4.51,+1.90) yaw=+124.6 d=1.16 goal_err=-24 carrot_err= -54 c0=0.50 clear=0.34 prog=0.52 rel=0.42 bal=-0.40 obs=262 hard=203 obsc=305 yr= 33G nz=0.33 flt=0.49 dmap=+2/-0 shz=3.1 plan=9 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-51deg/s OK
+t= 27.8 DWA-T pos=(-4.52,+1.92) yaw=+112.4 d=1.14 goal_err=-12 carrot_err= -42 c0=0.49 clear=0.33 prog=0.46 rel=0.38 bal=-0.67 obs=265 hard=206 obsc=308 yr= 51G nz=0.17 flt=0.61 dmap=+3/-0 shz=3.1 plan=9 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 28.1 DWA-F pos=(-4.52,+1.92) yaw=+104.2 d=1.14 goal_err=-4 carrot_err= -34 c0=0.48 clear=0.32 prog=0.40 rel=0.45 bal=-0.19 obs=267 hard=194 obsc=314 yr= 27  nz=0.18 flt=0.49 dmap=+8/-6 shz=3.1 plan=9 cmd=(lx=+0.00,ly=+0.28,rx=+0.45)
+[VIS] YOLO ve refrigerator conf=0.45 @-1/2.66m -> IGNORADA (gate=G perc_n=14)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=0/14 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@-1/2.66m]
+t= 28.4 DWA-T pos=(-4.52,+1.94) yaw= +97.5 d=1.12 goal_err=+3 carrot_err= +22 c0=0.46 clear=0.31 prog=0.34 rel=0.53 bal=-0.19 obs=269 hard=197 obsc=316 yr= 23G nz=0.16 flt=0.55 dmap=+2/-0 shz=3.1 plan=7 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve couch conf=0.81 @-21/0.96m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=5/14 color=- carpet=- cnear=- crmin=- door=- dets=[couch@-21/0.96m]
+t= 28.7 DWA-F pos=(-4.53,+1.97) yaw= +91.1 d=1.09 goal_err=+10 carrot_err= +29 c0=0.63 clear=0.42 prog=0.28 rel=0.37 bal=-0.08 obs=260 hard=204 obsc=326 yr= 21  nz=0.15 flt=0.51 dmap=+6/-15 shz=3.1 plan=7 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+[VIS] YOLO ve couch conf=0.81 @-21/0.96m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.3 free_c=- vismap=5/14 color=- carpet=- cnear=- crmin=- door=- dets=[couch@-21/0.96m]
+t= 29.0 DWA-T pos=(-4.53,+2.01) yaw= +91.8 d=1.05 goal_err=+9 carrot_err= +29 c0=0.60 clear=0.40 prog=0.26 rel=0.44 bal=-0.09 obs=260 hard=205 obsc=326 yr=  2G nz=0.16 flt=0.22 dmap=+0/-0 shz=3.1 plan=7 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 29.3 DWA-T pos=(-4.53,+2.04) yaw= +95.6 d=1.02 goal_err=+6 carrot_err= +26 c0=0.57 clear=0.38 prog=0.26 rel=0.46 bal=-0.10 obs=263 hard=196 obsc=311 yr= 11  nz=0.16 flt=0.33 dmap=+5/-2 shz=3.1 plan=7 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.80 @-23/1.34m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.0 free_c=- vismap=1/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-23/1.34m]
+t= 29.7 DWA-T pos=(-4.53,+2.06) yaw= +97.4 d=1.01 goal_err=+4 carrot_err= +25 c0=0.55 clear=0.37 prog=0.24 rel=0.47 bal=-0.59 obs=264 hard=201 obsc=335 yr=  5  nz=0.15 flt=0.30 dmap=+7/-6 shz=3.1 plan=7 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.80 @-23/1.34m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.3 free_c=- vismap=15/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-23/1.34m]
+t= 29.9 DWA-T pos=(-4.53,+2.06) yaw= +98.2 d=1.00 goal_err=+3 carrot_err= +12 c0=0.55 clear=0.37 prog=0.25 rel=0.46 bal=-0.26 obs=264 hard=203 obsc=337 yr=  3  nz=0.13 flt=0.20 dmap=+26/-26 shz=3.1 plan=6 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 30.2 DWA-T pos=(-4.53,+2.07) yaw= +98.7 d=0.99 goal_err=+3 carrot_err= +11 c0=0.55 clear=0.37 prog=0.22 rel=0.51 bal=-0.26 obs=258 hard=199 obsc=314 yr=  1  nz=0.10 flt=0.10 dmap=+7/-13 shz=3.1 plan=6 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 30.6 DWA-T pos=(-4.53,+2.07) yaw= +98.8 d=0.99 goal_err=+3 carrot_err= +11 c0=0.60 clear=0.40 prog=0.17 rel=0.48 bal=-0.26 obs=255 hard=194 obsc=305 yr=  0  nz=0.10 flt=0.07 dmap=+4/-7 shz=3.1 plan=6 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 30.9 DWA-T pos=(-4.53,+2.07) yaw= +98.9 d=0.99 goal_err=+3 carrot_err= +11 c0=0.78 clear=0.52 prog=0.11 rel=0.59 bal=-0.26 obs=254 hard=193 obsc=299 yr=  0  nz=0.09 flt=0.12 dmap=+5/-6 shz=3.1 plan=6 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] perc_n=0 age=0.4 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 31.3 DWA-T pos=(-4.53,+2.07) yaw= +99.0 d=0.99 goal_err=+3 carrot_err= +11 c0=0.78 clear=0.52 prog=0.05 rel=0.53 bal=-0.26 obs=256 hard=195 obsc=299 yr=  0  nz=0.21 flt=0.10 dmap=+3/-1 shz=3.1 plan=6 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @+11/2.51m -> IGNORADA (gate=- perc_n=13)
+[VIS] perc_n=13 age=0.0 free_c=- vismap=0/13 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+11/2.51m]
+t= 31.5 DWA-T pos=(-4.53,+2.07) yaw= +99.0 d=0.99 goal_err=+3 carrot_err= +11 c0=0.78 clear=0.52 prog=0.02 rel=0.44 bal=-0.26 obs=256 hard=195 obsc=299 yr=  0  nz=0.24 flt=0.10 dmap=+0/-0 shz=3.1 plan=6 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @+13/2.88m -> IGNORADA (gate=- perc_n=13)
+[VIS] perc_n=13 age=0.0 free_c=- vismap=0/13 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+13/2.88m]
+t= 31.7 DWA-T pos=(-4.53,+2.07) yaw= +99.0 d=0.99 goal_err=+3 carrot_err= +11 c0=0.78 clear=0.52 prog=0.01 rel=0.44 bal=-0.26 obs=256 hard=205 obsc=311 yr=  0  nz=0.24 flt=0.11 dmap=+2/-2 shz=3.1 plan=6 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 32.1 DWA-T pos=(-4.53,+2.07) yaw= +99.0 d=0.99 goal_err=+3 carrot_err= +11 c0=0.78 clear=0.52 prog=0.01 rel=0.47 bal=-0.26 obs=256 hard=205 obsc=311 yr=  0  nz=0.14 flt=0.11 dmap=+0/-0 shz=3.1 plan=6 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 32.4 DWA-F pos=(-4.53,+2.07) yaw= +99.0 d=0.99 goal_err=+3 carrot_err= +11 c0=0.78 clear=0.52 prog=0.00 rel=0.47 bal=+0.29 obs=256 hard=206 obsc=313 yr=  0  nz=0.14 flt=0.09 dmap=+2/-2 shz=3.0 plan=6 cmd=(lx=+0.00,ly=+0.40,rx=-0.45)
+t= 32.7 DWA-F pos=(-4.53,+2.07) yaw= +99.0 d=0.99 goal_err=+3 carrot_err= +11 c0=0.78 clear=0.52 prog=0.00 rel=0.55 bal=+0.29 obs=256 hard=206 obsc=313 yr=  0G nz=0.05 flt=0.09 dmap=+0/-0 shz=3.0 plan=6 cmd=(lx=+0.00,ly=+0.40,rx=-0.45)
+[VIS] YOLO ve couch conf=0.79 @+16/1.03m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.0 free_c=- vismap=2/13 color=- carpet=- cnear=- crmin=- door=- dets=[couch@+16/1.03m]
+t= 33.0 DWA-T pos=(-4.54,+2.09) yaw=+102.9 d=0.97 goal_err=-1 carrot_err=  +8 c0=0.76 clear=0.51 prog=0.04 rel=0.55 bal=-0.26 obs=257 hard=208 obsc=314 yr= 14G nz=0.05 flt=0.37 dmap=+1/-0 shz=3.0 plan=6 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve couch conf=0.79 @+16/1.03m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.3 free_c=- vismap=4/13 color=- carpet=- cnear=- crmin=- door=- dets=[couch@+16/1.03m]
+t= 33.3 DWA-F pos=(-4.55,+2.13) yaw=+110.7 d=0.93 goal_err=-9 carrot_err=  -4 c0=0.65 clear=0.43 prog=0.12 rel=0.54 bal=-0.18 obs=262 hard=202 obsc=330 yr= 26  nz=0.08 flt=0.51 dmap=+7/-2 shz=3.0 plan=5 cmd=(lx=+0.00,ly=+0.40,rx=+0.45)
+[VIS] YOLO ve couch conf=0.77 @+3/0.93m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=3/14 color=- carpet=- cnear=- crmin=- door=- dets=[couch@+3/0.93m]
+t= 33.6 DWA-F pos=(-4.56,+2.16) yaw=+115.5 d=0.90 goal_err=-15 carrot_err=  -9 c0=0.62 clear=0.42 prog=0.17 rel=0.60 bal=-0.18 obs=265 hard=206 obsc=333 yr= 18G nz=0.10 flt=0.49 dmap=+3/-0 shz=3.0 plan=5 cmd=(lx=+0.00,ly=+0.40,rx=+0.45)
+[VIS] YOLO ve couch conf=0.77 @+3/0.93m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.4 free_c=- vismap=3/13 color=- carpet=- cnear=- crmin=- door=- dets=[couch@+3/0.93m]
+t= 33.9 DWA-F pos=(-4.58,+2.20) yaw=+112.0 d=0.85 goal_err=-12 carrot_err=  -7 c0=0.58 clear=0.39 prog=0.26 rel=0.59 bal=-0.17 obs=266 hard=207 obsc=334 yr= 10G nz=0.12 flt=0.20 dmap=+1/-0 shz=3.0 plan=5 cmd=(lx=+0.00,ly=+0.40,rx=+0.45)
+[VIS] YOLO ve couch conf=0.77 @+3/0.93m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.6 free_c=- vismap=3/12 color=- carpet=- cnear=- crmin=- door=- dets=[couch@+3/0.93m]
+t= 34.2 DWA-T pos=(-4.60,+2.26) yaw=+104.2 d=0.80 goal_err=-5 carrot_err=  +1 c0=0.58 clear=0.39 prog=0.36 rel=0.59 bal=-0.21 obs=267 hard=208 obsc=334 yr= 28G nz=0.13 flt=0.55 dmap=+1/-0 shz=3.0 plan=5 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @+15/2.35m -> IGNORADA (gate=- perc_n=13)
+[VIS] perc_n=13 age=0.0 free_c=- vismap=1/13 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+15/2.35m]
+t= 34.5 DWA-T pos=(-4.61,+2.31) yaw= +95.0 d=0.74 goal_err=+5 carrot_err= +11 c0=0.53 clear=0.35 prog=0.48 rel=0.53 bal=-0.13 obs=273 hard=209 obsc=342 yr= 32  nz=0.13 flt=0.51 dmap=+11/-5 shz=3.0 plan=5 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve refrigerator conf=0.45 @+15/2.35m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.3 free_c=- vismap=13/13 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+15/2.35m]
+t= 34.8 DWA-F pos=(-4.61,+2.35) yaw= +89.4 d=0.71 goal_err=+10 carrot_err= +17 c0=0.65 clear=0.44 prog=0.49 rel=0.53 bal=-0.10 obs=286 hard=216 obsc=348 yr= 18  nz=0.17 flt=0.35 dmap=+22/-9 shz=3.0 plan=5 cmd=(lx=+0.00,ly=+0.40,rx=-0.45)
+[VIS] YOLO ve refrigerator conf=0.45 @+19/2.02m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=3/14 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+19/2.02m]
+t= 35.1 DWA-T pos=(-4.61,+2.37) yaw= +88.9 d=0.69 goal_err=+11 carrot_err= +18 c0=0.63 clear=0.42 prog=0.44 rel=0.63 bal=-0.16 obs=290 hard=220 obsc=351 yr=  2G nz=0.13 flt=0.12 dmap=+4/-0 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @+24/3.43m -> IGNORADA (gate=- perc_n=0)
+[VIS] perc_n=0 age=0.0 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+24/3.43m]
+t= 35.4 DWA-T pos=(-4.61,+2.40) yaw= +94.3 d=0.65 goal_err=+6 carrot_err= +13 c0=0.60 clear=0.40 prog=0.45 rel=0.60 bal=-0.07 obs=289 hard=219 obsc=350 yr= 20  nz=0.11 flt=0.29 dmap=+11/-12 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @+14/2.71m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.0 free_c=- vismap=2/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+14/2.71m]
+t= 35.6 DWA-T pos=(-4.61,+2.42) yaw= +97.3 d=0.63 goal_err=+4 carrot_err= +11 c0=0.58 clear=0.39 prog=0.42 rel=0.66 bal=-0.27 obs=280 hard=216 obsc=357 yr= 12  nz=0.11 flt=0.27 dmap=+7/-16 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @+14/2.71m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.3 free_c=- vismap=15/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+14/2.71m]
+t= 35.9 DWA-T pos=(-4.61,+2.43) yaw= +98.9 d=0.62 goal_err=+2 carrot_err=  +9 c0=0.77 clear=0.52 prog=0.33 rel=0.59 bal=-0.25 obs=290 hard=217 obsc=349 yr=  5  nz=0.12 flt=0.30 dmap=+22/-12 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @+9/3.12m -> USADA (en mapa)
+[VIS] YOLO ve refrigerator conf=0.45 @+8/2.43m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.0 free_c=- vismap=8/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+9/3.12m,refrigerator@+8/2.43m]
+t= 36.2 DWA-T pos=(-4.61,+2.43) yaw= +99.4 d=0.62 goal_err=+1 carrot_err=  +9 c0=0.77 clear=0.51 prog=0.23 rel=0.54 bal=-0.25 obs=291 hard=219 obsc=352 yr=  2  nz=0.18 flt=0.13 dmap=+6/-5 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @+9/3.12m -> USADA (en mapa)
+[VIS] YOLO ve refrigerator conf=0.45 @+8/2.43m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.3 free_c=- vismap=15/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+9/3.12m,refrigerator@+8/2.43m]
+t= 36.5 DWA-T pos=(-4.61,+2.43) yaw= +99.7 d=0.62 goal_err=+1 carrot_err=  +9 c0=0.77 clear=0.51 prog=0.17 rel=0.58 bal=-0.24 obs=294 hard=225 obsc=354 yr=  1  nz=0.17 flt=0.11 dmap=+16/-13 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 36.8 DWA-T pos=(-4.61,+2.43) yaw= +99.8 d=0.62 goal_err=+1 carrot_err=  +8 c0=0.77 clear=0.51 prog=0.13 rel=0.58 bal=-0.24 obs=282 hard=215 obsc=343 yr=  0  nz=0.19 flt=0.11 dmap=+2/-14 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @+6/2.53m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.0 free_c=- vismap=12/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+6/2.53m]
+t= 37.2 DWA-T pos=(-4.61,+2.43) yaw= +99.9 d=0.62 goal_err=+1 carrot_err=  +8 c0=0.77 clear=0.51 prog=0.06 rel=0.53 bal=-0.32 obs=287 hard=216 obsc=338 yr=  0  nz=0.20 flt=0.10 dmap=+7/-2 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @+6/2.53m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.3 free_c=- vismap=15/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+6/2.53m]
+t= 37.5 DWA-T pos=(-4.61,+2.43) yaw= +99.9 d=0.62 goal_err=+1 carrot_err=  +8 c0=0.79 clear=0.53 prog=0.03 rel=0.64 bal=-0.24 obs=291 hard=222 obsc=338 yr=  0  nz=0.07 flt=0.10 dmap=+8/-4 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 37.8 DWA-T pos=(-4.61,+2.43) yaw= +99.9 d=0.62 goal_err=+1 carrot_err=  +8 c0=0.79 clear=0.53 prog=0.01 rel=0.64 bal=-0.30 obs=291 hard=224 obsc=338 yr=  0  nz=0.07 flt=0.10 dmap=+4/-4 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 38.1 DWA-T pos=(-4.61,+2.43) yaw= +99.9 d=0.62 goal_err=+1 carrot_err=  +8 c0=0.77 clear=0.51 prog=0.01 rel=0.63 bal=-0.30 obs=289 hard=222 obsc=336 yr=  0  nz=0.07 flt=0.07 dmap=+2/-4 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 38.4 DWA-T pos=(-4.61,+2.43) yaw= +99.9 d=0.62 goal_err=+1 carrot_err=  +8 c0=0.77 clear=0.51 prog=0.00 rel=0.63 bal=-0.30 obs=289 hard=222 obsc=336 yr=  0  nz=0.07 flt=0.07 dmap=+0/-0 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] perc_n=0 age=0.3 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 38.6 DWA-T pos=(-4.61,+2.43) yaw= +99.9 d=0.62 goal_err=+1 carrot_err=  +8 c0=0.77 clear=0.51 prog=0.00 rel=0.63 bal=-0.30 obs=290 hard=226 obsc=334 yr=  0  nz=0.07 flt=0.04 dmap=+3/-2 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 38.9 BRK-BK pos=(-4.61,+2.43) yaw= +99.9 d=0.62 goal_err=+1 carrot_err=  +8 c0=0.77 clear=0.51 prog=0.00 rel=0.67 bal=-0.30 obs=286 hard=226 obsc=333 yr=  0  nz=0.07 flt=0.08 dmap=+0/-4 shz=3.0 plan=0 cmd=(lx=+0.00,ly=-0.35,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @+7/2.71m -> USADA (en mapa)
+[VIS] YOLO ve refrigerator conf=0.45 @+12/1.77m -> IGNORADA (gate=- perc_n=29)
+[VIS] perc_n=29 age=0.0 free_c=- vismap=12/29 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+7/2.71m,refrigerator@+12/1.77m]
+t= 39.3 BRK-TR pos=(-4.61,+2.40) yaw= +99.9 d=0.65 goal_err=+1 carrot_err=  +8 c0=0.63 clear=0.42 prog=0.00 rel=0.65 bal=-0.37 obs=290 hard=225 obsc=352 yr=  0  nz=0.08 flt=0.20 dmap=+7/-3 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] YOLO ve chair conf=0.45 @+7/2.71m -> USADA (en mapa)
+[VIS] YOLO ve refrigerator conf=0.45 @+12/1.77m -> IGNORADA (gate=G perc_n=29)
+[VIS] perc_n=29 age=0.3 free_c=- vismap=12/29 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+7/2.71m,refrigerator@+12/1.77m]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-15deg/s OK
+t= 39.7 BRK-TR pos=(-4.60,+2.37) yaw= +95.0 d=0.68 goal_err=+6 carrot_err= +12 c0=0.66 clear=0.44 prog=0.00 rel=0.62 bal=-0.20 obs=293 hard=228 obsc=353 yr= 15G nz=0.14 flt=0.41 dmap=+3/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=+0deg/s OK
+t= 40.0 BRK-TR pos=(-4.60,+2.37) yaw= +95.0 d=0.68 goal_err=+6 carrot_err= +12 c0=0.66 clear=0.44 prog=0.00 rel=0.56 bal=-0.20 obs=293 hard=228 obsc=353 yr=  0G nz=0.14 flt=0.41 dmap=+0/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-38deg/s OK
+t= 40.2 BRK-TR pos=(-4.60,+2.36) yaw= +85.0 d=0.69 goal_err=+16 carrot_err= +22 c0=0.67 clear=0.45 prog=0.00 rel=0.56 bal=-0.17 obs=293 hard=228 obsc=353 yr= 38G nz=0.14 flt=0.49 dmap=+0/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-40deg/s OK
+t= 40.5 BRK-TR pos=(-4.60,+2.35) yaw= +72.6 d=0.70 goal_err=+28 carrot_err= +34 c0=0.85 clear=0.57 prog=0.00 rel=0.61 bal=-0.05 obs=294 hard=229 obsc=354 yr= 40G nz=0.10 flt=0.47 dmap=+1/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] perc_n=0 age=0.3 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-48deg/s OK
+t= 40.9 BRK-TR pos=(-4.60,+2.35) yaw= +56.8 d=0.70 goal_err=+43 carrot_err= +50 c0=0.77 clear=0.51 prog=0.00 rel=0.65 bal=-0.09 obs=300 hard=235 obsc=360 yr= 48G nz=0.14 flt=0.48 dmap=+6/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] YOLO ve couch conf=0.54 @-5/1.68m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=1/14 color=- carpet=- cnear=- crmin=- door=- dets=[couch@-5/1.68m]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-47deg/s OK
+t= 41.2 BRK-TR pos=(-4.61,+2.35) yaw= +42.8 d=0.70 goal_err=+57 carrot_err= +64 c0=0.77 clear=0.51 prog=0.00 rel=0.66 bal=-0.01 obs=304 hard=239 obsc=364 yr= 47G nz=0.15 flt=0.58 dmap=+4/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] YOLO ve couch conf=0.83 @+23/0.65m -> USADA (en mapa)
+[VIS] YOLO ve couch conf=0.56 @+8/1.56m -> USADA (en mapa)
+[VIS] perc_n=30 age=0.0 free_c=- vismap=9/27 color=- carpet=- cnear=- crmin=- door=- dets=[couch@+23/0.65m,couch@+8/1.56m]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-57deg/s OK
+t= 41.4 BRK-TR pos=(-4.61,+2.35) yaw= +28.6 d=0.70 goal_err=+72 carrot_err= +78 c0=1.04 clear=0.69 prog=0.00 rel=0.51 bal=-0.03 obs=306 hard=241 obsc=366 yr= 57G nz=0.12 flt=0.57 dmap=+2/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+META-SM: BLIND -> NORMAL (trust=1.00 contra=0 iface=1.00 near=1.04) t=41s
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-68deg/s OK
+t= 41.7 BRK-TR pos=(-4.61,+2.35) yaw= +11.8 d=0.71 goal_err=+88 carrot_err= +95 c0=0.82 clear=0.55 prog=0.00 rel=0.42 bal=-0.03 obs=307 hard=242 obsc=367 yr= 68G nz=0.21 flt=0.57 dmap=+1/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-52deg/s OK
+t= 41.9 DWA-T pos=(-4.61,+2.35) yaw=  -2.6 d=0.71 goal_err=+103 carrot_err=+109 c0=0.82 clear=0.55 prog=0.00 rel=0.53 bal=-0.06 obs=309 hard=244 obsc=369 yr= 52G nz=0.21 flt=0.54 dmap=+2/-0 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=-0.45)
+  TURN-CAL rx=-0.45 esperado=+46deg/s medido=-32deg/s >>> SIGNO INVERTIDO <<<
+t= 42.3 DWA-T pos=(-4.61,+2.35) yaw= -13.8 d=0.70 goal_err=+114 carrot_err=+120 c0=0.61 clear=0.41 prog=0.00 rel=0.46 bal=-0.06 obs=313 hard=248 obsc=372 yr= 32G nz=0.18 flt=0.50 dmap=+4/-0 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=-0.45)
+[VIS] perc_n=0 age=0.6 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+  TURN-CAL rx=-0.45 esperado=+46deg/s medido=+5deg/s OK
+t= 42.6 DWA-T pos=(-4.61,+2.35) yaw= -12.4 d=0.70 goal_err=+112 carrot_err=+119 c0=0.61 clear=0.41 prog=0.00 rel=0.37 bal=-0.06 obs=313 hard=249 obsc=372 yr=  5G nz=0.24 flt=0.18 dmap=+0/-0 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=-0.45)
+  TURN-CAL rx=-0.45 esperado=+46deg/s medido=+34deg/s OK
+t= 42.9 DWA-F pos=(-4.61,+2.35) yaw=  -2.2 d=0.70 goal_err=+102 carrot_err=+109 c0=0.61 clear=0.41 prog=0.00 rel=0.38 bal=-0.06 obs=313 hard=249 obsc=372 yr= 34G nz=0.26 flt=0.39 dmap=+0/-0 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.40,rx=-0.45)
+[VIS] YOLO ve chair conf=0.77 @+1/1.29m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.0 free_c=- vismap=10/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+1/1.29m]
+t= 43.2 DWA-F pos=(-4.60,+2.35) yaw=  +9.7 d=0.71 goal_err=+91 carrot_err= +98 c0=0.60 clear=0.40 prog=0.00 rel=0.39 bal=-0.02 obs=313 hard=249 obsc=372 yr= 43G nz=0.27 flt=0.55 dmap=+0/-0 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+[VIS] YOLO ve chair conf=0.77 @+1/1.29m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.3 free_c=- vismap=10/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+1/1.29m]
+t= 43.5 DWA-F pos=(-4.56,+2.36) yaw= +23.0 d=0.70 goal_err=+81 carrot_err= +88 c0=0.56 clear=0.37 prog=0.00 rel=0.54 bal=-0.01 obs=315 hard=251 obsc=374 yr= 38G nz=0.17 flt=0.52 dmap=+2/-0 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+[VIS] YOLO ve chair conf=0.77 @+1/1.29m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.7 free_c=- vismap=10/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+1/1.29m]
+t= 43.8 DWA-F pos=(-4.50,+2.39) yaw= +39.2 d=0.69 goal_err=+70 carrot_err= +77 c0=0.55 clear=0.36 prog=0.03 rel=0.56 bal=+0.08 obs=316 hard=253 obsc=375 yr= 50G nz=0.09 flt=0.62 dmap=+1/-0 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+[VIS] YOLO ve refrigerator conf=0.80 @+19/0.4m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=1/2 color=- carpet=- cnear=- crmin=- door=- dets=[refrigerator@+19/0.4m]
+t= 44.1 DWA-F pos=(-4.46,+2.43) yaw= +53.5 d=0.67 goal_err=+60 carrot_err= +67 c0=0.59 clear=0.39 prog=0.07 rel=0.47 bal=+0.08 obs=318 hard=255 obsc=377 yr= 47G nz=0.11 flt=0.44 dmap=+2/-0 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+t= 44.5 DWA-T pos=(-4.43,+2.48) yaw= +67.8 d=0.63 goal_err=+51 carrot_err= +58 c0=0.52 clear=0.34 prog=0.13 rel=0.77 bal=+0.07 obs=319 hard=257 obsc=378 yr= 39G nz=0.10 flt=0.37 dmap=+1/-0 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=-0.45)
+  TURN-CAL rx=-0.45 esperado=+46deg/s medido=+46deg/s OK
+t= 44.8 DWA-T pos=(-4.41,+2.54) yaw= +82.2 d=0.59 goal_err=+40 carrot_err= +48 c0=0.46 clear=0.30 prog=0.20 rel=0.80 bal=+0.12 obs=321 hard=259 obsc=380 yr= 46G nz=0.10 flt=0.50 dmap=+2/-0 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.80 @-4/0.7m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=5/10 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-4/0.7m]
+t= 45.1 DWA-F pos=(-4.41,+2.58) yaw= +97.4 d=0.56 goal_err=+27 carrot_err= +35 c0=0.42 clear=0.28 prog=0.25 rel=0.60 bal=+0.07 obs=328 hard=238 obsc=383 yr= 49  nz=0.13 flt=0.50 dmap=+12/-5 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+t= 45.5 DWA-F pos=(-4.42,+2.59) yaw=+104.7 d=0.55 goal_err=+21 carrot_err= +29 c0=0.41 clear=0.27 prog=0.27 rel=0.64 bal=+0.17 obs=330 hard=241 obsc=385 yr= 22G nz=0.16 flt=0.43 dmap=+2/-0 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+[VIS] YOLO ve chair conf=0.45 @+3/2.89m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=3/14 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+3/2.89m]
+t= 45.7 DWA-F pos=(-4.43,+2.63) yaw=+114.8 d=0.51 goal_err=+12 carrot_err= +20 c0=0.41 clear=0.27 prog=0.32 rel=0.60 bal=+0.24 obs=333 hard=245 obsc=388 yr= 36G nz=0.16 flt=0.43 dmap=+3/-0 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+[VIS] YOLO ve chair conf=0.45 @-1/2.98m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=3/14 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-1/2.98m]
+t= 46.1 DWA-T pos=(-4.45,+2.68) yaw=+127.2 d=0.46 goal_err=-0 carrot_err= +10 c0=0.36 clear=0.24 prog=0.36 rel=0.61 bal=+0.29 obs=336 hard=249 obsc=390 yr= 40G nz=0.13 flt=0.64 dmap=+3/-0 shz=3.0 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.45 @-1/2.98m -> IGNORADA (gate=- perc_n=14)
+[VIS] perc_n=14 age=0.2 free_c=- vismap=3/14 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-1/2.98m]
+t= 46.3 DWA-T pos=(-4.49,+2.71) yaw=+139.4 d=0.40 goal_err=-13 carrot_err=  -2 c0=0.42 clear=0.28 prog=0.43 rel=0.51 bal=+0.39 obs=339 hard=249 obsc=398 yr= 57  nz=0.12 flt=0.47 dmap=+6/-3 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 46.6 DWA-T pos=(-4.50,+2.73) yaw=+144.0 d=0.39 goal_err=-18 carrot_err=  -7 c0=0.40 clear=0.27 prog=0.39 rel=0.53 bal=+0.39 obs=346 hard=255 obsc=411 yr= 15  nz=0.11 flt=0.28 dmap=+11/-4 shz=3.1 plan=4 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 46.9 DWA-T pos=(-4.51,+2.73) yaw=+146.2 d=0.38 goal_err=-21 carrot_err=  -9 c0=0.39 clear=0.26 prog=0.35 rel=0.56 bal=+0.39 obs=349 hard=255 obsc=415 yr=  7  nz=0.11 flt=0.29 dmap=+8/-5 shz=3.1 plan=2 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 47.2 DWA-T pos=(-4.52,+2.74) yaw=+147.3 d=0.37 goal_err=-22 carrot_err= -10 c0=0.67 clear=0.45 prog=0.34 rel=0.57 bal=+0.28 obs=315 hard=255 obsc=427 yr=  4  nz=0.08 flt=0.09 dmap=+11/-45 shz=3.1 plan=2 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] perc_n=0 age=0.3 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 47.5 DWA-T pos=(-4.52,+2.74) yaw=+147.7 d=0.37 goal_err=-23 carrot_err= -11 c0=0.82 clear=0.55 prog=0.27 rel=0.42 bal=-0.02 obs=299 hard=246 obsc=385 yr=  1  nz=0.21 flt=0.13 dmap=+11/-27 shz=3.1 plan=2 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 47.8 DWA-T pos=(-4.52,+2.74) yaw=+147.7 d=0.37 goal_err=-23 carrot_err= -11 c0=0.82 clear=0.55 prog=0.17 rel=0.42 bal=-0.02 obs=299 hard=246 obsc=385 yr=  0  nz=0.31 flt=0.13 dmap=+0/-0 shz=3.1 plan=2 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 48.1 DWA-T pos=(-4.52,+2.74) yaw=+148.0 d=0.37 goal_err=-23 carrot_err= -11 c0=0.82 clear=0.55 prog=0.07 rel=0.42 bal=-0.02 obs=296 hard=235 obsc=361 yr=  1  nz=0.31 flt=0.15 dmap=+4/-7 shz=3.0 plan=2 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 48.4 DWA-T pos=(-4.52,+2.74) yaw=+148.0 d=0.37 goal_err=-23 carrot_err= -11 c0=0.92 clear=0.61 prog=0.03 rel=0.42 bal=-0.02 obs=293 hard=234 obsc=355 yr=  0  nz=0.30 flt=0.04 dmap=+2/-5 shz=3.0 plan=2 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.79 @+23/1.25m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.0 free_c=- vismap=3/15 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+23/1.25m]
+t= 48.7 DWA-T pos=(-4.52,+2.74) yaw=+148.1 d=0.37 goal_err=-23 carrot_err= -11 c0=0.95 clear=0.63 prog=0.01 rel=0.59 bal=-0.02 obs=293 hard=246 obsc=364 yr=  0  nz=0.18 flt=0.10 dmap=+2/-2 shz=3.0 plan=2 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.79 @+20/1.16m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.0 free_c=- vismap=13/14 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+20/1.16m]
+t= 49.1 DWA-T pos=(-4.52,+2.74) yaw=+148.1 d=0.37 goal_err=-23 carrot_err= -11 c0=0.92 clear=0.61 prog=0.01 rel=0.60 bal=-0.02 obs=302 hard=251 obsc=363 yr=  0  nz=0.13 flt=0.14 dmap=+12/-3 shz=3.0 plan=2 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+[VIS] YOLO ve chair conf=0.79 @+20/1.16m -> USADA (en mapa)
+[VIS] perc_n=14 age=0.3 free_c=- vismap=13/14 color=- carpet=- cnear=- crmin=- door=- dets=[chair@+20/1.16m]
+t= 49.4 DWA-T pos=(-4.52,+2.74) yaw=+148.1 d=0.37 goal_err=-23 carrot_err= -11 c0=0.92 clear=0.61 prog=0.00 rel=0.54 bal=-0.02 obs=302 hard=251 obsc=363 yr=  0  nz=0.14 flt=0.14 dmap=+0/-0 shz=3.0 plan=2 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 49.6 DWA-T pos=(-4.52,+2.74) yaw=+148.1 d=0.37 goal_err=-23 carrot_err= -11 c0=0.95 clear=0.63 prog=0.00 rel=0.54 bal=-0.02 obs=292 hard=251 obsc=361 yr=  0  nz=0.14 flt=0.12 dmap=+2/-12 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.00)
+t= 49.9 BRK-BK pos=(-4.52,+2.74) yaw=+148.1 d=0.37 goal_err=-23 carrot_err= -11 c0=0.95 clear=0.63 prog=0.00 rel=0.47 bal=-0.02 obs=292 hard=245 obsc=353 yr=  0  nz=0.09 flt=0.13 dmap=+2/-2 shz=3.0 plan=0 cmd=(lx=+0.00,ly=-0.35,rx=+0.00)
+t= 50.2 BRK-TR pos=(-4.51,+2.73) yaw=+148.1 d=0.38 goal_err=-23 carrot_err= -11 c0=0.83 clear=0.56 prog=0.00 rel=0.54 bal=-0.02 obs=295 hard=245 obsc=355 yr=  0  nz=0.08 flt=0.09 dmap=+6/-3 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] perc_n=0 age=0.3 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-3deg/s OK
+t= 50.5 BRK-TR pos=(-4.47,+2.71) yaw=+147.2 d=0.42 goal_err=-20 carrot_err=  -9 c0=0.78 clear=0.52 prog=0.00 rel=0.44 bal=+0.00 obs=297 hard=248 obsc=356 yr=  3G nz=0.12 flt=0.18 dmap=+2/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-29deg/s OK
+t= 50.8 BRK-TR pos=(-4.45,+2.69) yaw=+138.5 d=0.45 goal_err=-10 carrot_err=  +0 c0=0.81 clear=0.54 prog=0.00 rel=0.52 bal=+0.08 obs=301 hard=253 obsc=360 yr= 29G nz=0.17 flt=0.43 dmap=+4/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-46deg/s OK
+t= 51.0 BRK-TR pos=(-4.44,+2.68) yaw=+127.1 d=0.46 goal_err=+2 carrot_err= +11 c0=0.92 clear=0.61 prog=0.00 rel=0.47 bal=+0.19 obs=304 hard=256 obsc=363 yr= 46G nz=0.17 flt=0.54 dmap=+3/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=+0deg/s OK
+t= 51.2 BRK-TR pos=(-4.44,+2.68) yaw=+127.1 d=0.46 goal_err=+2 carrot_err= +11 c0=0.92 clear=0.61 prog=0.00 rel=0.50 bal=+0.19 obs=304 hard=256 obsc=363 yr=  0G nz=0.18 flt=0.54 dmap=+0/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] YOLO ve chair conf=0.45 @-12/2.73m -> USADA (en mapa)
+[VIS] perc_n=13 age=0.0 free_c=- vismap=0/13 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-12/2.73m]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-47deg/s OK
+t= 51.5 BRK-TR pos=(-4.44,+2.68) yaw=+114.1 d=0.46 goal_err=+15 carrot_err= +24 c0=0.91 clear=0.61 prog=0.00 rel=0.50 bal=+0.10 obs=306 hard=258 obsc=365 yr= 47G nz=0.18 flt=0.53 dmap=+2/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-64deg/s OK
+t= 51.8 BRK-TR pos=(-4.44,+2.68) yaw= +98.0 d=0.47 goal_err=+31 carrot_err= +40 c0=0.95 clear=0.64 prog=0.00 rel=0.49 bal=+0.10 obs=308 hard=261 obsc=367 yr= 64G nz=0.17 flt=0.52 dmap=+2/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] YOLO ve chair conf=0.76 @-14/0.58m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.0 free_c=- vismap=3/7 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-14/0.58m]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-48deg/s OK
+t= 52.1 BRK-TR pos=(-4.44,+2.68) yaw= +83.8 d=0.47 goal_err=+45 carrot_err= +54 c0=0.85 clear=0.56 prog=0.00 rel=0.54 bal=-0.01 obs=312 hard=265 obsc=371 yr= 48G nz=0.19 flt=0.38 dmap=+4/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] YOLO ve chair conf=0.76 @-14/0.58m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.4 free_c=- vismap=3/7 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-14/0.58m]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-39deg/s OK
+t= 52.4 BRK-TR pos=(-4.44,+2.68) yaw= +69.5 d=0.47 goal_err=+59 carrot_err= +69 c0=0.68 clear=0.46 prog=0.00 rel=0.66 bal=-0.02 obs=314 hard=268 obsc=373 yr= 39G nz=0.16 flt=0.40 dmap=+2/-0 shz=3.0 plan=0 cmd=(lx=+0.00,ly=+0.00,rx=+0.45)
+[VIS] YOLO ve chair conf=0.76 @-14/0.58m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.7 free_c=- vismap=3/7 color=- carpet=- cnear=- crmin=- door=- dets=[chair@-14/0.58m]
+  TURN-CAL rx=+0.45 esperado=-46deg/s medido=-46deg/s OK
+t= 52.7 DWA-F pos=(-4.44,+2.67) yaw= +55.1 d=0.47 goal_err=+74 carrot_err= +83 c0=0.68 clear=0.46 prog=0.00 rel=0.71 bal=-0.02 obs=317 hard=271 obsc=376 yr= 46G nz=0.19 flt=0.44 dmap=+3/-0 shz=3.0 plan=3 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+t= 53.0 DWA-F pos=(-4.44,+2.68) yaw= +40.0 d=0.47 goal_err=+89 carrot_err= +99 c0=0.68 clear=0.45 prog=0.00 rel=0.68 bal=+0.01 obs=317 hard=271 obsc=376 yr= 51G nz=0.21 flt=0.60 dmap=+0/-0 shz=3.1 plan=3 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+[VIS] YOLO ve couch conf=0.80 @-5/0.29m -> USADA (en mapa)
+[VIS] YOLO ve couch conf=0.79 @-6/1.34m -> USADA (en mapa)
+[VIS] perc_n=28 age=0.0 free_c=- vismap=2/15 color=- carpet=- cnear=- crmin=- door=- dets=[couch@-5/0.29m,couch@-6/1.34m]
+t= 53.3 DWA-T pos=(-4.41,+2.70) yaw= +39.7 d=0.47 goal_err=+93 carrot_err=+102 c0=0.65 clear=0.43 prog=0.00 rel=0.64 bal=+0.01 obs=320 hard=274 obsc=379 yr=  1G nz=0.21 flt=0.15 dmap=+3/-0 shz=3.1 plan=3 cmd=(lx=+0.00,ly=+0.00,rx=-0.45)
+[VIS] YOLO ve couch conf=0.80 @-5/0.29m -> USADA (en mapa)
+[VIS] YOLO ve couch conf=0.79 @-6/1.34m -> USADA (en mapa)
+[VIS] perc_n=28 age=0.3 free_c=- vismap=2/14 color=- carpet=- cnear=- crmin=- door=- dets=[couch@-5/0.29m,couch@-6/1.34m]
+  TURN-CAL rx=-0.45 esperado=+46deg/s medido=+28deg/s OK
+t= 53.6 DWA-F pos=(-4.38,+2.73) yaw= +47.3 d=0.47 goal_err=+91 carrot_err=+100 c0=0.60 clear=0.40 prog=0.00 rel=0.62 bal=+0.01 obs=323 hard=277 obsc=382 yr= 28G nz=0.18 flt=0.39 dmap=+3/-0 shz=3.1 plan=3 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+[VIS] YOLO ve couch conf=0.77 @-12/1.2m -> USADA (en mapa)
+[VIS] perc_n=15 age=0.0 free_c=- vismap=7/15 color=- carpet=- cnear=- crmin=- door=- dets=[couch@-12/1.2m]
+t= 53.9 DWA-F pos=(-4.35,+2.76) yaw= +60.6 d=0.47 goal_err=+83 carrot_err= +91 c0=0.56 clear=0.38 prog=0.00 rel=0.72 bal=+0.02 obs=324 hard=278 obsc=383 yr= 46G nz=0.12 flt=0.46 dmap=+1/-0 shz=3.1 plan=3 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+t= 54.2 DWA-F pos=(-4.33,+2.81) yaw= +73.7 d=0.46 goal_err=+76 carrot_err= +84 c0=0.52 clear=0.34 prog=0.01 rel=0.71 bal=+0.02 obs=325 hard=279 obsc=384 yr= 41G nz=0.14 flt=0.43 dmap=+1/-0 shz=3.1 plan=3 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+t= 54.5 DWA-F pos=(-4.32,+2.86) yaw= +87.5 d=0.44 goal_err=+69 carrot_err= +76 c0=0.74 clear=0.49 prog=0.04 rel=0.71 bal=+0.17 obs=328 hard=282 obsc=387 yr= 47G nz=0.16 flt=0.46 dmap=+3/-0 shz=3.1 plan=3 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+t= 54.8 DWA-F pos=(-4.33,+2.92) yaw=+101.6 d=0.42 goal_err=+62 carrot_err= +69 c0=0.68 clear=0.45 prog=0.09 rel=0.67 bal=+0.27 obs=331 hard=285 obsc=390 yr= 52G nz=0.16 flt=0.40 dmap=+3/-0 shz=3.1 plan=3 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+[VIS] perc_n=0 age=0.5 free_c=- vismap=0/0 color=- carpet=- cnear=- crmin=- door=- dets=[-]
+t= 55.0 DWA-F pos=(-4.33,+2.92) yaw=+101.6 d=0.42 goal_err=+62 carrot_err= +69 c0=0.68 clear=0.45 prog=0.09 rel=0.67 bal=+0.27 obs=331 hard=285 obsc=390 yr=  0G nz=0.16 flt=0.40 dmap=+0/-0 shz=3.1 plan=3 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+t= 55.3 DWA-F pos=(-4.35,+2.99) yaw=+118.3 d=0.38 goal_err=+55 carrot_err= +61 c0=0.61 clear=0.41 prog=0.15 rel=0.67 bal=+0.21 obs=334 hard=288 obsc=393 yr= 76G nz=0.16 flt=0.51 dmap=+3/-0 shz=3.1 plan=3 cmd=(lx=+0.00,ly=+0.28,rx=-0.45)
+REACHED B err=0.34 ncol=0 2026-08-24 07:27:41
+STRAFE-CAL-RESUMEN lx>0 -> -3.3719906527913923cm/tick ; lx<0 -> -cm/tick (con el mapeo BIEN, lx>0 debe dar cm POSITIVOS=IZQ)
+TURN-CAL-RESUMEN rx>0 -> medido~-39.480316482350275deg/s (modelo<0) ; rx<0 -> medido~5.051486397078213deg/s (modelo>0) :: OK (modelo correcto)
+FASES {'DWA-F': 58, 'DOOR-GO': 3, 'ENG-F': 11, 'ENG-AL': 5, 'ENG-AL.': 6, 'ENG-GO': 28, 'ENG-C': 2, 'DWA-T': 51, 'BRK-BK': 2, 'BRK-TR': 18}
+FIN
