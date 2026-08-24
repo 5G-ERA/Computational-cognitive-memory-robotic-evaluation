@@ -188,3 +188,75 @@ def anota(muestras, cfg=None):
         m["role"], m["role_reason"], m["authority"] = r, why, a
         cnt[r] += 1
     return cnt
+
+
+# ---------------------------------------------------------------------------------------
+# ESTABILIZACION DE ROL (24-ago). La primera transicion escenificada (T3) mostro el rol
+# alternando object <-> motion veinte veces en 47 s, en saltos de 0.2-0.3 s: ruido de
+# deteccion cruzando un umbral sin histeresis. Con las FRONTERAS DE DECISION como unidad
+# del banco, ese tableteo fabrica fronteras que no existen y contamina cualquier medida de
+# retardo de conmutacion.
+#
+# LOS UMBRALES SON UNA ELECCION, NO UN HALLAZGO. Se midio la duracion de 121 episodios y la
+# distribucion decae suave (27% <0.5 s, 17% 0.5-1 s, 6% 1-1.5 s): NO hay valle donde cortar.
+# Lo que si decide es una asimetria de costes: el retardo de confirmacion es una constante
+# DECLARADA que puede restarse del retardo de conmutacion medido, mientras que el tableteo
+# es ruido que no se puede quitar despues. Por eso se confirma antes de adoptar.
+#
+# La abstencion NO se confirma. Adoptar review/defer/no_use es la respuesta prudente ante
+# evidencia insuficiente, y retrasarla seria exactamente el error que el protocolo llama
+# fallo y no ineficiencia (§5: una respuesta confiada en un control no resuelto es un fallo).
+# Se retrasa afirmar, nunca abstenerse.
+#
+# resuelve_rol() SIGUE SIENDO PURA: la histeresis vive aqui, en un objeto con estado, para
+# que la funcion se pueda seguir aplicando a muestras sueltas y a material ya grabado.
+
+CONF_TICKS = 2       # confirmaciones para ADOPTAR un rol que permite actuar (~0.6 s a 3.3 Hz)
+DWELL_S = 1.0        # permanencia minima antes de ceder a otro rol afirmativo
+INMEDIATOS = ("review", "defer", "no_use")   # la abstencion se adopta sin esperar
+
+
+class EstabilizadorRol(object):
+    """Envuelve resuelve_rol anadiendo confirmacion y permanencia minima.
+
+    Uso:  est = EstabilizadorRol(); rol, razon, aut, crudo = est.paso(muestra)
+    `crudo` es lo que habria dicho el resolutor sin estabilizar, para poder medir el efecto.
+    """
+
+    def __init__(self, conf=CONF_TICKS, dwell=DWELL_S, cfg=None):
+        self.conf = int(conf); self.dwell = float(dwell); self.cfg = cfg
+        self.rol = None; self.razon = ""; self.t_adopcion = None
+        self._cand = None; self._n = 0
+
+    def paso(self, m, t=None):
+        crudo, razon, aut = resuelve_rol(m, self.cfg)
+        if t is None:
+            t = m.get("t")
+        if self.rol is None:
+            self.rol, self.razon, self.t_adopcion = crudo, razon, t
+            return self.rol, self.razon, aut, crudo
+        if crudo == self.rol:
+            self._cand = None; self._n = 0
+            return self.rol, self.razon, aut, crudo
+
+        # la abstencion no espera
+        if crudo in INMEDIATOS:
+            self.rol, self.razon, self.t_adopcion = crudo, razon, t
+            self._cand = None; self._n = 0
+            return self.rol, self.razon, aut, crudo
+
+        # permanencia minima del rol vigente (salvo que el vigente sea abstencion:
+        # salir de una abstencion cuando la evidencia vuelve no debe penalizarse)
+        if (self.t_adopcion is not None and t is not None
+                and self.rol not in INMEDIATOS and (t - self.t_adopcion) < self.dwell):
+            return self.rol, self.razon, aut, crudo
+
+        # confirmacion antes de adoptar
+        if crudo == self._cand:
+            self._n += 1
+        else:
+            self._cand = crudo; self._n = 1
+        if self._n >= self.conf:
+            self.rol, self.razon, self.t_adopcion = crudo, razon, t
+            self._cand = None; self._n = 0
+        return self.rol, self.razon, aut, crudo

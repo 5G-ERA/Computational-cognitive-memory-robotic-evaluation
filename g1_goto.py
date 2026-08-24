@@ -394,8 +394,9 @@ SC_RANGE = float(os.environ.get("G1_SC_RANGE", "2.6"))    # m: solo se penaliza 
 # Partitioning). Import defensivo a proposito -- que falte el fichero no puede tumbar una sesion.
 try:
     from dcc_roles import resuelve_rol as _dcc_rol
+    from dcc_roles import EstabilizadorRol as _DccEstab
 except Exception as _e_rol:
-    _dcc_rol = None
+    _dcc_rol = None; _DccEstab = None
     print("  [DCC] sin resolucion de rol (%s)" % _e_rol)
 
 # --- MEMORIA DE VOXELS EN LA BANDA CIEGA (Renxi 14-ago) + BARRIDO POR RAYOS (24-ago) ---
@@ -591,7 +592,17 @@ class RunRecorder:
             rec.update({k: v for k, v in extra.items() if v is not None})
         if _dcc_rol is not None:
             try:
-                _r, _why, _aut = _dcc_rol(rec)
+                # Se emiten LOS DOS: `role` estabilizado (confirmacion + permanencia, para
+                # que el tableteo no fabrique fronteras de decision falsas) y `role_crudo`
+                # sin filtrar. Guardar el crudo mantiene el filtro auditable y permite medir
+                # su coste a posteriori en vez de tener que fiarse de el.
+                if _DccEstab is not None:
+                    if getattr(self, "_estab", None) is None:
+                        self._estab = _DccEstab()
+                    _r, _why, _aut, _crudo = self._estab.paso(rec)
+                    rec["role_crudo"] = _crudo
+                else:
+                    _r, _why, _aut = _dcc_rol(rec)
                 rec["role"], rec["role_reason"], rec["authority"] = _r, _why, _aut
             except Exception:
                 pass                       # jamas romper la grabacion por el resolutor
