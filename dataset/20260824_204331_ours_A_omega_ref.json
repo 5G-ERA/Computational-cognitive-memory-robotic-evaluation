@@ -1,0 +1,1 @@
+{"config": "T8", "destino": "A", "segmentos": [{"t_pared": 1787600610.3650117, "delta": "motion", "estado": {"luz": 85.0, "cristal": ""}}, {"t_pared": 1787600631.7801487, "delta": "defer", "estado": {"luz": 116.0, "cristal": "-4.3,0.6,-3.5,1.9"}}]}

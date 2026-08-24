@@ -1,0 +1,1 @@
+{"config": "T2", "destino": "A", "segmentos": [{"t_pared": 1787598271.0763686, "delta": "lidar_quality", "estado": {"luz": 116.0, "cristal": "-4.3,0.6,-3.5,1.9"}}, {"t_pared": 1787598311.7307668, "delta": "motion", "estado": {"luz": 116.0, "cristal": ""}}]}

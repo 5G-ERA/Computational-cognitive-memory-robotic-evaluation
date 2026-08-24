@@ -26,9 +26,12 @@ CRISTAL_VANO = "-4.3,0.6,-3.5,1.9"       # rectangulo del flanco del vano (frame
 
 # (instante en s desde el arranque, estado declarado, delta_t esperado DESPUES del cambio)
 GUIONES = {
-    "T1":  [(0.0, {"luz": LUZ_ON,  "cristal": CRISTAL_VANO}, "lidar_quality")],
-    "T2":  [(0.0, {"luz": LUZ_ON,  "cristal": CRISTAL_VANO}, "lidar_quality"),
-            (25.0, {"luz": LUZ_ON, "cristal": ""},            "motion")],
+    # T1/T2 con luz BAJA (cazado por el puntuador: con luz alta el RGB queda inadmisible por
+    # contrato y la insuficiencia es CONJUNTA, no de solo-lidar -- el resolutor respondia
+    # defer/illumination correctamente y el certificado exigia lidar_quality. Familia D2.
+    "T1":  [(0.0, {"luz": LUZ_OFF, "cristal": CRISTAL_VANO}, "lidar_quality")],
+    "T2":  [(0.0, {"luz": LUZ_OFF, "cristal": CRISTAL_VANO}, "lidar_quality"),
+            (25.0, {"luz": LUZ_OFF, "cristal": ""},           "motion")],
     # T3/T4 EN LA DIRECCION MEDIDA (D2): en este sistema es la luz PLENA la que inadmite
     # el RGB (contrato congelado), asi que illumination gobierna con luz alta y motion con
     # luz baja -- el inverso del supuesto clasico de la tabla. La renumeracion es de Renxi.
