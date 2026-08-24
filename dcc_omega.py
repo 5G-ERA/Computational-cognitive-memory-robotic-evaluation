@@ -72,6 +72,48 @@ def carga_referencia(fichero_ref, run):
     return segs
 
 
+def delta_muestra(seg, m):
+    """delta_t derivada para UNA muestra: tupla de roles aceptables.
+
+    Es la funcion central del certificado: delta no es la etiqueta del segmento sino
+    f(estado declarado, pose). La usan el puntuador primario (A_meta/A_Omega) y el de
+    desenlaces secundarios (retardo de conmutacion, retorno, persistencia falsa) -- una
+    sola definicion para que no puedan divergir.
+    """
+    delta = seg["delta"]
+    est = seg.get("estado") or {}
+    if delta in ("defer", "review"):
+        luz_mala = float(est.get("luz", 0)) > 99.0
+        en_zona = False
+        rects = [r for r in str(est.get("cristal") or "").split(";") if r.strip()]
+        for r_ in rects:
+            try:
+                x0, y0, x1, y1 = (float(t_) for t_ in r_.split(","))
+            except ValueError:
+                continue
+            cx = min(max(m.get("x", 0), min(x0, x1)), max(x0, x1))
+            cy = min(max(m.get("y", 0), min(y0, y1)), max(y0, y1))
+            if math.hypot(m.get("x", 0) - cx, m.get("y", 0) - cy) <= 2.0:
+                en_zona = True; break
+        if en_zona and luz_mala:
+            return ("defer", "review")
+        if luz_mala:
+            return ("illumination",)
+        if en_zona:
+            return ("lidar_quality",)
+        return ("motion",)
+    if delta == "object":
+        objs = est.get("objetos") or []
+        for o in objs:
+            dx, dy = float(o[1]) - m.get("x", 0), float(o[2]) - m.get("y", 0)
+            r = math.hypot(dx, dy)
+            brg = (math.degrees(math.atan2(dy, dx)) - m.get("yaw", 0) + 540) % 360 - 180
+            if 0.2 < r <= ENV_RMAX and abs(brg) <= ENV_HFOV:
+                return ("object",)
+        return ("motion",)
+    return (delta,)
+
+
 def fundamento_de(razon):
     r = (razon or "").strip()
     if r.startswith("no verificable"):
@@ -94,49 +136,7 @@ def puntua_run(run, segs, evalua_todas, usa_pose, ventana=2.0):
         # ventana de gracia alrededor de CADA frontera (retardo instrumental declarado)
         if any(abs(t - s["desde"]) < ventana for s in segs[1:]):
             continue
-        delta = seg["delta"]
-        # DELTA DERIVADA (24-ago): delta_t no es una etiqueta por segmento sino una FUNCION
-        # del estado declarado y la pose, computable a priori -- el §4.2 en codigo. El caso
-        # que lo forzo: en T8 el robot CRUZA y deja el cristal atras; su cobertura se
-        # recupera y defer deja de ser lo correcto aunque el segmento declarado siga. Con
-        # luz alta fuera de la zona del cristal lo esperable es illumination; dentro, la
-        # insuficiencia es conjunta y la abstencion (defer o review, §4.2 admite ambas) es
-        # la respuesta. La pose viene del robot: limitacion §3, ya declarada.
-        if delta in ("defer", "review"):
-            est = seg.get("estado") or {}
-            luz_mala = float(est.get("luz", 0)) > 99.0
-            en_zona = False
-            rects = [r for r in str(est.get("cristal") or "").split(";") if r.strip()]
-            for r_ in rects:
-                try:
-                    x0, y0, x1, y1 = (float(t_) for t_ in r_.split(","))
-                except ValueError:
-                    continue
-                cx = min(max(m.get("x", 0), min(x0, x1)), max(x0, x1))
-                cy = min(max(m.get("y", 0), min(y0, y1)), max(y0, y1))
-                if math.hypot(m.get("x", 0) - cx, m.get("y", 0) - cy) <= 2.0:
-                    en_zona = True; break
-            if en_zona and luz_mala:
-                delta = ("defer", "review")
-            elif luz_mala:
-                delta = "illumination"
-            elif en_zona:
-                delta = "lidar_quality"
-            else:
-                delta = "motion"
-        # segmentos de OBJETO: delta por muestra segun identificabilidad
-        if delta == "object":
-            objs = (seg.get("estado") or {}).get("objetos") or []
-            ident = False
-            for o in objs:
-                dx, dy = float(o[1]) - m.get("x", 0), float(o[2]) - m.get("y", 0)
-                r = math.hypot(dx, dy)
-                brg = (math.degrees(math.atan2(dy, dx)) - m.get("yaw", 0) + 540) % 360 - 180
-                if 0.2 < r <= ENV_RMAX and abs(brg) <= ENV_HFOV:
-                    ident = True; break
-            if not ident:
-                delta = "motion"
-        deltas_ok = delta if isinstance(delta, tuple) else (delta,)
+        deltas_ok = delta_muestra(seg, m)
         acepta = tuple(f for d_ in deltas_ok for f in FUNDAMENTO.get(d_, ()))
         r = evalua_todas(m, usa_pose=usa_pose)
         for c, res in r.items():
