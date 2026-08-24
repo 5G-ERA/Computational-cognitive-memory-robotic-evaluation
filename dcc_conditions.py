@@ -101,7 +101,7 @@ def _bloqueado(v):
     return False
 
 
-def verifica_incumbente(v):
+def verifica_incumbente(v, usa_pose=True):
     """Verificador temporal de UNA memoria: movimiento -> estabilidad de la carga util.
 
     Pregunta si la relacion incumbente sigue siendo APLICABLE aqui y ahora, no si es cierta.
@@ -116,11 +116,18 @@ def verifica_incumbente(v):
     # Umbral en 0.80, que es el p5 real de ambos campos (38779 muestras): con 0.55 la
     # condicion no se disparaba NUNCA y C1 salia artificialmente confiado. Un baseline
     # debil infla C4-C1, y entonces el banco mide la implementacion en vez del factor.
-    lc = v.get("loc_conf"); lm = v.get("loc_match")
-    if isinstance(lc, (int, float)) and lc < 0.80:
-        razones.append("pose:loc_conf=%.2f<0.80" % lc)
-    elif isinstance(lm, (int, float)) and lm < 0.80:
-        razones.append("pose:loc_match=%.2f<0.80" % lm)
+    # DECISION (a), 24-ago: en el GEMELO esta pata se ignora, declarandolo. loc_match no
+    # mide lo mismo en los dos sistemas -- en el robot las celdas vienen del buffer de
+    # relocalizacion YA ALINEADO por el SLAM contra un mapa hecho con esos mismos retornos,
+    # y en el gemelo de un ray-march contra geometria que el mapa nunca registro. Medido:
+    # quitarla mueve C1 0.3 puntos en el material del 21-ago, porque loc_match esta saturado
+    # tambien en el robot (mediana 0.94, p5 0.81). Se apaga EXPLICITAMENTE, nunca en silencio.
+    if usa_pose:
+        lc = v.get("loc_conf"); lm = v.get("loc_match")
+        if isinstance(lc, (int, float)) and lc < 0.80:
+            razones.append("pose:loc_conf=%.2f<0.80" % lc)
+        elif isinstance(lm, (int, float)) and lm < 0.80:
+            razones.append("pose:loc_match=%.2f<0.80" % lm)
 
     # INESTABILIDAD VISIBLE EN I0. c0_std es la dispersion de la propia holgura frontal y
     # esta en I0 (§2.1 la lista como "lidar actual"): si la medida salta, la relacion
@@ -185,7 +192,7 @@ def _a_rol(estado, v):
     return "defer" if _bloqueado(v) else "review"
 
 
-def evalua(m, cond):
+def evalua(m, cond, usa_pose=True):
     """Ejecuta UNA condicion sobre UNA muestra.
 
     Devuelve un dict con la decision en el espacio de delta_t (`Z`), su fundamento, la
@@ -197,14 +204,24 @@ def evalua(m, cond):
     v = vista(m, INTERFAZ[cond])
     aut = autoridad(v)
     if PROCESO[cond] == "temporal":
-        estado, razon = verifica_incumbente(v)
+        estado, razon = verifica_incumbente(v, usa_pose=usa_pose)
         return {"cond": cond, "Z": _a_rol(estado, v), "razon": razon,
-                "authority": aut, "estado_incumbente": estado}
+                "authority": aut, "estado_incumbente": estado,
+                "pose_ignorada": (not usa_pose)}
     rol, razon, _a = resuelve_rol(v)
     return {"cond": cond, "Z": rol, "razon": razon,
             "authority": aut, "estado_incumbente": None}
 
 
-def evalua_todas(m):
+def evalua_todas(m, usa_pose=True):
     """Las cuatro condiciones sobre la misma muestra: la fila del diseno 2x2."""
-    return {c: evalua(m, c) for c in CONDICIONES}
+    return {c: evalua(m, c, usa_pose=usa_pose) for c in CONDICIONES}
+
+
+def usa_pose_para(run):
+    """¿Vale la pata de pose para ESTE run? Decision (a): en el gemelo no.
+
+    `run` es el dict del fichero de dataset. El gemelo se identifica por `sim_id`, que el
+    grabador ya escribe; no hace falta adivinar por nombre de fichero ni por fecha.
+    """
+    return (run or {}).get("sim_id") is None
