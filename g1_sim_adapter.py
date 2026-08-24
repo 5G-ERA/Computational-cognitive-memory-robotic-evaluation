@@ -279,6 +279,15 @@ def _escena_aplica(nuevo_estado, motivo="guion"):
         v_b = float(nuevo_estado["bat"])
         if abs(v_b - _escena_estado.get("bat", 100.0)) > 1e-6:
             cambios["bat"] = [_escena_estado.get("bat", 100.0), v_b]
+    if "objetos" in nuevo_estado:
+        v_o = [(str(o[0]), float(o[1]), float(o[2])) for o in (nuevo_estado["objetos"] or [])]
+        prev = _escena_estado.get("objetos")
+        if prev != nuevo_estado["objetos"]:
+            cambios["objetos"] = [len(prev or []), len(v_o)]
+            global _OBJ_DECLARADOS
+            _OBJ_DECLARADOS = v_o
+            if _EMU is not None:
+                _EMU.objetos = list(v_o)
     if "cristal" in nuevo_estado:
         v = _rects(nuevo_estado["cristal"] or "")
         if v != SIM_GLASS:
@@ -318,6 +327,7 @@ SP_DOOR_RMAX = float(os.environ.get("G1_SIM_DOOR_RMAX", "4.2"))
 SP_DOOR_FOV = float(os.environ.get("G1_SIM_DOOR_FOV", "28"))
 
 _EMU = None
+_OBJ_DECLARADOS = None       # lista declarada por el guion; None = la carga por defecto
 def _emulador():
     """Emulador de deteccion calibrado (carga perezosa; si falta, el canal queda mudo)."""
     global _EMU
@@ -326,6 +336,8 @@ def _emulador():
             sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "sim"))
             from emulador_deteccion import carga_por_defecto
             _EMU = carga_por_defecto(os.path.dirname(os.path.abspath(__file__)))
+            if _OBJ_DECLARADOS is not None:
+                _EMU.objetos = list(_OBJ_DECLARADOS)   # el guion ya declaro que hay
             print("[sim-perc] emulador calibrado: %d objetos, brillo declarado %.0f"
                   % (len(_EMU.objetos), SIM_LUZ))
         except Exception as e:

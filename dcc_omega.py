@@ -29,7 +29,17 @@ fundamento "no verificable" sin exigir que cite la senal de calidad concreta. Re
 exigiria etiquetar que subtipo de insuficiencia declara cada guion; anotado como mejora,
 no como hecho.
 """
-import json, os, time, calendar
+import json, math, os, time, calendar
+
+# envolvente de identificabilidad del objeto: la MISMA que el canal de percepcion real
+# (camara fx=600, W=640 -> medio campo 28.07 grados; alcance de la curva calibrada 4.5 m).
+# delta_t = object solo donde el objeto declarado es identificable; fuera de la envolvente
+# la evidencia correcta es motion aunque el objeto SIGA en la sala. Es la clausula
+# "becomes identifiable" de la tabla, hecha computable a priori desde la posicion declarada
+# y la pose -- el mismo movimiento que la pre-registracion hace con la region ciega (§4.2).
+# La pose viene del propio robot: limitacion ya declarada en §3, no nueva.
+ENV_HFOV = 28.07
+ENV_RMAX = 4.5
 
 # que fundamento exige cada delta_t (prefijo de `razon` antes de los dos puntos)
 FUNDAMENTO = {
@@ -85,6 +95,18 @@ def puntua_run(run, segs, evalua_todas, usa_pose, ventana=2.0):
         if any(abs(t - s["desde"]) < ventana for s in segs[1:]):
             continue
         delta = seg["delta"]
+        # segmentos de OBJETO: delta por muestra segun identificabilidad
+        if delta == "object":
+            objs = (seg.get("estado") or {}).get("objetos") or []
+            ident = False
+            for o in objs:
+                dx, dy = float(o[1]) - m.get("x", 0), float(o[2]) - m.get("y", 0)
+                r = math.hypot(dx, dy)
+                brg = (math.degrees(math.atan2(dy, dx)) - m.get("yaw", 0) + 540) % 360 - 180
+                if 0.2 < r <= ENV_RMAX and abs(brg) <= ENV_HFOV:
+                    ident = True; break
+            if not ident:
+                delta = "motion"
         acepta = FUNDAMENTO.get(delta, ())
         r = evalua_todas(m, usa_pose=usa_pose)
         for c, res in r.items():

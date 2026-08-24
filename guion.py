@@ -42,6 +42,14 @@ GUIONES = {
             (18.0, {"luz": LUZ_ON, "cristal": CRISTAL_VANO},  "defer")],
     "T9":  [(0.0, {"luz": LUZ_ON,  "cristal": CRISTAL_VANO}, "defer"),
             (22.0, {"luz": LUZ_OFF, "cristal": ""},           "motion")],
+    # T5/T6: el objeto entra/sale de la escena via el canal del emulador. Luz BAJA a
+    # proposito: en nuestro sistema es la condicion con RGB admisible, y el objeto testigo
+    # es la silla en su marca real validada (-2.98, 1.29), con linea de vista desde la
+    # aproximacion al vano. delta object exige deteccion >=0.55 con el contrato admitiendo.
+    "T5":  [(0.0, {"luz": LUZ_OFF, "cristal": "", "objetos": []}, "motion"),
+            (15.0, {"luz": LUZ_OFF, "cristal": "", "objetos": [["chair", -2.98, 1.29]]}, "object")],
+    "T6":  [(0.0, {"luz": LUZ_OFF, "cristal": "", "objetos": [["chair", -2.98, 1.29]]}, "object"),
+            (20.0, {"luz": LUZ_OFF, "cristal": "", "objetos": []}, "motion")],
     # T7: bateria como TRAYECTORIA DECLARADA (D3). Cruza la banda de energia (60) dentro
     # de la run, con luz baja para que el RGB sea admisible y no interfiera la iluminacion.
     "T7":  [(0.0, {"luz": LUZ_OFF, "cristal": "", "bat": 75}, "motion"),
