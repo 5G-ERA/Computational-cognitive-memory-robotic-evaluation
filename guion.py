@@ -35,6 +35,10 @@ GUIONES = {
             (18.0, {"luz": LUZ_OFF, "cristal": CRISTAL_VANO}, "defer")],
     "T9":  [(0.0, {"luz": LUZ_OFF, "cristal": CRISTAL_VANO},  "defer"),
             (22.0, {"luz": LUZ_ON, "cristal": ""},            "motion")],
+    # T7: bateria como TRAYECTORIA DECLARADA (D3). Cruza la banda de energia (60) dentro
+    # de la run, con luz baja para que el RGB sea admisible y no interfiera la iluminacion.
+    "T7":  [(0.0, {"luz": LUZ_OFF, "cristal": "", "bat": 75}, "motion"),
+            (20.0, {"luz": LUZ_OFF, "cristal": "", "bat": 55}, "energy")],
     "T11": [(0.0, {"luz": LUZ_OFF, "cristal": ""},            "motion"),
             (20.0, {"luz": LUZ_ON, "cristal": ""},            "motion")],   # el ROL no cambia
 }

@@ -417,6 +417,13 @@ VOXMEM_TTL = float(os.environ.get("G1_VOXMEM_TTL", "3.0"))       # s (3 s cubre 
 VOXMEM_R = float(os.environ.get("G1_VOXMEM_R", "1.2"))           # m: radio donde aplica la memoria
 VOXMEM_K = int(os.environ.get("G1_VOXMEM_K", "2"))               # confirmaciones sanas para memorizar
 VOXMEM_MAX = int(os.environ.get("G1_VOXMEM_MAX", "400"))         # tope de celdas recordadas
+# DECISION PROVISIONAL (D1, tasks/DECISIONES_PENDIENTES_RENXI.md): por defecto la memoria
+# se EXPONE (campo de I1: vox_inj/vox_ray por muestra) pero NO actua sobre el planificador.
+# El §5.3 exige que la confianza del sensor no se convierta en autoridad de control
+# automaticamente, y si inyecta incondicionalmente C1 y C3 reciben lidar historico en
+# silencio y el factor de interfaz deja de ser separable del de proceso. La rama que ACTUA
+# (el beneficio de seguridad, validado en la campana de 45 runs) queda a un interruptor.
+VOXMEM_ACT = os.environ.get("G1_VOXMEM_ACT", "") == "1"          # 1 = ademas inyecta
 try:
     from vox_rayos import despeja as _vox_despeja
 except Exception as _e_vox:
@@ -2055,7 +2062,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     _add.sort(reverse=True)
                     _keep = {c for _, c in _add[:VOXMEM_MAX]}
                     vox_inj = len(_keep)
-                    confirmed |= _keep
+                    if VOXMEM_ACT:
+                        confirmed |= _keep       # solo la rama que ACTUA toca el planificador
             # --- FIX C: marco de puerta pegajoso (ver cabecera). Cuenta confirmaciones REALES
             # (post-filtro, a distancia sana) y fija la celda; el bypass reinyecta las fijadas
             # aunque el robot este encima (NEAR_BLIND) -> c0_hard estable durante el cruce.

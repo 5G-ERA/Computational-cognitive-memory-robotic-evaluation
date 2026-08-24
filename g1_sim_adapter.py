@@ -275,6 +275,10 @@ def _escena_aplica(nuevo_estado, motivo="guion"):
                 _DUMMY_URI = _dummy_frame() if SIM_PERC else ""   # la luma sigue a la luz
             except Exception:
                 pass
+    if "bat" in nuevo_estado:
+        v_b = float(nuevo_estado["bat"])
+        if abs(v_b - _escena_estado.get("bat", 100.0)) > 1e-6:
+            cambios["bat"] = [_escena_estado.get("bat", 100.0), v_b]
     if "cristal" in nuevo_estado:
         v = _rects(nuevo_estado["cristal"] or "")
         if v != SIM_GLASS:
@@ -568,7 +572,8 @@ class SimCDP:
             return json.dumps({"pose": po, "reloc": None, "map": po, "pcd": "SIM",
                                "pt": int(time.time() * 1000), "rt": 0})
         if "JSON.stringify({err:" in e:                   # read_telemetry()
-            return json.dumps({"err": None, "h": {"bat": 100, "vol": 54.0, "cpuT": 40,
+            _bat = _escena_estado.get("bat", 100)
+            return json.dumps({"err": None, "h": {"bat": _bat, "vol": 54.0, "cpuT": 40,
                                                   "motTmax": 35, "merr": 0},
                                "imu": None, "cov": None})
         if "toDataURL" in e or "__camc" in e:             # camara: no hay en la sim
