@@ -58,8 +58,12 @@ GUIONES = {
     # de la run, con luz baja para que el RGB sea admisible y no interfiera la iluminacion.
     "T7":  [(0.0, {"luz": LUZ_OFF, "cristal": "", "bat": 75}, "motion"),
             (20.0, {"luz": LUZ_OFF, "cristal": "", "bat": 55}, "energy")],
+    # T10: paso BLOQUEADO (mundo aparte: office3d_bloqueada.usd, ver campana). La silla
+    # esta declarada e identificable; el bloqueo se descubre al llegar. delta se deriva por
+    # zona de observacion en dcc_omega (no_use tras descubrir); aqui el guion es estatico.
+    "T10": [(0.0, {"luz": LUZ_OFF, "cristal": "", "objetos": [["chair", -2.98, 1.29]], "bloqueo": [-3.90, 1.25]}, "no_use")],
     "T11": [(0.0, {"luz": LUZ_OFF, "cristal": ""},            "motion"),
-            (20.0, {"luz": LUZ_ON, "cristal": ""},            "motion")],   # el ROL no cambia
+            (20.0, {"luz": LUZ_ON, "cristal": ""},            "illumination")],  # ver D5
 }
 
 def main():
@@ -140,6 +144,16 @@ def main():
                 break
     finally:
         proc.wait()
+    # el certificado viaja JUNTO a la run que certifica (paquete de reproducibilidad §15):
+    # un fichero por config en /tmp se sobrescribia con cada repeticion de la campana.
+    if fichero:
+        import shutil
+        destino_ref = fichero.replace(".json", "_omega_ref.json")
+        try:
+            shutil.copy(ref_f, destino_ref)
+            print("certificado junto a la run: %s" % destino_ref)
+        except Exception as e:
+            print("AVISO: no se pudo copiar el certificado (%s)" % e)
     print("\nrun: %s" % (fichero or "(sin fichero)"))
     print("registro independiente: %s" % a.registro)
     print("certificado de referencia: %s" % ref_f)

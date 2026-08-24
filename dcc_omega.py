@@ -102,6 +102,44 @@ def delta_muestra(seg, m):
         if en_zona:
             return ("lidar_quality",)
         return ("motion",)
+    if delta == "lidar_quality":
+        # mismo patron que defer: exigible solo donde el cristal declarado afecta a la
+        # cobertura del robot (T1 sufria lo de T8: certificado global, fenomeno local)
+        rects = [r for r in str(est.get("cristal") or "").split(";") if r.strip()]
+        for r_ in rects:
+            try:
+                x0, y0, x1, y1 = (float(t_) for t_ in r_.split(","))
+            except ValueError:
+                continue
+            cx = min(max(m.get("x", 0), min(x0, x1)), max(x0, x1))
+            cy = min(max(m.get("y", 0), min(y0, y1)), max(y0, y1))
+            if math.hypot(m.get("x", 0) - cx, m.get("y", 0) - cy) <= 2.0:
+                return ("lidar_quality",)
+        return ("motion",)
+    if delta == "no_use":
+        # T10: el bloqueo esta declarado desde el arranque, pero no_use solo es exigible
+        # tras el DESCUBRIMIENTO -- computable a priori: el robot ha pasado >=8 s dentro de
+        # la zona de observacion del vano (2.0 m). Antes de descubrir: la silla identificable
+        # pide object; si no, motion. El estado de descubrimiento se acumula en la propia
+        # muestra via _t10_visto (el puntuador recorre en orden temporal).
+        bq = est.get("bloqueo")
+        if bq:
+            d_v = math.hypot(m.get("x", 0) - float(bq[0]), m.get("y", 0) - float(bq[1]))
+            seg.setdefault("_t10_dentro", 0.0)
+            if d_v <= 2.0:
+                if seg.get("_t10_t0") is None:
+                    seg["_t10_t0"] = m.get("t", 0)
+                seg["_t10_dentro"] = m.get("t", 0) - seg["_t10_t0"]
+            if seg["_t10_dentro"] >= 8.0:
+                return ("no_use", "defer")     # abstencion gobernada tambien admisible tras descubrir
+        objs = est.get("objetos") or []
+        for o in objs:
+            dx, dy = float(o[1]) - m.get("x", 0), float(o[2]) - m.get("y", 0)
+            r = math.hypot(dx, dy)
+            brg = (math.degrees(math.atan2(dy, dx)) - m.get("yaw", 0) + 540) % 360 - 180
+            if 0.2 < r <= ENV_RMAX and abs(brg) <= ENV_HFOV:
+                return ("object",)
+        return ("motion",)
     if delta == "object":
         objs = est.get("objetos") or []
         for o in objs:

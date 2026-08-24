@@ -665,10 +665,25 @@ key = UsdLux.DistantLight.Define(stage, "/World/Key"); key.CreateIntensityAttr(1
 UsdGeom.Xformable(key.GetPrim()).AddRotateXYZOp().Set(Gf.Vec3f(-50, 25, 0))
 UsdLux.DomeLight.Define(stage, "/World/Dome").CreateIntensityAttr(320.0)
 
+# --- T10: PASO BLOQUEADO (G1_BLOQUEO=1) ---
+# Un tablon solido cruzando la boca del vano: visible al laser, infranqueable, y presente
+# DESDE EL ARRANQUE -- el bloqueo es propiedad del mundo declarado, no una transicion en
+# vivo. La transicion de T10 (object -> no_use) ocurre cuando el robot lo DESCUBRE, y eso
+# es computable a priori desde la pose (entrada en la zona de observacion del vano).
+if os.environ.get("G1_BLOQUEO", "") == "1":
+    _bq = UsdGeom.Cube.Define(stage, "/World/Bloqueo"); _bq.GetSizeAttr().Set(1.0)
+    _xb = UsdGeom.Xformable(_bq.GetPrim())
+    _xb.AddTranslateOp().Set(Gf.Vec3d(-3.90, 1.25, 0.60))     # centro del vano
+    _xb.AddRotateZOp().Set(45.0)                               # perpendicular al eje de cruce (135)
+    _xb.AddScaleOp().Set(Gf.Vec3f(1.60, 0.18, 1.20))           # tapa la boca de 1.13 m entera
+    UsdShade.MaterialBindingAPI(_bq.GetPrim()).Bind(mat_carton)
+    log("BLOQUEO: tablon en el vano (T10)")
+
 # defaultPrim: sin el, quien referencie este USD (en vez de abrirlo) se queda
 # con la referencia sin resolver y la oficina no aparece.
 stage.SetDefaultPrim(stage.GetPrimAtPath("/World"))
-stage.GetRootLayer().Export("/ws/office3d.usd")
+_salida = os.environ.get("G1_OFFICE_OUT", "/ws/office3d.usd")
+stage.GetRootLayer().Export(_salida)
 log("USD: /ws/office3d.usd (v19)")
 log("=== OFICINA v19 OK ===")
 app.close()

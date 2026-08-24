@@ -63,3 +63,25 @@ ever wanted, this reopens. Evidence: commits 554af3e, 84ac759.
 ---
 
 *Standing rule while he is away: anything below this line gets added, never resolved.*
+
+## D5 · T11: in this system the representative swap IS a role
+
+T11 expects "role identity preserved under representative change". But our implementation of
+the swap is the illumination gate: illumination is the ROLE that decides which representative
+of the door centre governs (W3 in production). Staging the swap (light change) therefore
+changes the resolved role to illumination by design, and a certificate demanding "motion
+unchanged" scores the correct behaviour as failure. Provisionally T11's second segment
+expects illumination, and "identity preserved" is read behaviourally (the crossing goal is
+unchanged). Whether T11 should be redefined for role-based swap implementations is his call.
+Evidence: commit f838373 (the gate as role), tasks/VISUAL_QUALITY_CONTRACT.md.
+
+## D6 · T10 measures a real gap: no_use is unreachable autonomously
+
+First staged T10 (blocked doorway, chair identifiable): the robot spends 194 samples at the
+blockage, never crosses, never resolves no_use -- it retries until timeout (DWA-F at the
+end). No condition reaches the governed no-use outcome; the only path to no_use in the stack
+is human ASSIST or a fault. This is the no-use control doing its job: the architecture has
+no mechanism that accumulates sustained non-progress against a discovered blockage into a
+no-use ground. Building one touches role semantics and §5 stability (governed abort), so it
+is a design decision, not a patch. Until then T10 scores ~0 for every condition, honestly.
+
