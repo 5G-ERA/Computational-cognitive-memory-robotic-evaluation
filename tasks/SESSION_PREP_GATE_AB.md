@@ -48,8 +48,15 @@ python3 tools/mapa_visibilidad.py --reales --min-opp 5 --min-runs 2
 ```
 
 - `--reales` is MANDATORY (21-Aug lesson: twin and real runs share the dataset).
-- Expect ≥ 80–120 cells (dark thin one gave 30). If < 60 with `--min-runs 2`, fall back to
-  `--min-runs 1` and DECLARE the relaxation, exactly as 21-Aug did.
+- **Expectation corrected by the 25-Aug twin rehearsal** (an earlier version of this runbook
+  promised 80–120 cells on no evidence): two lit twin laps give **27 cells at `--min-runs 2`
+  and 35 at `--min-runs 1`** — same order as the dark real reference (30). Lit real laps may
+  do better, but do not count on it. **Run a THIRD lap if battery allows** (~1 pt): it is the
+  cheapest way to make `--min-runs 2` viable. If < 25 cells with `--min-runs 2`, fall back
+  to `--min-runs 1` and DECLARE the relaxation, exactly as 21-Aug did.
+- The output key is `points` (not `cells`); check the count with
+  `python3 -c "import json; print(len(json.load(open('<ref>'))['points']))"`.
+  `load_cov_ref` reads `points` — verified compatible on 25-Aug.
 - Commit the reference file + its hash before Block C. That commit is the declaration.
 
 ## Block B — freeze K_online (~10 min, ~2 pts)

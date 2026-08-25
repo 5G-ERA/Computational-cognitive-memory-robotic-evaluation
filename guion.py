@@ -76,6 +76,8 @@ def main():
     ap.add_argument("--escena", default="/tmp/g1_escena.json")
     ap.add_argument("--registro", default="/tmp/g1_escena_registro.jsonl")
     ap.add_argument("--seco", action="store_true", help="solo imprime el guion")
+    ap.add_argument("--sin-reset", action="store_true",
+                    help="no teleportar a la pose A antes de la run")
     a = ap.parse_args()
 
     guion = GUIONES[a.config]
@@ -86,6 +88,22 @@ def main():
         print("   %-28s %-46s  delta_t esperado: %s" % (cuando, json.dumps(est), d))
     if a.seco:
         return
+
+    # RESET a la pose A antes de cada run (por defecto). La plaga de "runs vacias" venia de
+    # lanzar goto al destino donde el robot ya estaba: 2 vacias en la campana DCC, T10 con
+    # n=1, y varias mas por el camino. El puente tiene /reset desde el principio y nunca lo
+    # usaba. Ademas, para T10 el arco de DESCUBRIMIENTO del bloqueo exige salir desde A.
+    if not a.sin_reset:
+        try:
+            import websocket as _ws
+            _c = _ws.create_connection(os.environ.get("G1_SIM_URL", "ws://localhost:8766"),
+                                       timeout=5)
+            _c.send(json.dumps({"op": "publish", "topic": "/reset", "msg": {}}))
+            _c.close()
+            time.sleep(1.0)
+            print("  [GUION] robot devuelto a la pose A")
+        except Exception as e:
+            print("  [GUION] AVISO: /reset fallo (%s); la run sale de donde este" % e)
 
     # estado inicial ANTES de arrancar el robot: el guion fija el mundo, no lo hereda
     json.dump(guion[0][1], open(a.escena, "w"))

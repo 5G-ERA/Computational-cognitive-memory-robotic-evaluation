@@ -75,6 +75,17 @@ expects illumination, and "identity preserved" is read behaviourally (the crossi
 unchanged). Whether T11 should be redefined for role-based swap implementations is his call.
 Evidence: commit f838373 (the gate as role), tasks/VISUAL_QUALITY_CONTRACT.md.
 
+## D7 · Should the sim harness become strictly odometry-driven?
+
+The last timing discrepancy left in the twin: odometry publishes at 3.2 Hz while the control
+tick runs at 3.3 Hz, so 17.9% of consecutive recorded samples carry an identical pose
+against the real robot's 2.7% (down from 68.7% before the interface-latency fix). Closing
+it means making the harness tick on odometry arrival instead of sleeping a fixed interval --
+shared control code, and decision-boundary rate is a meta-variable of the benchmark, so the
+change is his to approve. This question was raised in the readiness report on 23 Aug and
+fell out of the decisions list during a rewrite; restored here so it is not lost twice.
+Evidence: commit bd9e9ea.
+
 ## D6 · T10 measures a real gap: no_use is unreachable autonomously
 
 First staged T10 (blocked doorway, chair identifiable): the robot spends 194 samples at the
