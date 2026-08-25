@@ -39,6 +39,21 @@ is attempted — that is his call.
 **What Renxi decides:** redefine T3/T4 against the measured phenomenon, or add a
 genuinely-dark third state. Evidence: tasks/VISUAL_QUALITY_CONTRACT.md, commit 7b37d55.
 
+**Threshold-chatter measurements (25-Aug, from the 21-Aug archived frames).** The
+planned twin light-sweep could not answer the chatter question: the twin's luma channel
+is NOISE-FREE (sd 0.00 -- SIM_LUZ paints a constant), a realism gap in itself. Measured
+on the real frames instead (3-s jpg cadence, declared caveat): per-frame luma sd 9.4-20.4
+within constant-light runs; state medians 78-83 (low) vs 104-105 (lit); EMA(0.2) ranges
+per run OVERLAP across states (a lit run dips to EMA 79.7 mid-leg from scene content
+alone; a dark run peaks at 91.7). Consequences, parked for the contract decision:
+(1) the deployed threshold 99/100 sits inside the lit state's fluctuation range -- one
+of two lit runs crosses it mid-run even at 3-s cadence; (2) no fixed threshold on
+EMA(0.2) is chatter-free against 20-unit scene-content swings -- hysteresis helps only
+against small noise, not against these dips; the candidates are a longer EMA, scene
+normalization, or accepting state flips and letting the role stabiliser absorb them;
+(3) the twin needs a fitted luma-noise model before it can reproduce any of this --
+fit it from Thursday's standing captures, not from the 3-s archives.
+
 ## D3 · T7: the battery band collides with the stopping rule
 
 **The question.** Confirmatory runs are cut at 60% (§4) and the energy role fires below 60,
@@ -85,6 +100,15 @@ shared control code, and decision-boundary rate is a meta-variable of the benchm
 change is his to approve. This question was raised in the readiness report on 23 Aug and
 fell out of the decisions list during a rewrite; restored here so it is not lost twice.
 Evidence: commit bd9e9ea.
+
+**Noise-tuning alternative falsified (25-Aug).** Four legs at G1_SIM_IFACE_JIT=0.06
+(vs the fitted 0.035) give a duplicate-pose median of 17.5% against the N=29 campaign
+control's 16.1% [6.3-27.3] -- no effect, as the arithmetic predicts: latency jitter
+shifts arrival timing within the tick window but not the arrival COUNT per window, and
+the duplicates come from the 3.2 vs 3.3 Hz rate mismatch itself. The decision is now
+clean: either the harness ticks on odometry arrival (this decision), or the 16-18%
+duplicate rate stays and is declared; there is no in-spec noise tuning that papers
+over it.
 
 ## D6 · T10 measures a real gap: no_use is unreachable autonomously
 

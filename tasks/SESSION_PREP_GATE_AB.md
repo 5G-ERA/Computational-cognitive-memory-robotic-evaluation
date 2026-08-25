@@ -68,6 +68,13 @@ python3 tools/mapa_visibilidad.py --reales --min-opp 5 --min-runs 2
   the glass witness for the whole session.
 - Commit the reference file + its hash before Block C. That commit is the declaration.
 
+**Standing luma capture (2 min, new 25-Aug):** with the robot STANDING at A facing the
+room, record 30-60 s of perception frames at each light state (lights full / lights low)
+before Block B. This is the only way to fit the luma-noise model (sd + autocorrelation at
+the TRUE frame cadence) that the twin's light channel needs -- the archived 3-s jpgs
+cannot give the cadence, and the twin currently has zero luma noise. No driving involved;
+just leave the perception stream on and note wall-clock start/stop of each state.
+
 ## Block B — freeze K_online (~10 min, ~2 pts)
 
 One lit baseline pair WITH the new reference live:
