@@ -1978,6 +1978,8 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 straight = math.hypot(wx - trail[0][0], wy - trail[0][1]) if trail else 0.0
                 rd.save_cloud("end", [round(x, 3), round(y, 3), round(yaw, 1)], grab_full_cloud(cdp))
                 rd.finish("reached", {"time_s": round(T, 2), "path_m": round(plen, 2),
+                                      "path_m_k8": round(_path_len(trail, 8), 2),   # escala declarada
+                                      "path_scale_note": "path_m nativo: valido DENTRO de un sistema; entre sistemas usar path_m_k8",
                                       "straight_m": round(straight, 2),
                                       "efficiency": round(straight / plen, 2) if plen > 0 else 0.0,
                                       "collisions": ncol, "c0min": round(minc0, 2),
@@ -3855,9 +3857,21 @@ def native_cancel_js():
     return _native_req_js(1203, "''")
 
 
-def _path_len(trail):
-    return sum(math.hypot(trail[i + 1][0] - trail[i][0], trail[i + 1][1] - trail[i][1])
-               for i in range(len(trail) - 1)) if len(trail) > 1 else 0.0
+def _path_len(trail, k=1):
+    """Camino recorrido. k>1 DECIMA la traza antes de sumar.
+
+    POR QUE EXISTE k (25-ago): la variacion total de una senal ruidosa crece con la
+    frecuencia de muestreo -- el problema de la longitud de la costa. A cadencia nativa el
+    temblor de pose del SLAM real infla este numero un 44% y el del gemelo solo un 11%, asi
+    que comparar path_m ENTRE SISTEMAS a escala nativa midio ruido y fabrico tres hallazgos
+    falsos (ver analysis/escala_pose.py y el commit 078be70).
+    REGLA: path_m (k=1) se conserva para continuidad historica y es valido DENTRO de un
+    mismo sistema, donde el ruido es compartido y se cancela en el contraste. Para comparar
+    sistemas distintos se usa path_m_k8, a la escala declarada K_COMPARA=8 (~2.4 s).
+    """
+    t = trail[::max(1, int(k))]
+    return sum(math.hypot(t[i + 1][0] - t[i][0], t[i + 1][1] - t[i][1])
+               for i in range(len(t) - 1)) if len(t) > 1 else 0.0
 
 
 def benchmark_run(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None):

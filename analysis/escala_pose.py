@@ -28,6 +28,16 @@ K_COMPARA = 8          # muestras (~2.4 s a 3.3 Hz): la escala declarada
 DT_NOMINAL = 0.3       # s por muestra en ambos sistemas (medido: tic 0.300 en los dos)
 
 
+# CAMPOS AFECTADOS EN EL REGISTRO DE RUNS, para que nadie los compare mal:
+#   path_m       nativo. Valido DENTRO de un sistema; entre sistemas, inflado por el ruido
+#                de pose (real +44%, gemelo +11%). Se conserva por continuidad historica.
+#   path_m_k8    el mismo camino a la escala declarada. ESTE es el de comparar sistemas.
+#   efficiency   = straight_m / path_m, asi que HEREDA el problema: entre sistemas subestima
+#                al que mas ruido de pose tiene. Comparese recomputada sobre path_m_k8, o
+#                no se compare entre sistemas. No se reescribe el campo historico.
+#   v_camino,
+#   v/cmd        derivados de camino: misma regla.
+
 def camino(muestras, k=K_COMPARA):
     """Camino recorrido a la escala declarada. `muestras` = lista de dicts con x,y."""
     pts = muestras[::max(1, int(k))]

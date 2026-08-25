@@ -45,6 +45,7 @@ def main():
             "result": d.get("result", ""),
             "time_s": sm.get("time_s", ""),
             "path_m": sm.get("path_m", ""),
+            "path_m_k8": sm.get("path_m_k8", ""),   # escala declarada: comparaciones ENTRE sistemas
             "efficiency": sm.get("efficiency", ""),
             "collisions": sm.get("collisions", sum(1 for e in ev if e.get("kind") == "collision")),
             "c0min": sm.get("c0min", ""),
@@ -85,7 +86,7 @@ def main():
             "tick_ms_p95": sm.get("tick_ms_p95", ""),
             "notes": "",                                   # <-- FILL: appropriate switch? anything odd?
         })
-    cols = ["file", "governance", "env", "sim_id", "mode", "condition", "result", "time_s", "path_m", "efficiency",
+    cols = ["file", "governance", "env", "sim_id", "mode", "condition", "result", "time_s", "path_m", "path_m_k8", "efficiency",
             "collisions", "c0min", "spills_human", "spills_sim", "spill_expected", "spill_risk_pct",
             "perc_queries", "meta_switches", "fsm_interventions",
             "meta2_mode", "meta2_capped_ticks",
