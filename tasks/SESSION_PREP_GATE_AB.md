@@ -61,19 +61,41 @@ python3 tools/mapa_visibilidad.py --reales --min-opp 5 --min-runs 2
   so route laps leave the glass wall out of frame -- the 25-Aug twin session reference has
   **0 cells inside the glass rect** at every ratio, and a reference with no cells there can
   never witness the glass (W1 dead on arrival). During one lap, stop ~1.5-2 m in front of
-  the Z2 glass wall FACING it for ~10 s (a slow turn sweeping the wall also works). Verify
-  before declaring, with the rect of the real glass panel (map frame):
-  `python3 -c "import json; X0,Y0,X1,Y1=<rect>; p=json.load(open('<ref>'))['points']; print('cells in glass rect:', sum(1 for c in p if X0<=c[0]<=X1 and Y0<=c[1]<=Y1))"`
+  the Z2 glass wall FACING it for ~10 s (a slow turn sweeping the wall also works), and
+  **write down the robot's pose (x, y, yaw) during that stop** -- the app shows it, and
+  the 21-Aug glass numbers came from exactly this stance (the noisecheck bench). There is
+  NO stored map-frame rect for the real glass (checked 25-Aug); derive it from that pose
+  -- the wall segment ~1.5 m ahead, ~2 m wide, 0.6 m deep:
+
+  ```
+  python3 -c "
+  import math,json,sys
+  x,y,yaw = <x>,<y>,<yaw>          # the pose written during the facing stop (yaw in deg)
+  a=math.radians(yaw); cx,cy=x+1.5*math.cos(a),y+1.5*math.sin(a)
+  X0,X1=sorted((cx-1.0,cx+1.0)); Y0,Y1=sorted((cy-0.3,cy+0.3))
+  p=json.load(open('<ref>'))['points']
+  print('rect %.1f,%.1f,%.1f,%.1f cells:'%(X0,Y0,X1,Y1), sum(1 for c in p if X0<=c[0]<=X1 and Y0<=c[1]<=Y1))"
+  ```
+
   If 0, do another facing pass before committing -- an undeclared hole here silently kills
-  the glass witness for the whole session.
+  the glass witness for the whole session. Twin lesson (25-Aug, second pass): cell COUNT
+  is not enough if the wall is only intermittently seen -- the reference's ratio guard
+  (>= 0.65) already enforces reliability, so any cell that shows up here is usable.
 - Commit the reference file + its hash before Block C. That commit is the declaration.
 
-**Standing luma capture (2 min, new 25-Aug):** with the robot STANDING at A facing the
-room, record 30-60 s of perception frames at each light state (lights full / lights low)
-before Block B. This is the only way to fit the luma-noise model (sd + autocorrelation at
-the TRUE frame cadence) that the twin's light channel needs -- the archived 3-s jpgs
-cannot give the cadence, and the twin currently has zero luma noise. No driving involved;
-just leave the perception stream on and note wall-clock start/stop of each state.
+**Standing luma capture (2 min, new 25-Aug):** robot STANDING at A facing the room, once
+per light state (lights full, then lights low), and write the wall-clock of each:
+
+```
+python3 g1_goto.py noisecheck 60
+```
+
+Since 25-Aug the noisecheck rows carry a raw `luma` field at ~3 Hz -- this is what fits
+the luma-noise model (sd + autocorrelation at true cadence) that the twin's light channel
+needs: the twin currently has ZERO luma noise, and the real per-frame sd is 9-20 with
+EMA state ranges that OVERLAP (a lit run dips to EMA 79.7 from scene content alone; see
+the D2/D3 ledger note). The same bench records laser jitter, so it doubles as the
+sensor-noise baseline. No driving involved.
 
 ## Block B — freeze K_online (~10 min, ~2 pts)
 
@@ -84,9 +106,16 @@ G1_ARM=BASE_LIT_REF G1_METASM=1 G1_COVREF=<ref.json> python3 g1_goto.py goto B
 G1_ARM=BASE_LIT_REF G1_METASM=1 G1_COVREF=<ref.json> python3 g1_goto.py goto A
 ```
 
+**Instrument note (25-Aug):** `cov_missing` now defaults to the v2 ACCUMULATED base
+(union of the last PERSIST_N sweeps + current, exact matching; `G1_COVM_V2=0` restores
+the old variant). The rehearsal prior below was measured with the OLD instantaneous
+variant; the v2 twin numbers from the 25-Aug validation pair are: baseline global max 2
+with ZERO samples >= 3, staged glass sustaining 3-4 in the approach (5-tick streak).
+Both variants support the same rule; declare which one ran.
+
 Read the online `cov_missing` distribution of those two legs (`analysis/resumen_sesion.py`).
 Decision rule, written BEFORE looking: if the lit-baseline p95 ≤ 2 (twin rehearsal: normal
-{0:×401, 1:×46}, staged glass peaking at 4), **freeze K_online = 3** — commit
+{0:×401, 1:×46}, staged glass peaking at 4; v2 twin: max 2, 0% >= 3), **freeze K_online = 3** — commit
 `G1_DCC_COV_MISSING=3` into the pre-registration amendment. If p95 ≥ 3 the real floor is
 noisier than the twin's and K=4 is frozen instead, with the distribution attached. Either
 way it is frozen NOW, before Block C produces anything scoreable.

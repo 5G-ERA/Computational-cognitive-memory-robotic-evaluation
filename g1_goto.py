@@ -4273,7 +4273,8 @@ def cmd_noisecheck(secs=20):
     refmap = load_ref_map(); t0 = time.time(); rows = []
     _covref_nc = load_cov_ref()               # instrumento v2: referencia de SESION (G1_COVREF)
     _ultimo_celdas = [-9.9]
-    sens = g1_metrics.SensingMonitor()
+    _luma_t = 0.0                             # luma CRUDA por fila (25-ago): el modelo de ruido
+    sens = g1_metrics.SensingMonitor()        # del canal de luz del gemelo se ajusta de aqui
     while time.time() - t0 < secs:
         src, p, _ = read_pose(cdp)
         if not p:
@@ -4297,6 +4298,19 @@ def cmd_noisecheck(secs=20):
                 "c0_std": sv["c0_std"], "scan_churn": sv["scan_churn"],
                 "cov_def": cd, "cov_n": cn, "cov_blind": cb,
                 "cov2_def": cd2, "cov2_n": cn2, "cov2_blind": cb2}
+        # luma cruda del frame a ~3 Hz (sin EMA: la serie cruda es la que fija sd y
+        # autocorrelacion del ruido; la EMA del contrato se deriva offline)
+        if time.time() - t0 - _luma_t >= 0.3:
+            _fr_nc = grab_cam(cdp)
+            if _fr_nc and _fr_nc.startswith("data:image"):
+                try:
+                    import base64 as _b64, io as _io
+                    from PIL import Image as _Im, ImageStat as _Ist
+                    fila["luma"] = round(_Ist.Stat(_Im.open(_io.BytesIO(
+                        _b64.b64decode(_fr_nc.split(",", 1)[1]))).convert("L")).mean[0], 2)
+                    _luma_t = time.time() - t0
+                except Exception:
+                    pass
         if not rows or (fila["t"] - _ultimo_celdas[0]) >= 1.0:
             fila["celdas"] = sorted(list(live))[:600]
             _ultimo_celdas[0] = fila["t"]
