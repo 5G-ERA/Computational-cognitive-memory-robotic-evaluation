@@ -3,45 +3,10 @@
   {
    "i": 0,
    "destino": "B",
-   "fichero": "20260824_110502_ours_B.json",
+   "fichero": "20260825_183155_ours_B.json",
    "estado": "reached",
-   "wall_s": 66.7
-  },
-  {
-   "i": 1,
-   "destino": "A",
-   "fichero": "20260824_110610_ours_A.json",
-   "estado": "reached",
-   "wall_s": 79.1
-  },
-  {
-   "i": 2,
-   "destino": "B",
-   "fichero": "20260824_110731_ours_B.json",
-   "estado": "reached",
-   "wall_s": 69.2
-  },
-  {
-   "i": 3,
-   "destino": "A",
-   "fichero": "20260824_110841_ours_A.json",
-   "estado": "reached",
-   "wall_s": 67.2
-  },
-  {
-   "i": 4,
-   "destino": "B",
-   "fichero": "20260824_110950_ours_B.json",
-   "estado": "reached",
-   "wall_s": 89.5
-  },
-  {
-   "i": 5,
-   "destino": "A",
-   "fichero": "20260824_111121_ours_A.json",
-   "estado": "reached",
-   "wall_s": 84.2
+   "wall_s": 1.7
   }
  ],
- "n_objetivo": 6
+ "n_objetivo": 30
 }

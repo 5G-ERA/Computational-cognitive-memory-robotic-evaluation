@@ -116,6 +116,33 @@ not the numbers.
 **If time runs short**, drop the second repetition (legs 5–8) rather than dropping a cell of
 the 2×2: an unbalanced four-leg block is worth more than an unidentifiable six-leg one.
 
+## Block D (optional, if battery ≥ 68% after Block C) — route-transfer validation (~3 pts)
+
+**Why.** Every twin calibration target so far comes from A↔B doorway runs: the more we fit,
+the more the twin risks becoming an instrument of that one route. The classical bound on
+that risk is HELD-OUT validation: real runs on a route never used for fitting, compared to
+the twin on the same route with ZERO refitting.
+
+Waypoint **C (−0.03, −1.49)** exists in the map, same room as A, no doorway — and our stack
+has NEVER driven it (only 2 firmware-native runs from June). Three legs:
+
+```
+G1_ARM=TRANSFER_C G1_METASM=1 python3 g1_goto.py goto C
+G1_ARM=TRANSFER_C G1_METASM=1 python3 g1_goto.py goto A
+G1_ARM=TRANSFER_C G1_METASM=1 python3 g1_goto.py goto C
+```
+
+Afterwards (desk, no robot): the twin runs A↔C with the CURRENT calibration untouched, and
+the same yardsticks (duration, v/cmd at declared scale, tick, clearance) are compared. If
+they transfer, the calibration is robot-level, not route-level. If they do not, we have
+measured the boundary of the twin's validity instead of suspecting it.
+
+**Parameter provenance, declared now so the test is honest:** robot-level parameters that
+SHOULD transfer: VSCALE, TAU, interface latency, sensor noise, detection curves, the visual
+contract. Route-level parameters that legitimately do NOT: office geometry, the session
+coverage reference, door-specific guards. A transfer failure in the first group is a
+finding; in the second it is expected and declared.
+
 ## On-site verification before packing up (~5 min)
 
 ```
