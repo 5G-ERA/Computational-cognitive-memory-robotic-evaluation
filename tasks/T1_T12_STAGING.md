@@ -171,7 +171,7 @@ property, independent of the world.
 | T5, T6 | detections with confidence | ✅ |
 | T7 | `bat` band | ⚠️ conflicts with the 60% cut |
 | T1, T2 | historical lidar (voxel memory) | ✅ ray-traced clearing built; **exposes vs injects still undecided** |
-| all | Ω_t certificates | ❌ **not built** — δ_t is specified per configuration above, but no certificate writer exists |
+| all | Ω_t certificates | ✅ guion.py writes them in the act of staging and copies them next to the run (since 24-Aug); facing gate in delta_muestra since 25-Aug |
 
 The last row is the real remaining gap for step 6. Everything above it is either done or has a
 named decision attached.
