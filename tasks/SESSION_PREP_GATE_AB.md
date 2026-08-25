@@ -1,0 +1,117 @@
+# Robot session: gate A/B + lit reference + freeze K_online
+
+**Prepared 25 Aug 2026.** Development tier only — no reserved configuration is touched, and
+K_online is frozen BEFORE any A/B outcome is inspected (freeze-before-inspect, §12 spirit).
+Everything here runs without Renxi; nothing in it takes a decision that is his.
+
+**Three goals, in dependency order:**
+1. **Dense lit session reference** — the 21-Aug reference was 30 cells, relaxed guards,
+   built in darkness (declared then as a datum). Two lit laps replace it.
+2. **Freeze K_online** — provisional K=3 from the twin rehearsal; confirm against the real
+   lit distribution and freeze before scored runs.
+3. **Gate A/B under full light** — the dangerous condition, measured 21-Aug (+0.130 m with a
+   door strike, no gate). Twin rehearsal predicts −49% (0.050 → 0.025 m median |lateral|).
+
+**First real runs carrying Z_t.** Since 21-Aug the stack emits `role`/`role_reason`/
+`authority` (stabilised + raw), `illum_b`/`dvis_gate`, and VOXMEM exposure fields. This
+session produces the first REAL samples of all of them.
+
+---
+
+## Pre-flight (before any run)
+
+| check | how |
+|---|---|
+| Branch | `git fetch && git checkout ensayo/door-gate-isaac && git pull` — the gate, role fields, stabiliser and visual contract all live here. **Smoke first** (below): this branch has been exercised against the twin for days, against the robot not since the merge. |
+| Perception | `bash tools/arranca_percepcion.sh` → health on **:8008** |
+| App mode | verify relocalization topic (the `slam_relocation/odom` rename bit us live on 21-Aug) |
+| Battery | start **≥ 85%**; walking blocks stop at **60%** (strafe halves below it) |
+| Lights | ALL ON for the whole session; **operator writes wall-clock time of every switch change** — the unlabelled L1–L5 sweep cost us the primary evidence once already |
+| Notebook | per leg: battery %, contacts/strikes (instrumentation cannot see hand-to-frame), start/end wall time |
+
+**Smoke (1 short leg, unscored):** `G1_ARM=SMOKE python3 g1_goto.py goto B` with defaults.
+Verify before continuing: samples carry `role`, `illum_b` ≈ 110–120 lit, `phase_sent`, and
+the run reaches. If the branch misbehaves on the real robot, STOP and fall back to
+`feature/dcc-integration` — the session then does goals 1–2 only (they don't need the gate).
+
+## Block A — lit calibration laps (~15 min, ~2 battery pts)
+
+```
+G1_ARM=CAL_LIT_1 G1_METASM=1 python3 g1_goto.py goto B
+G1_ARM=CAL_LIT_2 G1_METASM=1 python3 g1_goto.py goto A
+```
+
+Then build and **declare** the reference (amendment §10: declared before any scored run):
+
+```
+python3 tools/mapa_visibilidad.py --reales --min-opp 5 --min-runs 2
+```
+
+- `--reales` is MANDATORY (21-Aug lesson: twin and real runs share the dataset).
+- Expect ≥ 80–120 cells (dark thin one gave 30). If < 60 with `--min-runs 2`, fall back to
+  `--min-runs 1` and DECLARE the relaxation, exactly as 21-Aug did.
+- Commit the reference file + its hash before Block C. That commit is the declaration.
+
+## Block B — freeze K_online (~10 min, ~2 pts)
+
+One lit baseline pair WITH the new reference live:
+
+```
+G1_ARM=BASE_LIT_REF G1_METASM=1 G1_COVREF=<ref.json> python3 g1_goto.py goto B
+G1_ARM=BASE_LIT_REF G1_METASM=1 G1_COVREF=<ref.json> python3 g1_goto.py goto A
+```
+
+Read the online `cov_missing` distribution of those two legs (`analysis/resumen_sesion.py`).
+Decision rule, written BEFORE looking: if the lit-baseline p95 ≤ 2 (twin rehearsal: normal
+{0:×401, 1:×46}, staged glass peaking at 4), **freeze K_online = 3** — commit
+`G1_DCC_COV_MISSING=3` into the pre-registration amendment. If p95 ≥ 3 the real floor is
+noisier than the twin's and K=4 is frozen instead, with the distribution attached. Either
+way it is frozen NOW, before Block C produces anything scoreable.
+
+## Block C — gate A/B, full light (~40 min, ~6 pts)
+
+Six legs, interleaved to keep battery drift off the contrast, alternating direction:
+
+| leg | arm | extra env |
+|---|---|---|
+| 1 | `GATE_OFF` | `G1_DOOR_VIS=1 G1_DOOR_VIS_GATE=0` |
+| 2 | `GATE_ON`  | `G1_DOOR_VIS=1 G1_DOOR_VIS_GATE=1` |
+| 3 | `GATE_OFF` | 〃 |
+| 4 | `GATE_ON`  | 〃 |
+| 5 | `GATE_OFF` | 〃 |
+| 6 | `GATE_ON`  | 〃 |
+
+All legs also carry: `G1_METASM=1 G1_COVREF=<ref.json> G1_VOXMEM=1` (VOXMEM is expose-only
+by default — collects the I¹ field, does not act).
+
+```
+G1_ARM=GATE_OFF G1_METASM=1 G1_COVREF=<ref> G1_VOXMEM=1 G1_DOOR_VIS=1 G1_DOOR_VIS_GATE=0 python3 g1_goto.py goto B
+```
+
+**Safety note for OFF legs:** the only real full-light no-gate leg we have STRUCK the door
+(21-Aug, +0.136 m). Operator within reach of the stop on every OFF leg.
+
+**Pre-registered read-out (written here, before the data):** median |lateral| in gap,
+ON vs OFF; door strikes ON vs OFF; `ENG-C` strafe-only count; `dvis_gate` active fraction
+(should be ~100% ON legs / 0% OFF); twin prediction is −49%. If ON is NOT better, that is
+the result — the gate goes back to the bench, not the numbers.
+
+## On-site verification before packing up (~5 min)
+
+```
+python3 analysis/resumen_sesion.py
+```
+
+- every run: `role`/`authority` present, `illum_b` in the lit band, `cov_missing` present
+- `dvis_gate` = 1 only on ON legs
+- copy the operator notebook (switch times!) into `tasks/SESSION_LOG_2026-08-XX.md`
+- commit + push before leaving the lab
+
+## Budget
+
+~10 legs walking ≈ 10 pts + margin → start ≥ 85%, expect ≥ 70% at the end. ~90–120 min.
+
+## Explicitly out of scope
+
+Reserved configurations; anything confirmatory; the physical glass block (the W1 ray-march
+instrument fix is still pending and is its own session); changing K_online after Block C.
