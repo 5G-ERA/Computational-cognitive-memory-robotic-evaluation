@@ -2087,7 +2087,13 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
             # --- PERCEPCION GPU (HILO APARTE): depth -> scan virtual (la MESA que el LiDAR no ve) + suelo despejado ---
             if perc_worker is not None and now - perc_t > PERC_PERIOD:
                 _fr = grab_cam(cdp)
-                if DOOR_VIS_GATE and _fr and _fr.startswith("data:image"):
+                # MEDIR SIEMPRE, ACTUAR SOLO SI EL GATE ESTA ACTIVO (25-ago, cazado por el
+                # ensayo general): illum_b se computaba solo con DOOR_VIS_GATE=1, asi que las
+                # piernas de CONTROL del A/B no llevaban NINGUN registro de iluminacion --
+                # justo donde hace falta para demostrar que ambos brazos vieron la misma luz.
+                # illum_b es un campo de I1 (calidad de sensado): se observa siempre. Quien
+                # decide actuar es dvis_gate, que sigue siendo None con el gate apagado.
+                if _fr and _fr.startswith("data:image"):
                     try:                                  # luma media del frame (EMA): ~1ms a 320px
                         import base64 as _b64, io as _io
                         from PIL import Image as _Im, ImageStat as _Ist
