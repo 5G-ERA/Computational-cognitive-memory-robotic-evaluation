@@ -69,6 +69,18 @@ CURVA = {
 # mas alla de 1.8 m no hay medida escenificada: caida conservadora, marcada como extrapolada
 CAIDA_POR_METRO = 0.35
 
+# POR ETIQUETA (25-ago, analysis/curvas_etiqueta.py sobre 6112 detecciones reales de
+# navegacion libre con denominador geometrico). Solo CAMPO CERCANO (0-3 m), que es el
+# regimen de escenificacion T5/T6: mas alla el rango REPORTADO por el servidor real esta
+# envenenado -- el lidar del canal de rango atraviesa el cristal de Z2 y devuelve lo que
+# hay DETRAS (clusters retroproyectados en y=5..10.7, fuera del sobre navegado real
+# x[-5,1.5] y[-1.6,3]) -- y una curva sobre ese rango heredaria el artefacto. Anclas de
+# cordura del ajuste: 16.3% de muestras con deteccion (real conocido ~16%) y chair 0.168
+# frente a 0.162 del propio emulador (techo x atenuacion).
+FACTOR_ETIQUETA = {"chair": 1.0, "couch": 0.37, "refrigerator": 0.51}
+CONF_DELTA_ETIQUETA = {"chair": 0.0, "couch": -0.05, "refrigerator": -0.15}
+# 'person' NO se emula: se mueve y no tiene curva ajustable con denominador honesto.
+
 
 def _interp(tabla, r):
     ds = sorted(tabla)
@@ -138,13 +150,15 @@ class EmuladorDeteccion:
             # en el borde del campo la deteccion decae (el objeto sale del encuadre)
             p *= max(0.0, 1.0 - max(0.0, abs(brg) - HFOV * 0.75) / (HFOV * 0.25))
             p *= ATENUACION                      # de condiciones escenificadas a run normal
+            p *= FACTOR_ETIQUETA.get(lab, 1.0)   # curva base medida con chair; resto relativo
             if self.rng.random() > p:
                 continue
             # TRIANGULAR con moda en la MEDIANA medida, no uniforme: la distribucion real
             # esta sesgada (a 1.8 m con luz casi todo cae cerca de 0.85 con pocos valores
             # bajos), y muestrear uniforme daba 0.65 donde la realidad da 0.82 -- justo el
             # contraste que sostiene el testigo W2.
-            conf = self.rng.triangular(cmin, cmax, cmed) - CONF_PENAL * self.rng.uniform(0.7, 1.3)
+            conf = self.rng.triangular(cmin, cmax, cmed) - CONF_PENAL * self.rng.uniform(0.7, 1.3) \
+                   + CONF_DELTA_ETIQUETA.get(lab, 0.0)
             # el suelo no es el umbral del servidor sino lo que se OBSERVA en runs reales: por
             # debajo de ~0.45 practicamente no hay detecciones aceptadas en el historico
             conf = min(0.99, max(0.45, conf))
