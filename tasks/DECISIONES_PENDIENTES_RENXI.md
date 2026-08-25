@@ -136,3 +136,15 @@ For Renxi: (a) confirm the ~2 m2 sizing spec as the staging norm for W1; (b) con
 cov_missing-with-session-reference as the declared glass instrument (and the historical
 refmap cov_def as diagnostic only); (c) the real tier needs the facing pass in every
 session's Block A or W1 is silently dead for that session.
+
+## D9 * Rung 7: the PhysX walker inside the benchmark loop (proposal ready, not started)
+
+The walker (policy g1_full, 23-Aug) and the kinematic twin both work, separately.
+Putting the walker under g1_goto is the last rung of the realism ladder and would make
+motion texture emergent (P4 sway, T10 physical blockage, footstep pose noise) -- but it
+breaks the calibration lineage (VSCALE/TAU fitted to the kinematic channel), reopens
+the just-paid N=30 dispersion debt on a new tier, and introduces a fallen-robot outcome
+class the scoring has no category for. Full spec with phased migration and kill
+criteria: `tasks/RUNG7_WALKER_PROPOSAL.md`. Decision: whether phase 0 (a pure
+measurement bench) runs at all, and if adopted, which tier the confirmatory campaign
+declares. Nothing has been started.
