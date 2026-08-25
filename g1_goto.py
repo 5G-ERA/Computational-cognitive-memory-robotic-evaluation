@@ -1624,6 +1624,20 @@ def _cov_deficit(x, y, yaw, live, refmap, oc, near_blind):
     return (round(falt / pred, 3), pred, round(ciego / pred, 3))
 
 
+# cov_missing v2 = BASE ACUMULADA: la marcha va contra la union de los ultimos PERSIST_N
+# barridos frescos + el actual, con matching EXACTO. Por que (medido 25-ago, gemelo,
+# cristal escenificado vs control, ventana de aproximacion):
+#   - instantanea exacta (v1):      40% vs 32% de muestras >=3  -> ruido en el umbral
+#   - instantanea vecindad 3x3:      0% vs  0%                  -> la tolerancia traga el cristal
+#   - acumulada exacta (esta):      77% vs 39% en replay 'op'   -> la unica que separa
+# La referencia de sesion se construye sobre 'op' ACUMULADO (tools/mapa_visibilidad.py):
+# campo y referencia deben compartir base de evidencia. Apagado por defecto hasta pasar
+# la validacion en vivo. VALIDADO 25-ago (piernas GLASS_COVM2B/BASE_COVM2B): cristal con
+# racha de 5 ticks >=3 en la aproximacion (2.0->1.2 m del vano) y control con CERO muestras
+# >=3 (max 2). Por defecto ON desde entonces; G1_COVM_V2=0 recupera la variante instantanea.
+COVM_V2 = os.environ.get("G1_COVM_V2", "1") == "1"
+
+
 def _cov_missing_celdas(x, y, yaw, live, covref, oc, near_blind, prev):
     """(n_persistentes, celdas_de_este_barrido) contra la referencia de visibilidad de SESION.
 
@@ -2005,8 +2019,12 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                 cov_def, cov_n, cov_blind = _cov_deficit(x, y, yaw, live, refmap,
                                                          g.OCELL, g.NEAR_BLIND)
                 if covref is not None:
+                    base_covm = live
+                    if COVM_V2:
+                        for _h in livehist:
+                            base_covm = base_covm | _h
                     cov_missing, _covm_prev = _cov_missing_celdas(
-                        x, y, yaw, live, covref, g.OCELL, g.NEAR_BLIND, _covm_prev)
+                        x, y, yaw, base_covm, covref, g.OCELL, g.NEAR_BLIND, _covm_prev)
                 cov_ms = round((time.time() - _t_cov) * 1000.0, 2)   # coste real (diag)
             if live:
                 cloud_ok = True

@@ -5,22 +5,30 @@ from dcc_conditions import evalua_todas, usa_pose_para, CONDICIONES
 from dcc_omega import carga_referencia, delta_muestra
 from dcc_secundarios import puntua_secundarios
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
-CASOS = [
-    ("T5", "20260824_124430_ours_B.json"),
-    ("T6", "20260824_124545_ours_A.json"),
-    ("T3", "20260824_121500_ours_A.json"),
-    ("T7", "20260824_120632_ours_A.json"),
-    ("T8", "20260824_141540_ours_B.json"),
-]
+RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING"
+# Casos desde el MANIFIESTO de la campana (antes: 5 ficheros a mano de sesiones previas,
+# que no tienen certificado adyacente y puntuaban 0 fronteras en silencio). Solo configs
+# con transicion escenificada dentro de la run.
+CONFIGS = ("T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T11")
+CASOS = []
+for _ln in open(RAIZ + "/tasks/manifiestos/campana_dcc.txt"):
+    if "|" not in _ln or "COMPLETA" in _ln:
+        continue
+    _cfg, _dst, _f = _ln.strip().split("|")
+    if _cfg in CONFIGS and _f:
+        CASOS.append((_cfg, _f))
 
 agg = {c: {"retardo": [], "perdidas": 0, "fronteras": 0, "persistencia": [],
            "ret_ok": 0, "ret_n": 0, "innec": []} for c in CONDICIONES}
 for cfg, f in CASOS:
-    run = json.load(open(RAIZ + "/" + f))
+    run = json.load(open(f if f.startswith("/") else RAIZ + "/" + f))
     if len(run.get("samples") or []) < 30:
         continue
-    segs = carga_referencia("/tmp/g1_omega_ref_%s.json" % cfg, run)
+    # certificado DURABLE junto a la run -- /tmp lo sobrescribe cada re-escenificacion de la
+    # misma config (cazado 25-ago: los T1/T2/T8 nuevos dejaron los /tmp de los del 24-ago
+    # inservibles y todo puntuaba 0 fronteras sin avisar)
+    _ref = (f if f.startswith("/") else RAIZ + "/" + f).replace(".json", "_omega_ref.json")
+    segs = carga_referencia(_ref, run)
     r = puntua_secundarios(run, segs, evalua_todas, usa_pose_para(run), delta_muestra, CONDICIONES)
     n_f = r["C4"]["n_fronteras"] if "C4" in r else 0
     print("%s: %d fronteras de referencia (guion + geometricas)" % (cfg, n_f))
@@ -32,7 +40,7 @@ for cfg, f in CASOS:
         a["ret_ok"] += x["retorno_ok"]; a["ret_n"] += x["retorno_n"]
         a["innec"].append(x["innecesarias_por_min"])
 
-print("\n=== agregado (5 configuraciones) ===")
+print("\n=== agregado (%d runs del manifiesto) ===" % len(CASOS))
 print("%-4s %10s %14s %12s %14s %12s %16s" % ("", "fronteras", "adoptadas", "PERDIDAS",
       "retardo med", "retorno", "innec/min"), end="")
 print("%14s" % "persist med")

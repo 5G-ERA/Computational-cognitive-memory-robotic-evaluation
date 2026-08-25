@@ -132,6 +132,27 @@ the reference is declared. Pending (needs the bridge, queued behind the variance
 campaign): a twin calibration pass facing the wall, reference rebuild, then a GLASS_D8
 leg with G1_COVREF live to measure the cov_missing separation, then rescore T1/T2/T8.
 
+**VALIDATED later the same night (25-Aug, second pass).** The full chain now works in
+the twin, with three more findings on the way:
+
+- The D8 pane's wall is unreliably seen by the twin's own app-filter model (presence
+  ratio <= 0.30 -> 0 session-reference cells at any ratio). Sizing is necessary but NOT
+  sufficient: **the pane must cover reliably-seen wall** (ratio >= 0.65). The validated
+  pane is -4.0,1.5,-2.7,3.0 (14 reference cells, NE door flank); guion.py stages it.
+- cov_missing needed the **accumulated base** (union of the last PERSIST_N sweeps +
+  current, exact matching): instantaneous-exact ran at the noise floor (40% vs 32%),
+  the v2 3x3 neighborhood swallowed the glass entirely (0% vs 0%), accumulated-exact
+  separates (5-tick streak >= 3 in the glass approach, control max 2 with ZERO >= 3).
+  Default since 25-Aug (G1_COVM_V2=0 restores the old variant).
+- The certificate needed a **facing gate**: delta demands lidar_quality/defer only when
+  the declared pane is inside the instrument's declared window (<= COV_R, +-40 deg) --
+  before it, T8's C4 answered illumination (correctly!) on in-zone-not-facing samples
+  and the ablations outscored it by forced ignorance. After: T8 C4 88% vs C2 4 / C3 23.
+  Campaign rescored: C4-C3 +54 pp [38,61] 30/31, C4-C2 +57 pp [54,70] 30/31; C4-C1
+  is flat on time-averaged A_meta/A_Omega and lives at transitions instead --
+  secondaries: C4 adopts 35/51 reference transitions vs C1's 22/51 (C1 misses 57%),
+  C4 cost = 7.7 unnecessary switches/min pure-resolver (stabiliser damps in flight).
+
 For Renxi: (a) confirm the ~2 m2 sizing spec as the staging norm for W1; (b) confirm
 cov_missing-with-session-reference as the declared glass instrument (and the historical
 refmap cov_def as diagnostic only); (c) the real tier needs the facing pass in every

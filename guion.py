@@ -26,7 +26,13 @@ LUZ_ON, LUZ_OFF = 116.0, 85.0            # los dos estados declarados, medidos e
 # resolucion del testigo -- las T1/T2 del 24-ago no movieron cov_def en zona. El D8 del 25-ago
 # valido este panel (~3.6 m2, 55 celdas de mapa): cov_def en zona 0.32/0.44, horquilla del
 # cristal real (0.44/0.32). Un testigo de cristal necesita ~2 m2 de pared mapeada minimo.
-CRISTAL_VANO = "-2.6,0.8,-0.8,2.8"       # panel D8 validado (frame del mapa)
+# 25-ago, segunda vuelta: el panel D8 original (-2.6,0.8,-0.8,2.8) tiene el TAMANO correcto
+# pero cae en pared que el gemelo ve mal (ratio de presencia <=0.30 por el filtro de la app:
+# 0 celdas de la referencia de sesion a cualquier ratio). El testigo necesita tamano Y pared
+# FIABLEMENTE vista. Este rect cubre 14 celdas de la referencia (ratio>=0.65) en el flanco NE
+# del vano y esta validado en vivo: cov_missing>=3 sostenido en la aproximacion con cristal,
+# cero en control (piernas GLASS_COVM2B/BASE_COVM2B).
+CRISTAL_VANO = "-4.0,1.5,-2.7,3.0"       # panel validado sobre pared fiable (frame del mapa)
 
 # (instante en s desde el arranque, estado declarado, delta_t esperado DESPUES del cambio)
 GUIONES = {

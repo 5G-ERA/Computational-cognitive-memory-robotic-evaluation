@@ -72,6 +72,33 @@ def carga_referencia(fichero_ref, run):
     return segs
 
 
+def _cristal_en_ventana(est, m, d_max=2.5):   # d_max = COV_R declarado del instrumento
+    """El cristal declarado esta en la VENTANA DEL INSTRUMENTO de la muestra: distancia
+    <= d_max al rect Y rumbo al punto mas cercano dentro del sector de cobertura declarado
+    (+-40 deg, el COV_SECT del robot). Anadido 25-ago: la zona por distancia sola sobre-exigia
+    -- en zona pero sin encarar la pared, la decepcion es INDETECTABLE por diseno del
+    instrumento, y el resolutor con evidencia completa contestaba (con razon) el rol simple;
+    medido en T8: C4 respondia illumination en 152/176 muestras delta=defer y las abladas
+    C2/C3 puntuaban MAS que C4 solo porque su ignorancia les fuerza el rol conjunto.
+    Computable a priori (estado declarado + pose + geometria declarada): no depende de la
+    condicion, asi que no viola la simetria de la referencia (SS4)."""
+    rects = [r for r in str(est.get("cristal") or "").split(";") if r.strip()]
+    mx, my = m.get("x", 0), m.get("y", 0)
+    for r_ in rects:
+        try:
+            x0, y0, x1, y1 = (float(t_) for t_ in r_.split(","))
+        except ValueError:
+            continue
+        cx = min(max(mx, min(x0, x1)), max(x0, x1))
+        cy = min(max(my, min(y0, y1)), max(y0, y1))
+        if math.hypot(mx - cx, my - cy) > d_max:
+            continue
+        brg = (math.degrees(math.atan2(cy - my, cx - mx)) - m.get("yaw", 0) + 540.0) % 360.0 - 180.0
+        if abs(brg) <= 40.0:
+            return True
+    return False
+
+
 def delta_muestra(seg, m):
     """delta_t derivada para UNA muestra: tupla de roles aceptables.
 
@@ -84,17 +111,7 @@ def delta_muestra(seg, m):
     est = seg.get("estado") or {}
     if delta in ("defer", "review"):
         luz_mala = float(est.get("luz", 0)) > 99.0
-        en_zona = False
-        rects = [r for r in str(est.get("cristal") or "").split(";") if r.strip()]
-        for r_ in rects:
-            try:
-                x0, y0, x1, y1 = (float(t_) for t_ in r_.split(","))
-            except ValueError:
-                continue
-            cx = min(max(m.get("x", 0), min(x0, x1)), max(x0, x1))
-            cy = min(max(m.get("y", 0), min(y0, y1)), max(y0, y1))
-            if math.hypot(m.get("x", 0) - cx, m.get("y", 0) - cy) <= 2.0:
-                en_zona = True; break
+        en_zona = _cristal_en_ventana(est, m)
         if en_zona and luz_mala:
             return ("defer", "review")
         if luz_mala:
@@ -104,17 +121,10 @@ def delta_muestra(seg, m):
         return ("motion",)
     if delta == "lidar_quality":
         # mismo patron que defer: exigible solo donde el cristal declarado afecta a la
-        # cobertura del robot (T1 sufria lo de T8: certificado global, fenomeno local)
-        rects = [r for r in str(est.get("cristal") or "").split(";") if r.strip()]
-        for r_ in rects:
-            try:
-                x0, y0, x1, y1 = (float(t_) for t_ in r_.split(","))
-            except ValueError:
-                continue
-            cx = min(max(m.get("x", 0), min(x0, x1)), max(x0, x1))
-            cy = min(max(m.get("y", 0), min(y0, y1)), max(y0, y1))
-            if math.hypot(m.get("x", 0) - cx, m.get("y", 0) - cy) <= 2.0:
-                return ("lidar_quality",)
+        # cobertura del robot (T1 sufria lo de T8: certificado global, fenomeno local),
+        # incluida la condicion de ENCARAMIENTO (ver _cristal_en_ventana)
+        if _cristal_en_ventana(est, m):
+            return ("lidar_quality",)
         return ("motion",)
     if delta == "no_use":
         # T10: el bloqueo esta declarado desde el arranque, pero no_use solo es exigible
