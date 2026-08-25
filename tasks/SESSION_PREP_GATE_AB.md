@@ -75,33 +75,46 @@ Decision rule, written BEFORE looking: if the lit-baseline p95 ≤ 2 (twin rehea
 noisier than the twin's and K=4 is frozen instead, with the distribution attached. Either
 way it is frozen NOW, before Block C produces anything scoreable.
 
-## Block C — gate A/B, full light (~40 min, ~6 pts)
+## Block C — gate A/B, full light (~55 min, ~8 pts)
 
-Six legs, interleaved to keep battery drift off the contrast, alternating direction:
+**The design is BALANCED, and the 25-Aug rehearsal is why.** The first version alternated
+gate state and direction together (OFF→B, ON→A, OFF→B, …), which confounds them perfectly:
+the rehearsal produced GATE_ON legs at 168 s against GATE_OFF at 88 s, and that difference
+is unattributable — the return leg B→A is independently known to be harder ("nace
+encajonada, sin sitio para girar"). Two legs were also lost to the 300 s timeout. Both
+problems disappear when each gate state is run in BOTH directions.
 
-| leg | arm | extra env |
-|---|---|---|
-| 1 | `GATE_OFF` | `G1_DOOR_VIS=1 G1_DOOR_VIS_GATE=0` |
-| 2 | `GATE_ON`  | `G1_DOOR_VIS=1 G1_DOOR_VIS_GATE=1` |
-| 3 | `GATE_OFF` | 〃 |
-| 4 | `GATE_ON`  | 〃 |
-| 5 | `GATE_OFF` | 〃 |
-| 6 | `GATE_ON`  | 〃 |
+Eight legs, walked continuously (no repositioning), two repetitions of the 2×2:
 
-All legs also carry: `G1_METASM=1 G1_COVREF=<ref.json> G1_VOXMEM=1` (VOXMEM is expose-only
-by default — collects the I¹ field, does not act).
+| leg | arm | direction | leg | arm | direction |
+|---|---|---|---|---|---|
+| 1 | `GATE_OFF` | A→B | 5 | `GATE_OFF` | A→B |
+| 2 | `GATE_OFF` | B→A | 6 | `GATE_OFF` | B→A |
+| 3 | `GATE_ON`  | A→B | 7 | `GATE_ON`  | A→B |
+| 4 | `GATE_ON`  | B→A | 8 | `GATE_ON`  | B→A |
+
+All legs carry: `G1_METASM=1 G1_COVREF=<ref.json> G1_VOXMEM=1 G1_DOOR_VIS=1` plus the gate
+flag. VOXMEM is expose-only (collects the I¹ field, does not act).
 
 ```
 G1_ARM=GATE_OFF G1_METASM=1 G1_COVREF=<ref> G1_VOXMEM=1 G1_DOOR_VIS=1 G1_DOOR_VIS_GATE=0 python3 g1_goto.py goto B
 ```
 
-**Safety note for OFF legs:** the only real full-light no-gate leg we have STRUCK the door
-(21-Aug, +0.136 m). Operator within reach of the stop on every OFF leg.
+**Record the direction with the arm** — `G1_ARM=GATE_OFF_AB` / `GATE_OFF_BA` etc. — so the
+analysis can separate the two factors without inferring direction from the filename.
 
-**Pre-registered read-out (written here, before the data):** median |lateral| in gap,
-ON vs OFF; door strikes ON vs OFF; `ENG-C` strafe-only count; `dvis_gate` active fraction
-(should be ~100% ON legs / 0% OFF); twin prediction is −49%. If ON is NOT better, that is
-the result — the gate goes back to the bench, not the numbers.
+**Safety note for OFF legs:** the only real full-light no-gate leg we have STRUCK the door
+(21-Aug, +0.136 m, on the B→A return). Operator within reach of the stop on every OFF leg,
+and especially on OFF·B→A, which is the exact condition that produced the strike.
+
+**Pre-registered read-out (written before the data):** median |lateral| in gap for
+ON vs OFF **within each direction**, then pooled; door strikes ON vs OFF; `ENG-C`
+strafe-only count; `dvis_gate` active fraction (~100% ON legs / 0% OFF). Twin rehearsal
+predicts −49%. If ON is not better, that is the result — the gate goes back to the bench,
+not the numbers.
+
+**If time runs short**, drop the second repetition (legs 5–8) rather than dropping a cell of
+the 2×2: an unbalanced four-leg block is worth more than an unidentifiable six-leg one.
 
 ## On-site verification before packing up (~5 min)
 
@@ -116,7 +129,8 @@ python3 analysis/resumen_sesion.py
 
 ## Budget
 
-~10 legs walking ≈ 10 pts + margin → start ≥ 85%, expect ≥ 70% at the end. ~90–120 min.
+~13 legs walking ≈ 13 pts + margin → start ≥ 85%, expect ≥ 68% at the end. ~2 h.
+If battery forces a cut, drop Block C's second repetition first (see above).
 
 ## Explicitly out of scope
 
