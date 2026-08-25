@@ -103,10 +103,17 @@ def main():
             MIN_RUNS = int(sys.argv[i + 1])
         if a == "--ratio" and i + 1 < len(sys.argv):
             MIN_RATIO = float(sys.argv[i + 1])
+    # --excluye SUBCADENA (repetible): descarta runs cuyo nombre la contenga. Para dejar
+    # fuera de la referencia las piernas con degradacion escenificada (cristal, bloqueo...):
+    # una referencia construida con cristal dentro se traga la ausencia como normal.
+    excluye = [sys.argv[i + 1] for i, a in enumerate(sys.argv)
+               if a == "--excluye" and i + 1 < len(sys.argv)]
     barrido = "--barrido" in sys.argv
 
     fs = sorted(glob.glob(os.path.join(RAIZ, "dataset", "2026*_ours_[AB].json")))
     fs = [f for f in fs if desde <= os.path.basename(f)[:8] <= hasta]
+    if excluye:
+        fs = [f for f in fs if not any(e in os.path.basename(f) for e in excluye)]
     # real y sim comparten dataset y PUEDEN compartir fecha: el filtro por fecha NO separa.
     # (cazado en el ensayo general del 20-ago: las vueltas de calibracion del gemelo caian
     # en el mapa de sesion del robot real). --reales excluye runs con sim_id; --sim al reves.

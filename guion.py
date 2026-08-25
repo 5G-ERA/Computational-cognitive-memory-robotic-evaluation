@@ -22,7 +22,11 @@ import argparse, json, math, os, re, subprocess, sys, time
 _POS_RE = re.compile(r"pos=\((?P<x>[-+0-9.]+),(?P<y>[-+0-9.]+)\)")
 
 LUZ_ON, LUZ_OFF = 116.0, 85.0            # los dos estados declarados, medidos el 21-ago
-CRISTAL_VANO = "-4.3,0.6,-3.5,1.9"       # rectangulo del flanco del vano (frame del mapa)
+# Rect del cristal: el flanco original (-4.3,0.6,-3.5,1.9; ~1 m2) quedo por DEBAJO de la
+# resolucion del testigo -- las T1/T2 del 24-ago no movieron cov_def en zona. El D8 del 25-ago
+# valido este panel (~3.6 m2, 55 celdas de mapa): cov_def en zona 0.32/0.44, horquilla del
+# cristal real (0.44/0.32). Un testigo de cristal necesita ~2 m2 de pared mapeada minimo.
+CRISTAL_VANO = "-2.6,0.8,-0.8,2.8"       # panel D8 validado (frame del mapa)
 
 # (instante en s desde el arranque, estado declarado, delta_t esperado DESPUES del cambio)
 GUIONES = {
@@ -127,6 +131,19 @@ def main():
                G1_DOOR_VIS="1", G1_DOOR_VIS_GATE="1", G1_METASM="1",
                G1_SIM_PERC="1", G1_NOVIS="0",
                G1_PERC=os.environ.get("G1_PERC", "127.0.0.1:8010"), G1_SIM_NOISE="1")
+
+    # Instrumento de cobertura de SESION (cov_missing): presente en TODAS las configuraciones,
+    # no solo las de cristal -- la leccion observar-vs-actuar: el instrumento no varia con la
+    # escenificacion, o la condicion de control pierde el registro (nos paso con role, VOXMEM
+    # e illum_b). Sin el fichero, cov_missing queda en None y el fundamento de lidar no
+    # dispara: la referencia se construye con tools/mapa_visibilidad.py --sim (piernas
+    # nominales SIN degradacion escenificada, --excluye para las que la lleven) y OJO:
+    # una referencia solo de piernas de ruta tiene 0 celdas en el rect del cristal (medido
+    # 25-ago) -- hace falta una vuelta de calibracion ENCARANDO esa pared a <2.5 m.
+    _covref = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "dataset", "visibilidad_gemelo_sesion.json")
+    if "G1_COVREF" not in os.environ and os.path.exists(_covref):
+        env["G1_COVREF"] = _covref
 
     t0 = time.time()
     proc = subprocess.Popen([sys.executable, "g1_sim_adapter.py", "goto", a.destino],

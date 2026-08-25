@@ -57,6 +57,15 @@ python3 tools/mapa_visibilidad.py --reales --min-opp 5 --min-runs 2
 - The output key is `points` (not `cells`); check the count with
   `python3 -c "import json; print(len(json.load(open('<ref>'))['points']))"`.
   `load_cov_ref` reads `points` — verified compatible on 25-Aug.
+- **FACE THE GLASS WALL (found 25-Aug, twin):** the `cov_missing` sector is +-40 deg FORWARD,
+  so route laps leave the glass wall out of frame -- the 25-Aug twin session reference has
+  **0 cells inside the glass rect** at every ratio, and a reference with no cells there can
+  never witness the glass (W1 dead on arrival). During one lap, stop ~1.5-2 m in front of
+  the Z2 glass wall FACING it for ~10 s (a slow turn sweeping the wall also works). Verify
+  before declaring, with the rect of the real glass panel (map frame):
+  `python3 -c "import json; X0,Y0,X1,Y1=<rect>; p=json.load(open('<ref>'))['points']; print('cells in glass rect:', sum(1 for c in p if X0<=c[0]<=X1 and Y0<=c[1]<=Y1))"`
+  If 0, do another facing pass before committing -- an undeclared hole here silently kills
+  the glass witness for the whole session.
 - Commit the reference file + its hash before Block C. That commit is the declaration.
 
 ## Block B — freeze K_online (~10 min, ~2 pts)
