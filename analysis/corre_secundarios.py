@@ -1,11 +1,12 @@
+import os
 """Los secundarios del §9.3 sobre las cinco configuraciones escenificadas."""
 import json, os, statistics, sys
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_conditions import evalua_todas, usa_pose_para, CONDICIONES
 from dcc_omega import carga_referencia, delta_muestra
 from dcc_secundarios import puntua_secundarios
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING"
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Casos desde el MANIFIESTO de la campana (antes: 5 ficheros a mano de sesiones previas,
 # que no tienen certificado adyacente y puntuaban 0 fronteras en silencio). Solo configs
 # con transicion escenificada dentro de la run.

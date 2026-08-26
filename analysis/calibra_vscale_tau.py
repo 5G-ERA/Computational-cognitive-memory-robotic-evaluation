@@ -1,3 +1,4 @@
+import os
 """Recalibracion de VSCALE y TAU CON EL FRENO PUESTO, contra las 132 runs reales.
 
 Metodo: no hace falta simular. El cuerpo cinematico del puente son cinco lineas, asi que
@@ -15,7 +16,7 @@ Se ajustan dos observables, no uno:
 """
 import glob, json, math, os, statistics
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING"
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DT = 0.05
 CADUCA = 0.6           # el puente caduca el cmd_vel a los 0.6 s
 

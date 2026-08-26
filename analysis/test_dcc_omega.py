@@ -1,3 +1,4 @@
+import os
 # -*- coding: utf-8 -*-
 """Controles del puntuador A_Omega: positivo, NEGATIVO y de frontera.
 
@@ -10,7 +11,7 @@ distingue "reconstruido desde los fundamentos" de "acertado por accidente" funci
 el material real produzca el caso, la lectura sera fiable.
 """
 import sys
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_omega import puntua_run
 
 SEG = [{"desde": 0.0, "hasta": 100.0, "delta": "illumination", "estado": {"luz": 116}}]

@@ -58,10 +58,10 @@ M2_ABORT_BAD = float(os.environ.get("G1_M2_ABORT_BAD", "0.6"))  # fraccion de de
 M2_ABORT_PROG = float(os.environ.get("G1_M2_ABORT_PROG", "0.4"))  # m de acercamiento minimo al goal en la ventana
 M2_HELP_S = float(os.environ.get("G1_M2_HELP_S", "8"))          # s de HELP firme CONTINUO -> abort directo
 
-_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")   # reorg 2026-08-07
+_DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")   # reorg 2026-08-07
 WP_FILE = os.path.join(_DATA, "waypoints.json")
 MAP_FILE = os.path.join(_DATA, "nav_map.json")
-GOTO_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "goto.log")
+GOTO_LOG = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "goto.log")
 GOTO_LOG_MAX_MB = float(os.environ.get("G1_GOTO_LOG_MAX_MB", "25"))  # umbral de rotacion; GitHub avisa a partir de 50 MB por fichero
 
 def _open_goto_log():
@@ -437,7 +437,7 @@ RX_GATE  = float(os.environ.get("G1_RXGATE",  "0.20"))    # |rx| comandado que c
 SAFE_R   = float(os.environ.get("G1_SAFE_R",  "1.20"))    # m: radio de override de seguridad de campo cercano
 VIS_OBST_LABELS = {"table", "diningtable", "dining table", "desk", "chair", "couch", "sofa",
                    "bench", "refrigerator", "person"}     # clases YOLO que son obstaculo (para el log [VIS])
-DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dataset")
+DATASET_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 
 
 class RunRecorder:
@@ -465,7 +465,7 @@ class RunRecorder:
             self.rec["env_g1"] = {k: v for k, v in sorted(os.environ.items()) if k.startswith("G1_")}
             self.rec["arm"] = os.environ.get("G1_ARM") or None
             import subprocess as _sp
-            _here = os.path.dirname(os.path.abspath(__file__))
+            _here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             self.rec["git"] = {
                 "sha": _sp.run(["git", "rev-parse", "--short", "HEAD"], cwd=_here, timeout=2,
                                capture_output=True, text=True).stdout.strip() or None,
@@ -553,7 +553,7 @@ class RunRecorder:
                         self._h_assist_t = time.time()
                         self.event("human_assist", t, lx, ly, extra={"cm": _cm, "src": "human"})
                         try:
-                            _amf = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            _amf = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                                 "assist_memory.json")
                             try:
                                 _am = json.load(open(_amf))
@@ -891,7 +891,7 @@ def cmd_clouddebug():
     relocalizado, deja que se vean los puntos, y muestra que tipos de mensaje los llevan."""
     cdp = g.get_cdp()
     cdp.eval(CLOUD_DEBUG_JS)
-    dbglog = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clouddebug.log")
+    dbglog = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "clouddebug.log")
     print(">>> CLOUD-DEBUG. Con el mapa cargado y los puntitos visibles, mueve el robot un poco.")
     print(f"    Voy guardando el resumen en {dbglog}. Ctrl+C para el volcado final.\n")
 
@@ -1064,8 +1064,8 @@ def cmd_appsniff(secs=40):
             print(f"  (no enganche '{(ti or '')[:22]}': {repr(e)[:50]})")
     if not cdps:
         print("No pude engancharme a ninguna pagina."); return
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "appsniff.log")
-    outj = os.path.join(os.path.dirname(os.path.abspath(__file__)), "appsniff.json")
+    out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "appsniff.log")
+    outj = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "appsniff.json")
     print(f"\n>>> APPSNIFF en {len(cdps)} paginas. EN LA APP: pon destino B y navega. Capturo ~{secs}s. Ctrl+C para parar.\n")
 
     def traffic(c):
@@ -1130,7 +1130,7 @@ def cmd_pathsniff(label):
     w = wps[label]
     cdp = g.get_cdp()
     cdp.eval(DISABLE_DRV_JS); cdp.eval(NATIVE_CAP_JS); cdp.eval(RELOC_JS); cdp.eval(PATHSNIFF_JS)
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pathsniff.log")
+    out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pathsniff.log")
     # espera dc
     for _ in range(30):
         if cdp.eval("!!window.__dc"):
@@ -1397,7 +1397,7 @@ def ref_points():
        'summit' (DEFECTO) = mapa del Summit ALINEADO a A/B (bien orientado) -> summit/ref_map_g1.json;
        'g1'               = mapa propio del G1 (dataset/map_full.json) — OJO: puede salir rotado/desalineado."""
     choice = os.environ.get("G1_REFMAP", "summit").lower()
-    here = os.path.dirname(os.path.abspath(__file__))
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if choice != "g1":                          # por defecto, el mapa Summit alineado (orientacion correcta)
         p = os.path.join(here, "summit", "ref_map_g1.json")
         try:
@@ -1914,7 +1914,7 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                                                       # validity of the laser reading"
     assist_mem = []                                   # memoria episodica de asistencias humanas
     try:
-        assist_mem = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+        assist_mem = json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                                  "assist_memory.json")))
     except Exception:
         pass
@@ -3834,7 +3834,7 @@ def cmd_goto_viz(label):
 # =========================== BENCHMARK: navegacion NATIVA del firmware ===========================
 # El firmware conduce (anyPointNavigation 1102, sniffeado); nosotros SOLO registramos los mismos
 # metricas que nuestra nav (tiempo, recorrido, colisiones, laser, odometria) para comparar.
-BENCH_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "goto_native.log")
+BENCH_LOG = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "goto_native.log")
 
 # apaga NUESTRO driver (el setInterval que envia rt/wirelesscontroller) para no pelear con el firmware
 DISABLE_DRV_JS = ("(function(){if(window.__drv){clearInterval(window.__drv);window.__drv=null;}"

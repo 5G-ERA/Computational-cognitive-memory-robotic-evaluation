@@ -1,3 +1,4 @@
+import os
 """¿El gemelo maniobra menos, o el camino REAL esta inflado por temblor de pose?
 
 path_m se calcula como suma de |delta pose| entre muestras consecutivas, y esa suma la
@@ -11,7 +12,7 @@ del real esta inflada, y mi hipotesis del "mundo demasiado limpio" es falsa.
 """
 import glob, json, math, os, statistics
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 def carga(f):
     try: return json.load(open(f))
     except Exception: return None

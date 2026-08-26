@@ -1,3 +1,4 @@
+import os
 """¿En que discrepan la sala B del gemelo y el mapa de referencia?
 
 Antes de mover geometria hay que saber si es (a) una TRASLACION -- todo corrido medio
@@ -7,7 +8,7 @@ refmap y se busca el desplazamiento que maximiza el solape. Si hay un maximo cla
 distinto de (0,0), es traslacion.
 """
 import json, sys, collections
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 import g1_goto as g1
 
 OC = g1.g.OCELL
@@ -15,7 +16,7 @@ ref = g1.load_ref_map()
 
 # celdas que el laser del gemelo produjo (de los snapshots de una run reciente)
 import glob, os
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 cands = [f for f in sorted(glob.glob(os.path.join(RAIZ, "20260824_*_ours_[AB].json")))
          if len(json.load(open(f)).get("samples") or []) > 30]
 f = cands[-1]

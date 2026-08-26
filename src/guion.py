@@ -146,13 +146,15 @@ def main():
     # nominales SIN degradacion escenificada, --excluye para las que la lleven) y OJO:
     # una referencia solo de piernas de ruta tiene 0 celdas en el rect del cristal (medido
     # 25-ago) -- hace falta una vuelta de calibracion ENCARANDO esa pared a <2.5 m.
-    _covref = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    _covref = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                            "dataset", "visibilidad_gemelo_sesion.json")
     if "G1_COVREF" not in os.environ and os.path.exists(_covref):
         env["G1_COVREF"] = _covref
 
     t0 = time.time()
-    proc = subprocess.Popen([sys.executable, "g1_sim_adapter.py", "goto", a.destino],
+    proc = subprocess.Popen([sys.executable,
+                             os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                          "g1_sim_adapter.py"), "goto", a.destino],
                             env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, bufsize=1)
     fichero = None

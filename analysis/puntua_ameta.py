@@ -1,3 +1,4 @@
+import os
 """Primer intento REAL de puntuar A_meta = 1[Z_t = delta_t] sobre una run escenificada.
 
 delta_t sale del guion (declarado antes de correr) y del registro independiente de la
@@ -9,10 +10,10 @@ Lo que este script NO hace todavia es A_Omega: para eso hacen falta certificados
 que no existen. Aqui se mide exactamente hasta donde llegamos hoy.
 """
 import json, os, sys, collections
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_conditions import evalua_todas, usa_pose_para, CONDICIONES
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 
 def delta_de_guion(guion, t_transicion, t):
     """delta_t declarado: el estado esperado antes/despues del instante de la transicion."""

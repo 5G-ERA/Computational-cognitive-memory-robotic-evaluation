@@ -1,3 +1,4 @@
+import os
 """Validacion NO CIRCULAR del contrato de calidad visual.
 
 Las etiquetas vienen del cuaderno del operador (tasks/SESSION_LOG_2026-08-21.md), no de
@@ -9,7 +10,7 @@ import glob, os, statistics
 import numpy as np
 from PIL import Image
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 DECLARADO = [
     ("20260821_144604_ours_B", "OSCURO", "todas las luces apagadas, oficina y laboratorio"),
     ("20260821_145228_ours_A", "OSCURO", "luces apagadas en todas las salas"),

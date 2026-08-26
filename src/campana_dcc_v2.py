@@ -15,7 +15,7 @@ encadenada) -- el /reset por defecto de guion teleporta a A y vaciaria las piern
 """
 import json, os, re, subprocess, sys, time
 
-RAIZ = os.path.dirname(os.path.abspath(__file__))
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAN = os.path.join(RAIZ, "tasks", "manifiestos", "campana_dcc_v2.txt")
 ORDEN = [("T1", "B"), ("T2", "A"), ("T3", "B"), ("T4", "A"), ("T5", "B"),
          ("T6", "A"), ("T7", "B"), ("T8", "A"), ("T9", "B"), ("T11", "A")]
@@ -32,7 +32,7 @@ for ronda in range(REPS):
         i_global += 1
         if i_global <= hechas:
             continue
-        args = [sys.executable, "guion.py", cfg, "--destino", dst]
+        args = [sys.executable, os.path.join(RAIZ, "src", "guion.py"), cfg, "--destino", dst]
         if dst == "A":
             args.append("--sin-reset")
         env = dict(os.environ, G1_LASER_SNAP="0.5")

@@ -1,12 +1,13 @@
+import os
 """El resolutor de rol aplicado a material YA grabado. Sirve de dos cosas:
    - comprobar que resuelve algo sensato antes de meterlo en el lazo de control
    - medir cuanto material historico es puntuable (y cuanto no, y por que)
 """
 import glob, json, os, sys, collections
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_roles import resuelve_rol, ROLES
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 def carga(f):
     try: return json.load(open(f))
     except Exception: return None

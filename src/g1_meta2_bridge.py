@@ -40,7 +40,7 @@ import math
 import os
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PKG = os.path.join(HERE, "meta-reasoner-2.0")
 if PKG not in sys.path:
     sys.path.insert(0, PKG)
@@ -108,7 +108,7 @@ DOOR_VARIANTS = {
 # pasan solo el NOMBRE del fichero, asi que aqui se resuelve: si el nombre tal cual
 # no existe, se busca en la subcarpeta; y los ficheros NUEVOS se crean ya dentro de
 # ella. Asi la raiz queda limpia sin invalidar ni un comando de la documentacion.
-_HERE = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _resolve_path(name, subdir):

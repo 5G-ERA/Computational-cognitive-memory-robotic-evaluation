@@ -38,7 +38,7 @@ import sys
 import threading
 import time
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SIM_DIR = os.path.join(HERE, "sim")
 SIM_URL = os.environ.get("G1_SIM_URL", "ws://localhost:8765")
 
@@ -333,9 +333,9 @@ def _emulador():
     global _EMU
     if _EMU is None:
         try:
-            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "sim"))
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sim"))
             from emulador_deteccion import carga_por_defecto
-            _EMU = carga_por_defecto(os.path.dirname(os.path.abspath(__file__)))
+            _EMU = carga_por_defecto(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             if _OBJ_DECLARADOS is not None:
                 _EMU.objetos = list(_OBJ_DECLARADOS)   # el guion ya declaro que hay
             print("[sim-perc] emulador calibrado: %d objetos, brillo declarado %.0f"

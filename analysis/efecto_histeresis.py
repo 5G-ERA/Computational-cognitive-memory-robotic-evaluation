@@ -1,13 +1,14 @@
+import os
 """Efecto de la estabilizacion: cuanto tableteo quita y CUANTO RETRASA la transicion real.
 
 El coste hay que medirlo, no suponerlo: si la histeresis retrasa mucho la transicion
 escenificada, el retardo de conmutacion que mide el banco queda dominado por mi filtro.
 """
 import glob, json, os, statistics, sys
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_roles import EstabilizadorRol
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 
 def transiciones(seq, ts):
     out = []

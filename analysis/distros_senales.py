@@ -1,7 +1,8 @@
+import os
 """Distribuciones reales de las senales que van a gobernar la resolucion de rol.
 Los umbrales del resolutor deben salir de aqui, no de la intuicion."""
 import glob, json, os, statistics
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 def carga(f):
     try: return json.load(open(f))
     except Exception: return None

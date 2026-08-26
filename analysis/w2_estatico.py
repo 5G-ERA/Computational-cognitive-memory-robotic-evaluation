@@ -21,7 +21,7 @@ import os
 import sys
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, RAIZ)
+sys.path[:0] = [RAIZ, os.path.join(RAIZ, "src")]
 import dcc_roles as R                                            # noqa: E402
 
 

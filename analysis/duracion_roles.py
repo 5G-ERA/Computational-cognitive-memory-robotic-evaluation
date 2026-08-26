@@ -1,12 +1,13 @@
+import os
 """¿Cuanto duran los episodios de rol? El umbral de confirmacion debe salir de aqui.
 
 Si los espurios son de decimas y los genuinos de segundos, hay un valle donde cortar. Si no
 hay valle, la histeresis seria arbitraria y habria que decirlo en vez de inventarse un numero.
 """
 import glob, json, os, statistics, sys, collections
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 def carga(f):
     try: return json.load(open(f))
     except Exception: return None

@@ -1,12 +1,13 @@
+import os
 """La campana de desarrollo entera: A_meta, A_Omega y secundarios por configuracion y
 condicion, con el certificado que viaja junto a cada run."""
 import json, os, statistics, sys, collections
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_conditions import evalua_todas, usa_pose_para, CONDICIONES
 from dcc_omega import carga_referencia, delta_muestra, puntua_run
 from dcc_secundarios import puntua_secundarios
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING"
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 runs = []
 viejasT12 = 0

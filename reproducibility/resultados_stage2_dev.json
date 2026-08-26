@@ -3,7 +3,7 @@
  "paper": "A Computational Theory of Cognitive Memory V5.8, Supplementary Note 8",
  "tier": "development",
  "manifest": "tasks/manifiestos/campana_dcc_v2.txt",
- "repo_head": "81515e9",
+ "repo_head": "ff62014",
  "conditions": {
   "C1": {
    "interface": "original",

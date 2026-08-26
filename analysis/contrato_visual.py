@@ -1,3 +1,4 @@
+import os
 """La prueba que decide el jueves: el gate NO usa la luma cruda, usa la EMA
     illum_ema = 0.8*illum_ema + 0.2*luma          (g1_goto.py:2004)
 y dispara con  illum_ema > 100  (g1_goto.py:2442).
@@ -11,7 +12,7 @@ import glob, os, statistics
 import numpy as np
 from PIL import Image
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 UMBRAL = 100.0
 DECLARADO = [
     ("20260821_144604_ours_B", "OSCURO"),

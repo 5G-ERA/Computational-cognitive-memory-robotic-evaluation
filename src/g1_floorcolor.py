@@ -34,7 +34,7 @@ import glob
 import numpy as np
 import cv2
 
-CALIB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "floorcolor_calib.json")
+CALIB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "floorcolor_calib.json")
 # multiplicadores k*MAD por canal (H, S, V). MAD minimo por canal para no degenerar (moqueta muy uniforme).
 K_HSV = (4.0, 4.0, 5.0)
 MAD_MIN = (2.0, 4.0, 8.0)
