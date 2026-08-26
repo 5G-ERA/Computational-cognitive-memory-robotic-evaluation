@@ -1,3 +1,13 @@
+# Computational Cognitive Memory — Robotic Evaluation
+
+> **This repository is the Stage 2 (robotic coffee-delivery benchmark) companion of
+> *A Computational Theory of Cognitive Memory*** (Qiu, Pham, Lendinez Ibanez, Li).
+> The evaluation, its reproducibility package and the current results live on the
+> branch [`ensayo/door-gate-isaac`](../../tree/ensayo/door-gate-isaac) — start at
+> [`REPRODUCIBILITY.md`](../../blob/ensayo/door-gate-isaac/REPRODUCIBILITY.md).
+> The branch `baseline` holds the frozen no-governance navigation configuration for
+> fair comparison. This `main` branch documents the platform layer below.
+
 # G1 Unitree — Autonomous Navigation & Meta-Reasoning (consumer "Air", no EDU/DDS)
 
 Autonomous exploration and obstacle avoidance on a **stock Unitree G1 "Air"** humanoid — a
