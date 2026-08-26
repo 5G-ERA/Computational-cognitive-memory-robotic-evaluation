@@ -20,13 +20,19 @@ to ALL configurations (observe-vs-act), the validated pane over reliably-seen wa
 degenerate — 2 s, robot already at goal after an interrupted leg — and is dropped by the
 pre-declared <30-samples filter; the top-up leg replaces it, noted here).
 
+> **Condition labels follow paper V5.8 §8.6** (C2 = original interface + distributed
+> resolution; C3 = revised interface + temporal incumbent — an earlier revision of this
+> file transposed the two middle cells in prose; the code and every number were always
+> V5.8-correct). Contrast names per §8.7: C4−C3 and C2−C1 are **resolution effects**;
+> C4−C2 and C3−C1 are **interface effects**.
+
 ## Primary — A_meta at run level (median [IQR] across 30 runs)
 
 | condition | A_meta |
 |---|---|
-| C1 · temporal, I⁰ | 65% [23–86] |
-| C2 · temporal, I¹ | 0% [0–0] |
-| C3 · distributed, I⁰ | 13% [8–16] |
+| C1 · original interface + temporal incumbent | 65% [23–86] |
+| C2 · original interface + distributed resolution | 0% [0–0] |
+| C3 · revised interface + temporal incumbent | 13% [8–16] |
 | C4 · distributed, I¹ (full) | 63% [53–72] |
 
 **Paired contrasts (the pre-registered comparison; each run yields all four conditions
@@ -34,7 +40,7 @@ on the same samples):**
 
 | contrast | median [IQR] | sign |
 |---|---|---|
-| **C4−C3** | **+53 pp [+43, +60]** | C4>C3 in **30/30** runs |
+| **C4 · revised interface + DCC resolution (full)** | **+53 pp [+43, +60]** | C4>C3 in **30/30** runs |
 | **C4−C2** | **+61 pp [+52, +71]** | C4>C2 in **30/30** runs |
 | C4−C1 | +6 pp [−25, +39] | 15/30 — flat time-averaged (see secondaries) |
 | C3−C1 | −52 pp [−74, −14] | C3<C1 in 30/30 |
