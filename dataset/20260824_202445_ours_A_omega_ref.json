@@ -1,0 +1,1 @@
+{"config": "T6", "destino": "A", "segmentos": [{"t_pared": 1787599484.2267678, "delta": "object", "estado": {"luz": 85.0, "cristal": "", "objetos": [["chair", -2.98, 1.29]]}}, {"t_pared": 1787599505.9973776, "delta": "motion", "estado": {"luz": 85.0, "cristal": "", "objetos": []}}]}

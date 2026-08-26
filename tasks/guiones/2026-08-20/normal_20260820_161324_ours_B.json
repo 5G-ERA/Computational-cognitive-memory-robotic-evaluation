@@ -1,0 +1,12 @@
+{
+ "episodio": "dia20-normal",
+ "run": "20260820_161324_ours_B",
+ "tramos": [
+  {
+   "t0": 0,
+   "t1": 99999,
+   "delta": "motion",
+   "nota": "sin escenificacion: el titular gobierna todo el run"
+  }
+ ]
+}

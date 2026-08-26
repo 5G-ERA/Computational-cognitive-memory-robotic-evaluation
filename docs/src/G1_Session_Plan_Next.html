@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>G1 — Next Session Plan</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 9.8pt;
+         color: #16202b; line-height: 1.44; }
+  .bar { background: #16233a; color: #fff; padding: 9px 14px; border-radius: 5px;
+         display: flex; justify-content: space-between; font-size: 8.4pt; letter-spacing: 1.1px;
+         font-weight: 700; margin-bottom: 18px; }
+  h1 { font-size: 20pt; text-align: center; margin: 0 0 4px; }
+  .sub { text-align: center; color: #5a6675; font-size: 10pt; margin-bottom: 16px; }
+  h2 { font-size: 12.5pt; margin: 18px 0 7px; border-bottom: 1.6px solid #16233a; padding-bottom: 3px; }
+  h3 { font-size: 10.6pt; margin: 12px 0 4px; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8.1pt; }
+  pre { background: #f3f5f8; border: 1px solid #dbe2ea; border-radius: 4px; padding: 7px 10px;
+        white-space: pre-wrap; word-break: break-all; margin: 5px 0 9px; }
+  code { background: #eef1f5; padding: 0 3px; border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: 9pt; }
+  th { background: #16233a; color: #fff; text-align: left; padding: 6px 9px; font-size: 8.3pt;
+       letter-spacing: 0.8px; text-transform: uppercase; }
+  td { border-bottom: 1px solid #e2e8f0; padding: 6px 9px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .box { border-left: 4px solid #16233a; background: #eef2f8; padding: 10px 14px; margin: 10px 0;
+         border-radius: 0 4px 4px 0; font-size: 9.3pt; }
+  .warn { border-left-color: #a8321f; background: #fdf0ec; }
+  .ok { border-left-color: #1a7a2e; background: #eef7f0; }
+  li { margin-bottom: 3px; }
+  .pb { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<div class="bar"><span>G1 · NEXT LAB SESSION · PLAN</span><span>AFTER R1 · 13 AUG 2026</span></div>
+
+<h1>Next Session — Door Centring A/B</h1>
+<div class="sub">One change, same binary in both arms, battery as a hard gate</div>
+
+<div class="box ok">
+<b>Where we stand after R1.</b> Gate 1 <b>PASSES</b> on the well-charged subset: battery ≥60% →
+12/13 reached, A→B 7/7, B→A 5/6, median 65 s, median 0 collisions. <b>The golden baseline
+reproduces.</b> Below 50% battery the same binary drops to 5/12 and B→A to 1/6. Thirty runs,
+dry batch, five deliberate perturbation runs (displaced up to 2.07 m, facing up to 230° off) —
+<b>all five arrived</b>, and none of the nine failures was a perturbed run.
+</div>
+
+<h2>0. What this session tests, and why</h2>
+
+<p>Adrián's observation on the floor — <i>"on the way back it always drifts a little to one side
+before the door frame and puts itself in a worse position"</i> — is confirmed in the data and has a
+measured mechanism:</p>
+
+<table>
+<tr><th>Distance to door</th><th>2.2 m</th><th>1.4 m</th><th>1.0 m</th><th>0.7 m</th></tr>
+<tr><td><b>Runs that failed</b> — offset from the axis</td><td>−0.35</td><td>−0.19</td><td>−0.16</td><td><b>−0.19 m</b></td></tr>
+<tr><td><b>Runs that crossed clean</b></td><td>−0.32</td><td>−0.08</td><td>−0.04</td><td><b>−0.01 m</b></td></tr>
+</table>
+
+<p>Every run arrives ~0.35 m off-axis to the robot's <b>left</b>. Success depends entirely on
+whether it re-centres in the last metre and a half. The physical margin is only <b>±0.20 m</b>
+(0.99 m opening, 0.29 m effective half-width with arm swing), so arriving at 0.19 m is already at
+the limit.</p>
+
+<p><b>The cause is not missing code.</b> The strafe-to-axis servo already exists in the crossing
+phase, but it is gated to fire only above <b>0.14 m</b> of error and to stop correcting <b>0.35 m</b>
+before the opening. Failures cross that boundary still off-axis and can no longer correct.</p>
+
+<div class="box"><b>Ruled out before writing any code</b> (2481 real samples): "trust the vision more
+to centre itself" cannot work. The door bearing correlates <b>+0.51</b> with the true geometric
+bearing — vision measures well — but <b>−0.00 with the lateral offset within 1.2 m</b>. Bearing
+tells you where to point, not where you are: at 0.7 m, aiming at the centre reads ~0° from any
+offset. The approach-bias variant (<code>Door_BiasPlus</code>, +0.12 m) was also tested in the twin
+and <b>rejected</b>: it made centring worse. Neither goes on the robot.</div>
+
+<h2>1. The experiment</h2>
+
+<p>Twelve B→A runs, alternating arms. <b>Both arms run the same binary</b> — they differ only in two
+environment variables, so there is no code confound at all.</p>
+
+<table>
+<tr><th>Arm</th><th>Variables</th><th>Meaning</th></tr>
+<tr><td><b>base</b></td><td>none (defaults)</td><td>Exactly golden behaviour: 0.14 m dead zone, stops correcting 0.35 m out</td></tr>
+<tr><td><b>tight</b></td><td><code>G1_DOOR_CTR_TOL=0.07 G1_DOOR_CTR_S=0.18</code></td><td>Half the dead zone, keeps correcting twice as close</td></tr>
+</table>
+
+<p><b>Twin evidence</b> (12 interleaved B→A runs with calibrated noise, synthetic camera and
+DOOR-VIS): base → 5/6 reached, 3 collisions, |offset| 0.069 m · <b>tight → 6/6, zero collisions,
+|offset| 0.012 m</b>, no time cost. The two offset distributions do not overlap.</p>
+
+<div class="warn"><b>Honest caveat.</b> The twin's baseline offset (0.069 m) is milder than the real
+one (0.19 m), so the twin proves the <i>mechanism</i>, not that the change prevents real collisions.
+That is exactly what tomorrow measures. Also: with n=6 per arm the twin could not resolve
+differences smaller than ~1 run or ~0.04 m — two identical configurations differed by that much.
+<b>The metric that discriminates is the lateral offset, not reached/failed.</b></div>
+
+<h2>2. Pre-flight</h2>
+
+<h3>2.1 Code — the branch for this session</h3>
+<pre>cd ~/Documents/G1_UNITREE_ROBOT_META_REASONING && git fetch origin && git checkout golden-plus-centring && git log --oneline -2</pre>
+<p>Expect <code>d70083e</code> on top of <code>019ec85 shakedown B-&gt;A con DOOR-VIS</code>. This branch is
+golden with <b>one</b> change: the two gates turned into variables. Verify it is really one change:</p>
+<pre>git diff --stat golden-doorvis</pre>
+<p>Must report a single file and ~9 added lines. Nothing else differs from the binary that produced
+the golden window.</p>
+
+<h3>2.2 The rest of the ritual — unchanged</h3>
+<ol>
+<li><b>Battery ≥ 80% to start</b> (see §4 — this is now a hard gate).</li>
+<li>GPUs free: <code>nvidia-smi</code>. Stop the local LLM service if it holds the cards.</li>
+<li>Perception server, then <code>curl -s http://127.0.0.1:8008/health</code> → <code>ok: true</code>, MODE gpu.</li>
+<li>Meta-reasoner: <code>cd meta-reasoner-2.0 && python3 -m unittest discover -q</code> → OK.</li>
+<li>Phone ritual (pair from the app, Bluetooth on) → USB proxy → <code>reloccheck</code>.
+    <b>Do not proceed with <code>nube=0 pts</code></b>: the app must be on the map/SLAM screen. Healthy is
+    a few hundred obstacle cells (golden median 233).</li>
+<li>Marker in its own terminal, heartbeat visible in the run console.</li>
+<li>Dry batch: empty cup in the hand, no apron.</li>
+</ol>
+
+<h2 class="pb">3. The run loop</h2>
+
+<p>Alternate the arms run by run: base, tight, tight, base, base, tight… Twelve runs, all B→A —
+this is the direction with the problem, and using one direction doubles the statistical power for a
+given number of runs. Reposition the robot at B between runs.</p>
+
+<h3>Arm BASE (golden behaviour)</h3>
+<pre>cd ~/Documents/G1_UNITREE_ROBOT_META_REASONING && source ~/g1env/bin/activate
+G1_SETUP="cup=hand,apron=off,fill=dry" G1_ARM=CTR_BASE G1_META2=2 G1_M2_CFG=config_meta2_g1payload.json G1_M2_STATE=meta2_state_ctr_base.json G1_M2_STATE_INIT=meta2_state_twin_explored.json G1_M2_REALCAL=1 G1_M2_L3=1 G1_M2_L4=1 G1_M2_PROFILES=1 G1_M2_DOORLIB=1 G1_M2_FRAGSPEED=1 G1_DOOR_VIS=1 G1_PERC=127.0.0.1:8008 python3 g1_goto.py gotoviz A</pre>
+
+<h3>Arm TIGHT (the change)</h3>
+<pre>cd ~/Documents/G1_UNITREE_ROBOT_META_REASONING && source ~/g1env/bin/activate
+G1_DOOR_CTR_TOL=0.07 G1_DOOR_CTR_S=0.18 G1_SETUP="cup=hand,apron=off,fill=dry" G1_ARM=CTR_TIGHT G1_META2=2 G1_M2_CFG=config_meta2_g1payload.json G1_M2_STATE=meta2_state_ctr_tight.json G1_M2_STATE_INIT=meta2_state_twin_explored.json G1_M2_REALCAL=1 G1_M2_L3=1 G1_M2_L4=1 G1_M2_PROFILES=1 G1_M2_DOORLIB=1 G1_M2_FRAGSPEED=1 G1_DOOR_VIS=1 G1_PERC=127.0.0.1:8008 python3 g1_goto.py gotoviz A</pre>
+
+<div class="warn"><b>The two lines differ in exactly two variables and the arm tag.</b> Nothing else
+changes between runs — not the cup, not the start pose, not the app, not the code. Do not add
+<code>G1_M2_ABORT_WIN</code>, <code>G1_M2_ABORT_PROG</code> or <code>G1_M2_HELP_S</code>: the golden window
+ran on the binary defaults (75 s / 0.4 m / 8 s) and passing larger values makes the supervisor
+twice as patient, inflating the arrival rate.</div>
+
+<h3>Per run, write down</h3>
+<p>Arrival or failure · time · collisions · <b>battery %</b> · and whether the robot visibly scraped or
+brushed the frame. The lateral offset comes out of the log afterwards; your eye on the frame contact
+is the part no sensor records.</p>
+
+<h2>4. Battery — now a hard gate</h2>
+
+<div class="box warn">
+Yesterday's session ran 79% → 29% without recharging and the same binary went from <b>92%</b>
+arrivals above 60% battery to <b>42%</b> below 50%, with achieved cruise speed dropping 11% at an
+identical commanded speed. The meta-reasoner detected it without being told (tension ×2.75,
+fulfilment ÷5) while sensing reliability stayed flat — it degraded in <b>mobility</b>, not perception.
+<br><br>
+<b>Rule from now on: start ≥80%, stop the batch at 60%, recharge, resume.</b> Log the battery on
+every run. A batch that crosses 60% is two populations, not one.
+</div>
+
+<p><b>Optional, if the day allows (R1b — the causality check).</b> After the twelve runs, deliberately
+continue to &lt;45% with four more runs, then recharge above 80% and repeat four. If performance
+recovers, battery is causal; if it does not, the degradation is cumulative session effect (thermal,
+gait drift). One hour, and it settles a variable that affects every future campaign.</p>
+
+<h2>5. Acceptance criteria</h2>
+
+<table>
+<tr><th>Signal</th><th>What would confirm the change</th></tr>
+<tr><td><b>Lateral offset at the threshold</b> (primary)</td><td>tight clearly tighter than base — twin showed 0.012 vs 0.069 m with no overlap. This is the mechanism metric and it discriminates far better than arrivals</td></tr>
+<tr><td>Arrivals B→A</td><td>base ≈ 5/6 (the R1 rate), tight ≥ 5/6. With n=6 per arm this alone cannot decide — read it together with the offset</td></tr>
+<tr><td>Collisions</td><td>fewer in tight, and none at the door frame</td></tr>
+<tr><td>Time</td><td>no penalty expected (twin: 102 vs 106 s)</td></tr>
+<tr><td>What would refute it</td><td>tight offsets as wide as base → the real drift is generated after the correction window closes, and the fix is aimed at the wrong place</td></tr>
+</table>
+
+<p><b>Stop rule unchanged:</b> three consecutive failures of the same mode → stop, data home,
+analyse offline. No code edits at the lab.</p>
+
+<h2>6. End of session</h2>
+<pre>cd ~/Documents/G1_UNITREE_ROBOT_META_REASONING && git add -A && git commit -m "door centring A/B session" && git push origin golden-plus-centring</pre>
+<p>Then tell me and I run the offset analysis per arm. If the change holds on the robot, the natural
+next step is folding it into <code>main</code> and moving on to R2 (water at 200 g on the same binary),
+with battery controlled from the start.</p>
+
+<div class="box"><b>Not in this session, on purpose:</b> the approach-bias variant (tested and
+rejected), the meta state machine branch (its own gated trial, after this), water (next batch), and
+the B-pocket — which yesterday produced a second, independent failure mode: runs that entered the
+door well centred and got stuck <i>after</i> it. That one is a physical waypoint problem and deserves
+its own fix, not a control parameter.</div>
+
+</body>
+</html>

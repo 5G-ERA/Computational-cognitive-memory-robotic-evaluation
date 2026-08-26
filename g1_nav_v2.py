@@ -565,7 +565,7 @@ INSTALL_JS = r"""
   if(!window.__odomHook){ window.__odomHook = 1;
     var jp = JSON.parse;
     JSON.parse = function(s){ var v = jp.apply(this, arguments);
-      try{ if(v && v.topic && (''+v.topic).indexOf('slam_mapping/odom') >= 0){
+      try{ if(v && v.topic && ((''+v.topic).indexOf('slam_mapping/odom') >= 0 || (''+v.topic).indexOf('slam_relocation/odom') >= 0)){
         var p = v.data.pose.pose;
         window.__odom = [p.position.x, p.position.y, p.position.z,
                          p.orientation.x, p.orientation.y, p.orientation.z, p.orientation.w];

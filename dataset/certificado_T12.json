@@ -1,0 +1,33 @@
+{
+ "config": "T12",
+ "definicion": "successor mapping supersedes incumbent (non-rewrite); pass verificado en el registro, no en el comportamiento",
+ "verificado": "2026-08-25T21:44:10+0100",
+ "sucesor": {
+  "fichero": "dataset/visibilidad_gemelo_sesion.json",
+  "legible": true,
+  "src": "visibilidad empirica G1 sobre 'op' (mapa acumulado, recorte 2.6m): 41 runs 20260825..20260825, sector +-40 deg r<=2.5m, por SNAPSHOT, opp>=5 runs>=2 ratio>=0.65",
+  "npts": 31,
+  "commit": "ef6ac7161f5a84747d87fa38ff4e6a563ebd1bde",
+  "fecha_commit": "2026-08-25T19:55:27+01:00"
+ },
+ "incumbentes": [
+  {
+   "fichero": "dataset/visibilidad_gemelo_sesion_prov.json",
+   "legible": true,
+   "src": "visibilidad empirica G1 sobre 'op' (mapa acumulado, recorte 2.6m): 18 runs 20260825..20260825, sector +-40 deg r<=2.5m, por SNAPSHOT, opp>=5 runs>=2 ratio>=0.65",
+   "npts": 27,
+   "commit": "1a674574e193a39a5d6d63301af8ea4bfffc26d3",
+   "fecha_commit": "2026-08-25T18:50:34+01:00"
+  },
+  {
+   "fichero": "summit/ref_map_g1.json",
+   "legible": true,
+   "src": "summit occupancy -> g1 via A/B transform",
+   "npts": 5429,
+   "commit": "0208b4b1888f2441e092ec2cb92c1a497ed3056f",
+   "fecha_commit": "2026-06-26T15:39:40+00:00"
+  }
+ ],
+ "pass": true,
+ "fallos": []
+}

@@ -1,0 +1,134 @@
+[
+ {
+  "arm": "recta",
+  "file": "20260813_200137_ours_A.json",
+  "dur_s": 103.7,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "lat_umbral": -0.025
+ },
+ {
+  "arm": "sesgo",
+  "file": "20260813_200328_ours_A.json",
+  "dur_s": 110.5,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "lat_umbral": 0.078
+ },
+ {
+  "arm": "sesgo",
+  "file": "20260813_200526_ours_A.json",
+  "dur_s": 108.2,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "lat_umbral": 0.05
+ },
+ {
+  "arm": "recta",
+  "file": "20260813_200721_ours_A.json",
+  "dur_s": 261.3,
+  "d_final": 5.23,
+  "reached": false,
+  "n_col": 1,
+  "retreats": 3,
+  "assists": 0,
+  "lat_umbral": 0.005
+ },
+ {
+  "arm": "recta",
+  "file": "20260813_201150_ours_A.json",
+  "dur_s": 111.9,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "lat_umbral": 0.062
+ },
+ {
+  "arm": "sesgo",
+  "file": "20260813_201349_ours_A.json",
+  "dur_s": 248.7,
+  "d_final": 5.28,
+  "reached": false,
+  "n_col": 1,
+  "retreats": 3,
+  "assists": 0,
+  "lat_umbral": 0.041
+ },
+ {
+  "arm": "sesgo",
+  "file": "20260813_201805_ours_A.json",
+  "dur_s": 115.0,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "lat_umbral": 0.079
+ },
+ {
+  "arm": "recta",
+  "file": "20260813_202007_ours_A.json",
+  "dur_s": 99.2,
+  "d_final": 0.36,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "lat_umbral": -0.03
+ },
+ {
+  "arm": "recta",
+  "file": "20260813_202153_ours_A.json",
+  "dur_s": 325.4,
+  "d_final": 4.33,
+  "reached": false,
+  "n_col": 2,
+  "retreats": 3,
+  "assists": 0,
+  "lat_umbral": 0.03
+ },
+ {
+  "arm": "sesgo",
+  "file": "20260813_202726_ours_A.json",
+  "dur_s": 120.2,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "lat_umbral": 0.086
+ },
+ {
+  "arm": "sesgo",
+  "file": "20260813_202934_ours_A.json",
+  "dur_s": 108.0,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "lat_umbral": -0.006
+ },
+ {
+  "arm": "recta",
+  "file": "20260813_203129_ours_A.json",
+  "dur_s": 103.8,
+  "d_final": 0.35,
+  "reached": true,
+  "n_col": 0,
+  "retreats": 0,
+  "assists": 0,
+  "lat_umbral": 0.086
+ }
+]

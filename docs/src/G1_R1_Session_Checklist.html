@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>R1 Re-baseline — Session Checklist</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 10.5pt;
+         color: #1a1a1a; line-height: 1.42; }
+  h1 { font-size: 16pt; margin: 0 0 2px; }
+  .sub { color: #555; font-size: 9.5pt; margin-bottom: 12px; }
+  h2 { font-size: 12pt; margin: 15px 0 5px; border-bottom: 1.5px solid #8f2a2a; padding-bottom: 2px; color: #8f2a2a; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8.6pt; }
+  pre { background: #f4f6f8; border: 1px solid #d7dde3; border-radius: 4px; padding: 6px 9px;
+        white-space: pre-wrap; word-break: break-all; margin: 4px 0 8px; }
+  code { background: #f0f2f4; padding: 0 3px; border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: 9.5pt; }
+  th, td { border: 1px solid #c9d1d9; padding: 4px 7px; text-align: left; vertical-align: top; }
+  th { background: #f6eeee; }
+  .warn { background: #fff7e0; border: 1px solid #e6c96b; border-radius: 4px; padding: 6px 10px; margin: 8px 0; }
+  li { margin-bottom: 3px; }
+</style>
+</head>
+<body>
+
+<h1>R1 Re-baseline — Session Checklist</h1>
+<div class="sub">Rev. 2026-08-07 · Companion to the <i>Operator Runbook</i> and the <i>Results Acquisition Plan</i> — this sheet only adds what changed since those were written. R1 = 10 runs on the GOLDEN code to re-establish the baseline (Gate 1) before anything else. Also filed in <code>tasks/</code>.</div>
+
+<h2>1 &nbsp;Before leaving home / at the lab, BEFORE the robot</h2>
+<table>
+<tr><th></th><th>Step</th></tr>
+<tr><td>☐</td><td><b>goto.log coordination (do this FIRST):</b> on GPUEDGE run <code>git add goto.log && git commit -m "goto.log GPUEDGE appends" && git push</code>. Then push the held branch from the Mac. Then on GPUEDGE <code>git pull --rebase</code>. Never skip the order — otherwise GPUEDGE's pre-rotation goto.log union-merges back.</td></tr>
+<tr><td>☐</td><td>Mac: <code>git status</code> clean, then <b>check out the golden code</b>: <code>git checkout golden-doorvis</code> (detached HEAD is fine for the session).</td></tr>
+<tr><td>☐</td><td>GPUEDGE: <b>check GPU memory first</b> (<code>nvidia-smi</code>) — the local LLM service can hold ~20&nbsp;GB per card and starve the depth model. Then launch the perception server as in the runbook §2.1 and verify <code>/health</code> and MODE gpu.</td></tr>
+<tr><td>☐</td><td>Cup + scale + water at hand. Standard start weight <b>247 g</b>. Phone with the vendor app, Bluetooth ON.</td></tr>
+</table>
+
+<h2>2 &nbsp;Robot bring-up (every boot)</h2>
+<ol>
+<li>Boot robot → pair <b>from the app</b> with Bluetooth on (the AP password rotates every boot; joining from iPhone Settings will fail).</li>
+<li>USB → <code>ios_webkit_debug_proxy</code> sees the WebView → teleop check moves the robot.</li>
+<li><code>python g1_goto.py reloccheck</code> → localisation sane.</li>
+<li>Start the spill marker BEFORE the first run and verify its heartbeat appears. Golden code = marker v2 keys: <b>ENTER</b>=spill, <b>w &lt;g&gt;</b>=weigh, <b>i</b>=invalid. (The <b>c</b> / <b>m &lt;cm&gt;</b> human-support keys exist only on the feedback branch — NOT in R1.)</li>
+</ol>
+
+<h2>3 &nbsp;The 10 runs</h2>
+<ul>
+<li>Alternate A→B / B→A, 5 each, golden real config. <b>Exact command: <code>G1_R1_Real_Robot_Runbook.pdf</code> §5</b> — it is reconstructed from the golden window's own environment snapshot.</li>
+<li><b>DRY batch — empty cup in the hand, no water.</b> The Disciplined Protocol specifies dry for the re-baseline and water at 200 g as the next batch on the same binary. (An earlier revision of this sheet said 247 g of water: that was wrong.) The marker still runs, for its heartbeat and for <code>i</code>.</li>
+<li>Any run with instrumentation down (marker or camera server) = <b>invalid, repeat it</b> (<code>i</code> + note).</li>
+<li>Stop-rule: 3 consecutive failures of the same mode → STOP the session, analyse offline. Do not improvise fixes at the lab.</li>
+<li>No code edits at the lab. None.</li>
+</ul>
+
+<h2>4 &nbsp;Gate 1 (decide before packing up)</h2>
+<table>
+<tr><th>Check</th><th>Pass</th></tr>
+<tr><td>A→B reached</td><td>≥ 90% (≥ 5/5, or 9/10 counting both)</td></tr>
+<tr><td>B→A reached</td><td>≥ 70% (≥ 4/5)</td></tr>
+<tr><td>Collisions</td><td>median 0 per run</td></tr>
+<tr><td>Times</td><td>in the golden band ~50–110 s (vs 24-jul: 52–65 s B→A legs)</td></tr>
+</table>
+<p>Gate 1 PASS → next sessions follow the Results Acquisition Plan (R2 water GOV/BASE ABBA → R3 → R4). Gate 1 FAIL → session data home, autopsy with the analysis tools (they read golden datasets fine), no changes until the cause is named:</p>
+<pre>python3 analysis/analyze_msm.py dataset/&lt;run&gt;.json</pre>
+<pre>python3 analysis/replay_msm.py dataset/&lt;run&gt;.json</pre>
+
+<h2>5 &nbsp;What is explicitly NOT in R1</h2>
+<ul>
+<li>The feedback branch (meta state machine, retreat v2, human keys) waits for its turn AFTER the re-baseline — it is validated in the twin (closed loop under noise: ON 6/6 with 0 collisions vs OFF 3/6 with 27) and published as <code>tutor-feedback-metareasoner-sim</code>.</li>
+<li>Twin times are their own lane — never compare real R1 times against simulator numbers.</li>
+<li>Golden code predates both the goto.log auto-rotation and the repository reorganisation: on that checkout the analysis scripts and config files sit where they used to. The commands above assume the current layout — adjust the path if you run them from the golden checkout.</li>
+</ul>
+
+<div class="warn"><b>One-line summary:</b> coordinate goto.log, golden checkout, marker v2 running, 247 g, 5+5 alternated runs, weigh every leg, stop-rule 3, decide Gate 1 at the lab, zero code edits.</div>
+
+</body>
+</html>

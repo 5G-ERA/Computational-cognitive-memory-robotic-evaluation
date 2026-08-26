@@ -1,0 +1,9 @@
+0.60|B|dataset/20260824_104554_ours_B.json
+0.60|A|
+0.70|B|dataset/20260824_105316_ours_B.json
+0.70|A|dataset/20260824_105430_ours_A.json
+0.78|B|dataset/20260824_105721_ours_B.json
+0.78|A|dataset/20260824_105826_ours_A.json
+0.90|B|dataset/20260824_110056_ours_B.json
+0.90|A|dataset/20260824_110207_ours_A.json
+BARRIDO VSCALE COMPLETO

@@ -1,0 +1,12 @@
+{
+ "episodio": "linea-base-21ago",
+ "run": "20260821_160208_ours_A",
+ "tramos": [
+  {
+   "t0": 0,
+   "t1": 99999,
+   "delta": "motion",
+   "nota": "linea base sin escenificacion: el titular gobierna"
+  }
+ ]
+}

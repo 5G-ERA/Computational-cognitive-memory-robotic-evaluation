@@ -1,0 +1,13 @@
+SIN|B|dataset/20260824_092815_ours_B.json
+TTL|A|dataset/20260824_092914_ours_A.json
+RAYOS|B|dataset/20260824_093016_ours_B.json
+SIN|A|dataset/20260824_093123_ours_A.json
+TTL|B|dataset/20260824_093228_ours_B.json
+RAYOS|A|dataset/20260824_093350_ours_A.json
+SIN|B|dataset/20260824_093457_ours_B.json
+TTL|A|dataset/20260824_093605_ours_A.json
+RAYOS|B|dataset/20260824_093708_ours_B.json
+SIN|A|dataset/20260824_093812_ours_A.json
+TTL|B|dataset/20260824_093922_ours_B.json
+RAYOS|A|dataset/20260824_094057_ours_A.json
+CAMPANA VOX COMPLETA
