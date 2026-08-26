@@ -175,17 +175,6 @@ Re-running the **campaigns** needs the twin (lab GPU + Isaac bridge):
 `baseline` — frozen no-governance navigation for fair comparison · `main` —
 platform layer.
 
-## Decisions and honesty
-
-Ten decisions that belong to the supervising author are parked in
-[`tasks/DECISIONES_PENDIENTES_RENXI.md`](tasks/DECISIONES_PENDIENTES_RENXI.md),
-each with evidence and a reversible default — including **D10**, a safety finding:
-thin close obstacles evaporate from the robot's belief exactly where the door
-controller commits (shared pipeline with the real robot). Negative results and
-instrument failures are reported, not buried: the claim-boundary chain of paper
-§8.15 (behaviour ⇏ conformity ⇏ recovery ⇏ continuity ⇏ benefit) is kept
-throughout.
-
 ## Citing
 
 > Qiu, R., Pham, D., Lendinez Ibanez, A., Li, D. *A Computational Theory of
