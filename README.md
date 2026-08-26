@@ -1,5 +1,12 @@
 # Meta-Reasoning on a Stock Unitree G1
 
+> **Paper companion.** This repository is the Stage 2 (robotic coffee-delivery
+> benchmark) reproducibility package of *A Computational Theory of Cognitive Memory*
+> (Qiu, Pham, Lendinez Ibanez, Li). The item-by-item mapping to Supplementary Note 6
+> §8.4, the exact re-scoring commands and the integrity manifest live in
+> [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md). Current results:
+> [`tasks/RESULTADOS_ISAAC_V2.md`](tasks/RESULTADOS_ISAAC_V2.md).
+
 > A consumer humanoid — no ROS on board, no SDK, and a LiDAR that goes blind below one metre —
 > carrying an open cup of water through a narrow door, while reasoning about **how much to trust
 > its own senses**.
