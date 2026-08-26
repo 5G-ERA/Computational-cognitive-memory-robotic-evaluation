@@ -112,6 +112,12 @@ over it.
 
 ## D6 · T10 measures a real gap: no_use is unreachable autonomously
 
+**Evidence correction (26-Aug):** the "first staged T10" cited below (194 samples at
+the blockage, never crosses) is NOT one of the manifest T10 runs -- those actually
+REACHED B (median final pose at B, checked 26-Aug), because the staged board never
+entered the twin's laser at all (see D10). The conclusion stands unchanged -- nothing
+staged has ever produced no_use -- but on different evidence than originally cited.
+
 First staged T10 (blocked doorway, chair identifiable): the robot spends 194 samples at the
 blockage, never crosses, never resolves no_use -- it retries until timeout (DWA-F at the
 end). No condition reaches the governed no-use outcome; the only path to no_use in the stack
@@ -193,3 +199,24 @@ class the scoring has no category for. Full spec with phased migration and kill
 criteria: `tasks/RUNG7_WALKER_PROPOSAL.md`. Decision: whether phase 0 (a pure
 measurement bench) runs at all, and if adopted, which tier the confirmatory campaign
 declares. Nothing has been started.
+
+## D10 * NEAR_BLIND makes thin close obstacles evaporate -- T10 is not stageable yet
+
+Found 26-Aug while staging T10 honestly. Chain: (1) the twin's /scan is synthesized
+from the map JSONs, not the USD scene -- a doorway board in the scene is invisible to
+navigation (three T10 legs crossed a "blocked" doorway); (2) staged into the scan map
+instead (G1_BLOQUEO in the bridge, +18 cells, same declared geometry as the USD prim),
+the robot SAW the board (1363 returns in its rectangle), resolved lidar_quality on
+approach -- and still crossed: within NEAR_BLIND (0.60 m) the phantom-ring filter
+discards its returns, the K-of-N persistence filter then expires its cells, and the
+board evaporates from the belief exactly where the door controller (ENG) commits.
+Recorded clearance c0 jumps 0.41 -> 0.8+ as the robot closes in (run 100302, 26-Aug).
+
+This is SHARED pipeline with the real robot: a thin obstacle at door height inside
+0.6 m is invisible to the real location-cloud path too; the real mitigation is the
+depth-perception channel, which the twin only emulates for DECLARED objects. Decisions
+that are yours: (a) whether NEAR_BLIND semantics change (safety pipeline, both tiers);
+(b) whether T10's twin staging waits for the walker tier (physical contact, D9) instead;
+(c) whether the real robot should ever be tested against a physical thin blockage in
+door mode without a spotter -- the twin predicts it would strike it. Until one of these,
+T10 stays declared not-stageable in the kinematic twin and out of campaign tables.
