@@ -1,8 +1,34 @@
-# Computational Cognitive Memory — Robotic Evaluation
+<div align="center">
 
-**The robotic development-to-deployment evaluation (Experiment 2) of
-[*A Computational Theory of Cognitive Memory*](#citing) — on a stock Unitree G1
-humanoid and its calibrated Isaac Sim digital twin.**
+# Computational Cognitive Memory<br/>Robotic Evaluation
+
+**Experiment 2 of *A Computational Theory of Cognitive Memory* — a robotic
+development-to-deployment evaluation on a stock Unitree G1 humanoid
+and its calibrated Isaac Sim digital twin.**
+
+[![Paper](https://img.shields.io/badge/paper-V5.8_·_Supplementary_Note_8-2a5d8f?style=flat-square)](#citing)
+[![Reproducibility](https://img.shields.io/badge/reproducibility-213_checksums_·_frozen_env-0f6e77?style=flat-square)](REPRODUCIBILITY.md)
+[![Tier](https://img.shields.io/badge/tier-development-b58a00?style=flat-square)](#the-evaluation-lifecycle)
+[![Python](https://img.shields.io/badge/python-3.10-3776AB?style=flat-square&logo=python&logoColor=white)](requirements.txt)
+[![Isaac Sim](https://img.shields.io/badge/Isaac_Sim-5.1.0-76B900?style=flat-square&logo=nvidia&logoColor=white)](sim/)
+[![Robot](https://img.shields.io/badge/robot-Unitree_G1_"Air"-444?style=flat-square)](#the-platform)
+
+[**Results**](#results-at-a-glance) · [**Reproduce**](#reproduce-the-numbers) ·
+[**Platform**](#the-platform) · [**Lifecycle**](#the-evaluation-lifecycle) ·
+[**Repository map**](#repository-map) · [**REPRODUCIBILITY.md**](REPRODUCIBILITY.md)
+
+<br/>
+
+<img src="docs/img/mission.png" alt="Real recorded trajectories: five clean crossings, and one run where the laser lied" width="880"/>
+
+<sub>Real recorded data, no retouching. **Left:** five consecutive clean crossings.
+**Right:** the same robot, the same door, 512 s and 70 m walked, seven collisions
+against a frame its laser could not see. The gap between these two panels is what
+this evaluation measures.</sub>
+
+</div>
+
+---
 
 A consumer humanoid — no ROS on board, no SDK, a LiDAR that goes blind below one
 metre — carries an open cup through a narrow door while reasoning about **how much
@@ -10,50 +36,50 @@ to trust its own senses**. Above navigation sits a cognitive-memory layer that
 resolves, at every decision boundary, *which role governs*: keep trusting the
 incumbent sense, switch to an alternative, escalate to review, or withhold.
 
-![Real recorded trajectories: five clean crossings, and one run where the laser lied](docs/img/mission.png)
-
-<sub>Real recorded data, no retouching. **Left:** five consecutive clean crossings.
-**Right:** the same robot, the same door, 512 s and 70 m walked, seven collisions
-against a frame its laser could not see. The gap between these two panels is what
-this evaluation measures.</sub>
-
----
-
-## Results at a glance (development tier)
+## Results at a glance
 
 Four conditions cross **interface** (original I⁰ vs revised I¹) × **resolution**
 (temporal incumbent vs distributed/DCC), per paper §8.6:
 
+<div align="center">
+
 | | Original interface | Revised (DCA) interface |
-|---|---|---|
+|:---|:---:|:---:|
 | **Temporal incumbent** | C1 — A_meta 65% | C3 — A_meta 13% |
 | **Distributed / DCC** | C2 — A_meta 0% | **C4 — A_meta 63%** |
 
+</div>
+
 Paired within-run contrasts over 30 campaign runs (paper §8.7 names):
 
+<div align="center">
+
 | Contrast | Effect of | Median [IQR] | Runs won |
-|---|---|---|---|
-| **C4 − C3** | resolution, under revised interface | **+53.1 pp** [+43, +60] | **30/30** |
-| **C4 − C2** | interface, under distributed resolution | **+61.1 pp** [+52, +71] | **30/30** |
-| C3 − C1 | interface, under temporal incumbent | −52.5 pp | 0/30 |
-| C2 − C1 | resolution, under original interface | −58.9 pp | 0/30 |
+|:---|:---|:---:|:---:|
+| **C4 − C3** | resolution, under revised interface | **+53.1 pp** [+43, +60] | **30 / 30** |
+| **C4 − C2** | interface, under distributed resolution | **+61.1 pp** [+52, +71] | **30 / 30** |
+| C3 − C1 | interface, under temporal incumbent | −52.5 pp | 0 / 30 |
+| C2 − C1 | resolution, under original interface | −58.9 pp | 0 / 30 |
 
-![Paired per-run contrasts](docs/img/contrasts_v2.png)
+<img src="docs/img/contrasts_v2.png" alt="Paired per-run contrasts, one dot per run" width="820"/>
 
-**Each axis alone makes things worse; together they win unanimously** — the
-revised interface and distributed resolution are *complements, not substitutes*.
-Where the time-averaged C4−C1 diagonal is flat, the difference lives at
-transitions: C4 adopts **34/40** demanded switches at 0.6 s median delay; the
-temporal incumbent misses 68% of them. Full tables:
-[`tasks/RESULTADOS_ISAAC_V2.md`](tasks/RESULTADOS_ISAAC_V2.md) · machine-readable:
-[`reproducibility/resultados_stage2_dev.json`](reproducibility/resultados_stage2_dev.json).
+</div>
 
+> **Each axis alone makes things worse; together they win unanimously** — the
+> revised interface and distributed resolution are *complements, not substitutes*.
+> Where the time-averaged C4−C1 diagonal is flat, the difference lives at
+> transitions: C4 adopts **34/40** demanded switches at 0.6 s median delay; the
+> temporal incumbent misses 68% of them.
+
+Full tables: [`tasks/RESULTADOS_ISAAC_V2.md`](tasks/RESULTADOS_ISAAC_V2.md) ·
+machine-readable:
+[`reproducibility/resultados_stage2_dev.json`](reproducibility/resultados_stage2_dev.json)
+
+> [!NOTE]
 > **Tier disclaimer.** Everything here is the **development stage** of the paper's
 > Note 8 lifecycle: instruments built, diagnosed and exercised in the twin plus
 > logged real sessions. The frozen confirmatory C1–C4 deployment evaluation has
 > **not** been run.
-
----
 
 ## The platform
 
@@ -87,25 +113,29 @@ flowchart LR
 
     subgraph eval["Evaluation machinery"]
         GUION["src/guion.py — stages light/glass/objects/battery<br/>writes the reference certificate in the same act"]
-        SCORE["dcc_omega.py + dcc_conditions.py<br/>A_meta / A_Ω per condition C1–C4"]
+        SCORE["dcc_omega + dcc_conditions<br/>A_meta / A_Ω per condition C1–C4"]
         GUION --> SCORE
     end
 
     REC --> SCORE
 ```
 
-The twin is calibrated channel by channel against **132 real runs** (motion
-VSCALE/TAU/latency/pace, the app's LiDAR filter, the WebRTC-throttled vision
-channel, per-label detection curves) — every constant with its derivation in
-[`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §5.
+The twin is calibrated channel by channel against **132 real runs** — motion
+(VSCALE · TAU · interface latency · wall-clock pace), the app's LiDAR filter, the
+WebRTC-throttled vision channel, per-label detection curves — every constant with
+its derivation in [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §5.
 
-![The G1 walking the real route in the twin](docs/img/g1_isaac_walk.jpg)
+<div align="center">
+
+<img src="docs/img/g1_isaac_walk.jpg" alt="The G1 walking the real route in the twin" width="720"/>
 
 <sub>The twin also walks: our own locomotion policy (PPO, 3,000 iterations, one
 RTX 3090) drives all 37 joints under PhysX through the office reconstructed from
-the robot's own laser and photographs — 6/6 waypoints, zero falls.</sub>
+the robot's own laser and photographs — 6/6 waypoints, 26.8 s, zero falls.</sub>
 
-## The evaluation lifecycle (paper Note 8)
+</div>
+
+## The evaluation lifecycle
 
 ```mermaid
 flowchart LR
@@ -120,27 +150,29 @@ flowchart LR
 ```
 
 Development diagnostics are kept strictly apart from deployment-effect evidence —
-the paper cites this repo's own example: a **solid-wall control invalidated the
-first glass witness** by localising an instrumentation failure (successful
+the paper cites this repository's own example: a **solid-wall control invalidated
+the first glass witness** by localising an instrumentation failure (successful
 diagnostic, witness excluded, instrument redesigned and re-validated):
 
-![Glass witness validation: staged glass vs control](docs/img/glass_witness.png)
+<div align="center">
+
+<img src="docs/img/glass_witness.png" alt="Glass witness validation: staged glass vs control leg" width="820"/>
 
 <sub>The redesigned coverage instrument, live: with glass staged (blue) it sustains
 the resolver's ground through the doorway approach; the control leg (orange) never
 crosses it. Exclusions are logged, never silent:
 [`reproducibility/EXCLUSIONES.md`](reproducibility/EXCLUSIONES.md).</sub>
 
----
+</div>
 
-## Reproduce the numbers (no robot needed)
+## Reproduce the numbers
 
-Scoring is offline and deterministic — recorded runs + their certificates:
+Scoring is **offline and deterministic** — recorded runs plus their certificates,
+no robot needed:
 
 ```bash
 git clone https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation.git
 cd Computational-cognitive-memory-robotic-evaluation
-git checkout ensayo/door-gate-isaac
 pip install -r requirements.txt          # frozen env: reproducibility/requirements-frozen.txt
 
 sh reproducibility/verifica.sh           # integrity: 213-entry SHA256 manifest, relative paths
@@ -150,38 +182,69 @@ G1_DCC_MAN=$PWD/tasks/manifiestos/campana_dcc_v2.txt python3 analysis/corre_secu
 python3 reproducibility/exporta_resultados.py   # machine-readable json + csv
 ```
 
-Re-running the **campaigns** needs the twin (lab GPU + Isaac bridge):
-`python3 src/campana_dcc_v2.py` (resumable). Staged single scenarios:
-`python3 src/guion.py T8 --destino B`. Real-robot sessions run from
+<details>
+<summary><b>Re-running the campaigns</b> (needs the twin: lab GPU + Isaac bridge)</summary>
+
+<br/>
+
+```bash
+python3 src/campana_dcc_v2.py            # full campaign, resumable, appends to the v2 manifest
+python3 src/guion.py T8 --destino B      # one staged scenario (zone-triggered glass + light)
+python3 src/guion.py T3 --seco           # dry run: print a schedule without the robot
+```
+
+Twin runs reproduce *statistically*, not bit-identically (declared: the sensor
+noise draw is unseeded); the recorded dataset is the frozen evidence. Real-robot
+sessions run from
 [`tasks/SESSION_PREP_GATE_AB.md`](tasks/SESSION_PREP_GATE_AB.md).
+
+</details>
 
 ## Repository map
 
-| Path | What |
-|---|---|
-| [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | **Start here** — paper §8.16 checklist mapped item by item |
-| `src/dcc_*.py` | Certificates, C1–C4 conditions, role resolver, secondary outcomes |
-| `src/g1_goto.py` · `src/guion.py` · `src/g1_sim_adapter.py` | Navigation stack, staging channel, twin adapter |
-| `sim/` | Isaac bridge, scene generator, calibrated vision emulator |
-| `analysis/` | Scorers, negative controls, variance, realism battery |
-| `dataset/` | Every run: per-tick samples, snapshots, frames, certificates |
-| `tasks/` | Results, decision ledger (D1–D10), session runbooks, manifests |
-| `reproducibility/` | Frozen env, SHA256 manifest + verifier, exclusion log, machine-readable results |
-| `summit/` · `calib/` · `weights/` | Reference map, camera calibration, model weights |
-| `meta-reasoner-2.0/` | The configuration-first DCE runtime (governance layer) |
-| `archive/` · `attic/` · `logs/` | Historical material — kept, out of the way |
+| Path | Contents |
+|:---|:---|
+| [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | **Start here** — the paper's §8.16 package checklist, mapped item by item |
+| [`src/`](src/) | The robot stack and evaluation runtime — navigation, staging, certificates, C1–C4 conditions, role resolver |
+| [`analysis/`](analysis/) | Scorers, negative controls, variance and realism batteries |
+| [`dataset/`](dataset/) | Every run: per-tick samples, laser snapshots, camera frames, reference certificates |
+| [`reproducibility/`](reproducibility/) | Frozen environment, SHA256 manifest + verifier, exclusion log, machine-readable results |
+| [`tasks/`](tasks/) | Results, decision ledger, session runbooks, campaign manifests |
+| [`sim/`](sim/) | Isaac bridge, scene generator, calibrated vision emulator |
+| [`docs/`](docs/) | Protocols, figures, platform notes |
 
-**Branches:** `ensayo/door-gate-isaac` — the evaluation (this branch) ·
+<details>
+<summary>All directories</summary>
+
+<br/>
+
+| Path | Contents |
+|:---|:---|
+| `meta-reasoner-2.0/` | The configuration-first DCE runtime (governance layer) |
+| `summit/` · `calib/` · `calib_luz/` · `weights/` | Reference map, camera calibration, staged light tandas, model weights |
+| `config/` · `state/` · `data/` | Runtime configuration and state |
+| `crashes/` · `logs/` | Collision evidence with pre-impact frames; session logs |
+| `archive/` · `attic/` | Historical material — kept for the audit trail, out of the way |
+
+**Branches:** `ensayo/door-gate-isaac` — the evaluation (active) ·
 `baseline` — frozen no-governance navigation for fair comparison · `main` —
-platform layer.
+kept in sync with the evaluation branch.
+
+</details>
 
 ## Citing
 
-> Qiu, R., Pham, D., Lendinez Ibanez, A., Li, D. *A Computational Theory of
-> Cognitive Memory.* (V5.8, under review). Experiment 2 — robotic
-> development-to-deployment evaluation: this repository,
-> Supplementary Note 8.
+> Qiu, R., Pham, D., Lendinez Ibanez, A., Li, D.
+> *A Computational Theory of Cognitive Memory.* V5.8, under review.
+> Experiment 2 — robotic development-to-deployment evaluation:
+> this repository, Supplementary Note 8.
 
-The platform layer (driving a stock G1 through the vendor app's single WebRTC
-channel) is documented on `main` and in `docs/`. Reverse-engineered against the
-owner's own robot for interoperability; no proprietary assets are redistributed.
+<div align="center">
+
+<sub>University of Bedfordshire · University of Birmingham · Telefónica S.A. —
+within the [5G-ERA](https://github.com/5G-ERA) project.<br/>
+Platform layer: a stock G1 driven through the vendor app's single WebRTC channel —
+reverse-engineered against the owner's own robot for interoperability;
+no proprietary assets are redistributed.</sub>
+
+</div>
