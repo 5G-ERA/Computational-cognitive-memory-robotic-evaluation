@@ -62,8 +62,8 @@ Two execution tiers drive the **same unmodified robot stack**:
 ```mermaid
 flowchart LR
     subgraph stack["Robot stack (unmodified across tiers)"]
-        NAV["g1_goto.py<br/>navigation + door engagement"]
-        ROLES["dcc_roles.py<br/>role resolver (pure function)"]
+        NAV["src/g1_goto.py<br/>navigation + door engagement"]
+        ROLES["src/dcc_roles.py<br/>role resolver (pure function)"]
         REC["per-tick recorder<br/>samples · snapshots · events"]
         NAV --- ROLES --- REC
     end
@@ -86,7 +86,7 @@ flowchart LR
     stack <--> AD
 
     subgraph eval["Evaluation machinery"]
-        GUION["guion.py — stages light/glass/objects/battery<br/>writes the reference certificate in the same act"]
+        GUION["src/guion.py — stages light/glass/objects/battery<br/>writes the reference certificate in the same act"]
         SCORE["dcc_omega.py + dcc_conditions.py<br/>A_meta / A_Ω per condition C1–C4"]
         GUION --> SCORE
     end
@@ -151,8 +151,8 @@ python3 reproducibility/exporta_resultados.py   # machine-readable json + csv
 ```
 
 Re-running the **campaigns** needs the twin (lab GPU + Isaac bridge):
-`python3 campana_dcc_v2.py` (resumable). Staged single scenarios:
-`python3 guion.py T8 --destino B`. Real-robot sessions run from
+`python3 src/campana_dcc_v2.py` (resumable). Staged single scenarios:
+`python3 src/guion.py T8 --destino B`. Real-robot sessions run from
 [`tasks/SESSION_PREP_GATE_AB.md`](tasks/SESSION_PREP_GATE_AB.md).
 
 ## Repository map
@@ -160,8 +160,8 @@ Re-running the **campaigns** needs the twin (lab GPU + Isaac bridge):
 | Path | What |
 |---|---|
 | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | **Start here** — paper §8.16 checklist mapped item by item |
-| `dcc_omega.py` · `dcc_conditions.py` · `dcc_roles.py` · `dcc_secundarios.py` | Certificates, C1–C4 conditions, role resolver, secondary outcomes |
-| `g1_goto.py` · `guion.py` · `g1_sim_adapter.py` | Navigation stack, staging channel, twin adapter |
+| `src/dcc_*.py` | Certificates, C1–C4 conditions, role resolver, secondary outcomes |
+| `src/g1_goto.py` · `src/guion.py` · `src/g1_sim_adapter.py` | Navigation stack, staging channel, twin adapter |
 | `sim/` | Isaac bridge, scene generator, calibrated vision emulator |
 | `analysis/` | Scorers, negative controls, variance, realism battery |
 | `dataset/` | Every run: per-tick samples, snapshots, frames, certificates |

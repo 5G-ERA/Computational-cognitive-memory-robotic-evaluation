@@ -29,7 +29,7 @@ session produces the first REAL samples of all of them.
 | Lights | ALL ON for the whole session; **operator writes wall-clock time of every switch change** — the unlabelled L1–L5 sweep cost us the primary evidence once already |
 | Notebook | per leg: battery %, contacts/strikes (instrumentation cannot see hand-to-frame), start/end wall time |
 
-**Smoke (1 short leg, unscored):** `G1_ARM=SMOKE python3 g1_goto.py goto B` with defaults.
+**Smoke (1 short leg, unscored):** `G1_ARM=SMOKE python3 src/g1_goto.py goto B` with defaults.
 Verify before continuing: samples carry `role`, `illum_b` ≈ 110–120 lit, `phase_sent`, and
 the run reaches. If the branch misbehaves on the real robot, STOP and fall back to
 `feature/dcc-integration` — the session then does goals 1–2 only (they don't need the gate).
@@ -37,8 +37,8 @@ the run reaches. If the branch misbehaves on the real robot, STOP and fall back 
 ## Block A — lit calibration laps (~15 min, ~2 battery pts)
 
 ```
-G1_ARM=CAL_LIT_1 G1_METASM=1 python3 g1_goto.py goto B
-G1_ARM=CAL_LIT_2 G1_METASM=1 python3 g1_goto.py goto A
+G1_ARM=CAL_LIT_1 G1_METASM=1 python3 src/g1_goto.py goto B
+G1_ARM=CAL_LIT_2 G1_METASM=1 python3 src/g1_goto.py goto A
 ```
 
 Then build and **declare** the reference (amendment §10: declared before any scored run):
@@ -87,7 +87,7 @@ python3 tools/mapa_visibilidad.py --reales --min-opp 5 --min-runs 2
 per light state (lights full, then lights low), and write the wall-clock of each:
 
 ```
-python3 g1_goto.py noisecheck 60
+python3 src/g1_goto.py noisecheck 60
 ```
 
 Since 25-Aug the noisecheck rows carry a raw `luma` field at ~3 Hz -- this is what fits
@@ -102,8 +102,8 @@ sensor-noise baseline. No driving involved.
 One lit baseline pair WITH the new reference live:
 
 ```
-G1_ARM=BASE_LIT_REF G1_METASM=1 G1_COVREF=<ref.json> python3 g1_goto.py goto B
-G1_ARM=BASE_LIT_REF G1_METASM=1 G1_COVREF=<ref.json> python3 g1_goto.py goto A
+G1_ARM=BASE_LIT_REF G1_METASM=1 G1_COVREF=<ref.json> python3 src/g1_goto.py goto B
+G1_ARM=BASE_LIT_REF G1_METASM=1 G1_COVREF=<ref.json> python3 src/g1_goto.py goto A
 ```
 
 **Instrument note (25-Aug):** `cov_missing` now defaults to the v2 ACCUMULATED base
@@ -142,7 +142,7 @@ All legs carry: `G1_METASM=1 G1_COVREF=<ref.json> G1_VOXMEM=1 G1_DOOR_VIS=1` plu
 flag. VOXMEM is expose-only (collects the I¹ field, does not act).
 
 ```
-G1_ARM=GATE_OFF G1_METASM=1 G1_COVREF=<ref> G1_VOXMEM=1 G1_DOOR_VIS=1 G1_DOOR_VIS_GATE=0 python3 g1_goto.py goto B
+G1_ARM=GATE_OFF G1_METASM=1 G1_COVREF=<ref> G1_VOXMEM=1 G1_DOOR_VIS=1 G1_DOOR_VIS_GATE=0 python3 src/g1_goto.py goto B
 ```
 
 **Record the direction with the arm** — `G1_ARM=GATE_OFF_AB` / `GATE_OFF_BA` etc. — so the
@@ -172,9 +172,9 @@ Waypoint **C (−0.03, −1.49)** exists in the map, same room as A, no doorway 
 has NEVER driven it (only 2 firmware-native runs from June). Three legs:
 
 ```
-G1_ARM=TRANSFER_C G1_METASM=1 python3 g1_goto.py goto C
-G1_ARM=TRANSFER_C G1_METASM=1 python3 g1_goto.py goto A
-G1_ARM=TRANSFER_C G1_METASM=1 python3 g1_goto.py goto C
+G1_ARM=TRANSFER_C G1_METASM=1 python3 src/g1_goto.py goto C
+G1_ARM=TRANSFER_C G1_METASM=1 python3 src/g1_goto.py goto A
+G1_ARM=TRANSFER_C G1_METASM=1 python3 src/g1_goto.py goto C
 ```
 
 Afterwards (desk, no robot): the twin runs A↔C with the CURRENT calibration untouched, and

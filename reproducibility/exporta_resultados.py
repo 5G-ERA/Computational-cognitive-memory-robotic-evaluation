@@ -18,7 +18,7 @@ import subprocess
 import sys
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, RAIZ)
+sys.path[:0] = [RAIZ, os.path.join(RAIZ, "src")]
 from dcc_conditions import evalua_todas, usa_pose_para, CONDICIONES, PROCESO, INTERFAZ
 from dcc_omega import carga_referencia, puntua_run
 

@@ -1,3 +1,4 @@
+import os
 """v3: la pregunta correcta. No es "que estadistico varia entre tandas" (eso lo hace
 cualquiera que siga el contenido de la escena), sino "que estadistico SEPARA el estado
 iluminado del oscuro sin solaparse", que es lo unico que un umbral puede usar.
@@ -10,7 +11,7 @@ import glob, os, statistics
 import numpy as np
 from PIL import Image
 
-DIR = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/calib_luz/2026-08-21"
+DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "calib_luz", "2026-08-21")
 def seg(n):
     t = os.path.basename(n).split("_")[0]
     return int(t[:2])*3600 + int(t[2:4])*60 + int(t[4:6])

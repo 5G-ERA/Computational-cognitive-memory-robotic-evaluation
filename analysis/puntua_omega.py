@@ -1,10 +1,11 @@
+import os
 """A_meta y A_Omega, lado a lado, sobre las runs escenificadas con certificado."""
 import json, sys
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_conditions import evalua_todas, usa_pose_para, CONDICIONES
 from dcc_omega import carga_referencia, puntua_run
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 CASOS = [
     ("T5", "20260824_124430_ours_B.json"),
     ("T6", "20260824_124545_ours_A.json"),

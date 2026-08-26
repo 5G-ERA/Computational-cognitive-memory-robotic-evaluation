@@ -1,11 +1,12 @@
+import os
 """Las cuatro condiciones sobre material grabado. Todavia NO es A_meta -- para eso hace falta
 delta_t, que sale del guion del experimento y aun no existe. Lo que se comprueba aqui es que
 cada condicion se comporta como el protocolo describe, que es el requisito previo."""
 import collections, glob, json, os, sys
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_conditions import evalua_todas, CONDICIONES
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 def carga(f):
     try: return json.load(open(f))
     except Exception: return None

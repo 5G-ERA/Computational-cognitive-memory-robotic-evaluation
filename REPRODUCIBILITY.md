@@ -27,7 +27,7 @@ evidence — the distinction Note 8 §8.4 draws is the one this package keeps.
 
 ## 1 · Conditions and contrasts (Note 8 §8.6–8.7)
 
-Implemented in `dcc_conditions.py` — the assignment matches V5.8 exactly:
+Implemented in `src/dcc_conditions.py` — the assignment matches V5.8 exactly:
 
 | Condition | Interface | Resolution | In code |
 |---|---|---|---|
@@ -49,25 +49,25 @@ and illumination quality, uncertainty, timestamps, frames and authority grounds
 | Robot and sensor versions | §4 below; per-run `env_g1` + `git.sha` inside every `dataset/<run>.json` |
 | Calibration files | §5 below: named constants with derivation history in `sim/isaac/isaac_bridge.py` (motion), `sim/emulador_deteccion.py` + `dataset/curvas_etiqueta.json` (vision), `analysis/escala_pose.py` (measurement scale), `calib/` (camera) |
 | Maps | `summit/ref_map_g1.json` (historical), `nav_map.json` (furniture), `dataset/visibilidad_gemelo_sesion.json` (session coverage reference) + `_prov` predecessor; scene generator `sim/isaac/office3d.py` |
-| Route layouts | Waypoints A/B/C + door centre/axis: constants in `g1_goto.py`; session layout `tasks/SESSION_PREP_GATE_AB.md` |
-| Interface schemas | `dcc_conditions.py` (`I0_CAMPOS`/`I1_EXTRA`); per-sample schema `g1_goto_run/v1` |
-| Evidence contracts | `dcc_omega.py::FUNDAMENTO` (role → accepted grounds), the visual-quality contract (luma EMA α=0.2, threshold, measured caveats in the ledger), coverage contract (`cov_missing` v2 semantics in `g1_goto.py`) |
+| Route layouts | Waypoints A/B/C + door centre/axis: constants in `src/g1_goto.py`; session layout `tasks/SESSION_PREP_GATE_AB.md` |
+| Interface schemas | `src/dcc_conditions.py` (`I0_CAMPOS`/`I1_EXTRA`); per-sample schema `g1_goto_run/v1` |
+| Evidence contracts | `dcc_omega.py::FUNDAMENTO` (role → accepted grounds), the visual-quality contract (luma EMA α=0.2, threshold, measured caveats in the ledger), coverage contract (`cov_missing` v2 semantics in `src/g1_goto.py`) |
 | Initial and successor records | `dataset/certificado_T12.json` + `analysis/verifica_t12.py` (non-rewriting succession; predecessors recoverable via the git commits recorded in the certificate) |
-| Observer configurations | `perception_server.py` + `requirements-perception.txt`; twin observer: `g1_sim_adapter.py` env + `sim/emulador_deteccion.py` constants |
-| Frozen references | `dataset/*_omega_ref.json` — one certificate per staged run, written in the same act that stages the world (`guion.py`); derivation `dcc_omega.py::delta_muestra` (independent of condition and robot output, Note 8 §8.9) |
+| Observer configurations | `src/perception_server.py` + `requirements-perception.txt`; twin observer: `src/g1_sim_adapter.py` env + `sim/emulador_deteccion.py` constants |
+| Frozen references | `dataset/*_omega_ref.json` — one certificate per staged run, written in the same act that stages the world (`src/guion.py`); derivation `dcc_omega.py::delta_muestra` (independent of condition and robot output, Note 8 §8.9) |
 | Lighting and object schedules | `guion.py::GUIONES` (T1–T11: light, glass, objects; by wall-clock instant or zone entry) |
-| Battery schedules | `guion.py` T7 (declared 75→55; D3 conflict declared in the ledger) |
+| Battery schedules | `src/guion.py` T7 (declared 75→55; D3 conflict declared in the ledger) |
 | Randomisation seeds | §6 below |
 | Trial allocation | `tasks/manifiestos/campana_dcc_v2.txt` (current), `campana_dcc.txt` (v1, superseded, kept), `campana_isaac.json` (N=30 variance) |
 | Sensor histories | `dataset/<run>.json` → `samples[]` + `laser_snapshots[]` + archived camera frames |
 | Boundary records | every sample row is one decision boundary: interface fields, role problem, resolution, authority, action — the §8.8 record set as columns |
-| Role resolutions | per sample `role`, `role_crudo`, `role_reason`; resolver `dcc_roles.py` (pure function, thresholds at top) |
+| Role resolutions | per sample `role`, `role_crudo`, `role_reason`; resolver `src/dcc_roles.py` (pure function, thresholds at top) |
 | Authority records | per sample `authority` from `phase_sent` guard markers (`dcc_roles.py::autoridad`) |
 | Actions | per sample `cmd`, `sent`, `spd`; per run `events[]` |
 | Safety interventions | `events[]` (collisions with pre-impact frames), ASSIST markers, operator notes `tasks/SESSION_LOG_*.md` |
 | Diagnostic controls | `analysis/test_dcc_omega.py` (5 negative controls of the scoring machinery); the 21-Aug **solid-wall control** that invalidated the first glass witness (development diagnostic, §8.4 — its records and the exclusion are in the audit trail); staged-glass vs no-glass validation legs (25-Aug) |
 | Exclusion logs | `reproducibility/EXCLUSIONES.md` — every excluded or degenerate run, with reason and disposition |
-| Analysis scripts | `dcc_omega.py`, `dcc_conditions.py`, `dcc_roles.py`, `dcc_secundarios.py`, `analysis/` |
+| Analysis scripts | `src/dcc_omega.py`, `src/dcc_conditions.py`, `src/dcc_roles.py`, `src/dcc_secundarios.py`, `analysis/` |
 | Configuration hashes | per-run `git.sha` (+ dirty flag); package integrity `reproducibility/SHA256SUMS`; release procedure in §7 |
 | Machine-readable results tables | `reproducibility/resultados_stage2_dev.json` + `.csv`, regenerated by `python3 reproducibility/exporta_resultados.py` |
 
@@ -87,7 +87,7 @@ python3 reproducibility/exporta_resultados.py          # machine-readable tables
 ```
 
 Re-running the **campaigns** needs the twin (Isaac Sim bridge on the lab GPU):
-`python3 campana_dcc_v2.py` (resumable); staged single runs `python3 guion.py T8
+`python3 src/campana_dcc_v2.py` (resumable); staged single runs `python3 src/guion.py T8
 --destino B`. Environment-bound: statistical, not bit-identical, reproduction; the
 recorded dataset is the frozen evidence.
 
@@ -111,7 +111,7 @@ separately throughout; no claim crosses a link.
 - **Independent safety:** operator hand-on-stop protocol (runbook §Block C safety
   note); collision events instrumented per run.
 - **Twin:** Isaac Sim 5.1.0 (container `isaaclab_setup`), bridge
-  `sim/isaac/isaac_bridge.py`, adapter `g1_sim_adapter.py` — the robot stack runs
+  `sim/isaac/isaac_bridge.py`, adapter `src/g1_sim_adapter.py` — the robot stack runs
   UNMODIFIED against the bridge.
 - **Host:** Python 3.10.12; `reproducibility/requirements-frozen.txt` (pip freeze
   of the machine that produced the campaigns); `requirements.txt` curated.

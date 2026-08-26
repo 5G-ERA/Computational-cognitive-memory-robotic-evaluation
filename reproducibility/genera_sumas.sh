@@ -9,10 +9,10 @@ cd "$(dirname "$0")/.."
 
 candidatos() {
   # nucleo de puntuacion y escenificacion
-  echo dcc_omega.py; echo dcc_conditions.py; echo dcc_roles.py; echo dcc_secundarios.py
-  echo guion.py; echo campana_dcc_v2.py; echo g1_goto.py; echo g1_sim_adapter.py
+  echo src/dcc_omega.py; echo src/dcc_conditions.py; echo src/dcc_roles.py; echo src/dcc_secundarios.py
+  echo src/guion.py; echo src/campana_dcc_v2.py; echo src/g1_goto.py; echo src/g1_sim_adapter.py
   echo sim/isaac/isaac_bridge.py; echo sim/isaac/office3d.py; echo sim/emulador_deteccion.py
-  echo vox_rayos.py
+  echo src/vox_rayos.py
   ls analysis/*.py 2>/dev/null
   # asignacion de ensayos y manifiestos
   ls tasks/manifiestos/*.txt 2>/dev/null; echo dataset/campana_isaac.json

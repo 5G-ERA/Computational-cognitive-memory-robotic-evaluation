@@ -1,3 +1,4 @@
+import os
 """¿Cuanto aporta de verdad el disparador de POSE al verificador C1?
 
 Si loc_match esta saturado en el robot real (p5=0.81, mediana 0.94), un umbral en 0.80
@@ -6,10 +7,10 @@ apenas dispara y el disparador no sostiene nada. En ese caso renunciar a el en e
 seria cambiar la planificacion para arreglar una senal que ya no mide.
 """
 import collections, glob, json, os, sys
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 import dcc_conditions as DC
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 def carga(f):
     try: return json.load(open(f))
     except Exception: return None

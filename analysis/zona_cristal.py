@@ -1,3 +1,4 @@
+import os
 """¿A que distancia del cristal declarado se degrada de verdad la cobertura?
 
 La zona de exigibilidad (2.0 m) la puse a ojo, y de ahi sale el residuo de T1/T2. Aqui se
@@ -5,9 +6,9 @@ mide: distancia de cada muestra al rectangulo de cristal declarado frente a cov_
 correcta es donde cov_n cae de verdad, no donde yo supuse.
 """
 import json, math, os, statistics, sys
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_omega import carga_referencia
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING"
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAN = os.path.join(RAIZ, "tasks/manifiestos/campana_dcc.txt")
 
 def dist_rect(x, y, r):

@@ -1,9 +1,10 @@
+import os
 """¿DONDE fallan los retornos del gemelo contra el mapa de referencia?
 loc_match = fraccion de celdas del laser en vivo que caen sobre (o junto a) el refmap.
 Gemelo 0.63-0.69 contra 0.94 real. Aqui se localizan los fallos en el espacio en vez de
 seguir conjeturando la causa."""
 import glob, json, os, sys, collections, math
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 import g1_goto as g1
 
 OC = g1.g.OCELL
@@ -44,7 +45,7 @@ def analiza(f, et):
     fuera = sum(n for (cx,cy),n in fallos.items() if not (x0<=cx<=x1 and y0<=cy<=y1))
     print("  fallos FUERA de la caja del refmap: %.0f%% de los fallos" % (100.0*fuera/max(1,sum(fallos.values()))))
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 gem = sorted(glob.glob(os.path.join(RAIZ, "20260824_*_ours_[AB].json")))
 gem = [f for f in gem if len(json.load(open(f)).get("samples") or []) > 30]
 if gem: analiza(gem[-1], "GEMELO (ultima run)")

@@ -21,7 +21,7 @@ xdpyinfo -display $DISP >/dev/null 2>&1 && echo "X virtual OK en $DISP" || { ech
 tmux kill-session -t perc 2>/dev/null || true
 tmux new-session -d -s perc "cd $REPO && DISPLAY=$DISP \
   PYTHONPATH=/home/ros/g1env/lib/python3.10/site-packages \
-  /usr/bin/python3.10 perception_server.py --debug --floorcolor 1 2>&1 | tee /tmp/perc.log"
+  /usr/bin/python3.10 src/perception_server.py --debug --floorcolor 1 2>&1 | tee /tmp/perc.log"
 
 echo "== esperando a que carguen los modelos (hasta 120s)..."
 for i in $(seq 1 24); do

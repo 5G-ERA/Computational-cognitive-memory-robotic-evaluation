@@ -1,3 +1,4 @@
+import os
 """La memoria de voxels reproducida OFFLINE sobre runs reales, con y sin barrido por rayos.
 
 Se replica el bucle de g1_goto (memorizar tras K confirmaciones sanas, reinyectar dentro de
@@ -8,7 +9,7 @@ es mas gruesa que en ejecucion. Sirve para comparar TTL-solo contra TTL+rayos en
 material, no para predecir el numero absoluto de celdas en vivo.
 """
 import glob, json, math, os, statistics, sys
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from vox_rayos import despeja
 
 OC = 0.20; NEAR_BLIND = 0.60
@@ -55,7 +56,7 @@ def replay(snaps, con_rayos):
             "max_memoria": max(sostenidas) if sostenidas else 0,
             "por_rayo": por_rayo, "por_ttl": por_ttl, "por_purga": por_purga}
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 fs = []
 for f in sorted(glob.glob(os.path.join(RAIZ, "2026*_ours_[AB].json"))):
     try: d = json.load(open(f))

@@ -1,3 +1,4 @@
+import os
 """A_meta A NIVEL DE RUN — la unidad que la pre-registracion declara (§4: "la unidad
 independiente es la configuracion de transicion o la run, no cada frontera registrada").
 
@@ -8,11 +9,11 @@ run (cada run rinde las cuatro condiciones sobre las mismas muestras, asi que el
 emparejamiento es exacto).
 """
 import json, os, statistics, sys, collections
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from dcc_conditions import evalua_todas, usa_pose_para, CONDICIONES
 from dcc_omega import carga_referencia, puntua_run
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING"
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # G1_DCC_MAN: puntuar otro manifiesto (p.ej. la campana v2). El descarte de las 6
 # primeras T1/T2 es un artefacto del manifiesto v1 (filas de calentamiento): solo alli.
 MAN = os.environ.get("G1_DCC_MAN", os.path.join(RAIZ, "tasks/manifiestos/campana_dcc.txt"))

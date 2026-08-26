@@ -1,3 +1,4 @@
+import os
 """¿Calibre VSCALE contra un objetivo contaminado?
 
 VSCALE se ajusto para igualar v/cmd, con v = camino/duracion. Si el camino real esta
@@ -5,7 +6,7 @@ inflado por temblor de pose, el objetivo 0.82 estaba inflado y VSCALE=1.20 es de
 Aqui se recalcula v/cmd a varias decimaciones, en real y en gemelo.
 """
 import glob, json, math, os, statistics
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 def carga(f):
     try: return json.load(open(f))
     except Exception: return None

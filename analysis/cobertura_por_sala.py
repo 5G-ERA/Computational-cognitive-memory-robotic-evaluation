@@ -1,8 +1,9 @@
+import os
 """¿Estoy comparando lo mismo? El loc_match de una run es global. Si el robot real apenas
 produce retornos en la sala B, su 0.94 lo domina la sala A y la comparacion no es justa.
 Aqui se separa el acierto POR SALA, en real y en gemelo."""
 import glob, json, os, sys
-sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 import g1_goto as g1
 OC = g1.g.OCELL
 ref = g1.load_ref_map()
@@ -33,7 +34,7 @@ def analiza(f, et):
         print("  %s: %4.0f%% del laser, acierta %3.0f%%" % (z, pct, ac), end="")
     print("   | global %3.0f%%" % (100.0*sum(hit.values())/n))
 
-RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING/dataset"
+RAIZ = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset")
 print("%-34s%s" % ("", "  reparto y acierto por sala"))
 for pat, et in (("20260821_*_ours_[AB].json", "REAL 21-ago"),
                 ("20260824_*_ours_[AB].json", "GEMELO 24-ago")):

@@ -43,7 +43,7 @@ import json, sys, time, math, threading, os, random, heapq
 import requests
 import websocket  # websocket-client
 
-LOGPATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "g1_nav.log")
+LOGPATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "g1_nav.log")
 
 # ---- VISION (cámara + YOLO) como capa de obstáculos complementaria al láser ----
 vlock = threading.Lock()
