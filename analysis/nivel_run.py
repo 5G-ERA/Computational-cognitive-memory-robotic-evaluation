@@ -13,7 +13,10 @@ from dcc_conditions import evalua_todas, usa_pose_para, CONDICIONES
 from dcc_omega import carga_referencia, puntua_run
 
 RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING"
-MAN = os.path.join(RAIZ, "tasks/manifiestos/campana_dcc.txt")
+# G1_DCC_MAN: puntuar otro manifiesto (p.ej. la campana v2). El descarte de las 6
+# primeras T1/T2 es un artefacto del manifiesto v1 (filas de calentamiento): solo alli.
+MAN = os.environ.get("G1_DCC_MAN", os.path.join(RAIZ, "tasks/manifiestos/campana_dcc.txt"))
+_DESCARTA_T12 = 6 if MAN.endswith("campana_dcc.txt") else 0
 
 runs = []
 viejasT12 = 0
@@ -21,7 +24,7 @@ for ln in open(MAN):
     if "|" not in ln or "COMPLETA" in ln: continue
     cfg, dst, f = ln.strip().split("|")
     if not f: continue
-    if cfg in ("T1", "T2") and viejasT12 < 6:
+    if cfg in ("T1", "T2") and viejasT12 < _DESCARTA_T12:
         viejasT12 += 1; continue
     fp = os.path.join(RAIZ, f); ref = fp.replace(".json", "_omega_ref.json")
     if not os.path.exists(ref): continue

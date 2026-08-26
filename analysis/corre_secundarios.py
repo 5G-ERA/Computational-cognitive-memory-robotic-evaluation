@@ -1,5 +1,5 @@
 """Los secundarios del §9.3 sobre las cinco configuraciones escenificadas."""
-import json, statistics, sys
+import json, os, statistics, sys
 sys.path.insert(0, "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING")
 from dcc_conditions import evalua_todas, usa_pose_para, CONDICIONES
 from dcc_omega import carga_referencia, delta_muestra
@@ -11,7 +11,7 @@ RAIZ = "/home/ros/Documents/G1_UNITREE_ROBOT_META_REASONING"
 # con transicion escenificada dentro de la run.
 CONFIGS = ("T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T11")
 CASOS = []
-for _ln in open(RAIZ + "/tasks/manifiestos/campana_dcc.txt"):
+for _ln in open(os.environ.get("G1_DCC_MAN", RAIZ + "/tasks/manifiestos/campana_dcc.txt")):
     if "|" not in _ln or "COMPLETA" in _ln:
         continue
     _cfg, _dst, _f = _ln.strip().split("|")

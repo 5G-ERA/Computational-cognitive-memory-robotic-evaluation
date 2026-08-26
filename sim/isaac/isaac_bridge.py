@@ -220,6 +220,27 @@ try:
             _quitadas += _n0 - len(_MAPA)
         except Exception:
             pass
+    # --- T10: BLOQUEO DEL VANO (G1_BLOQUEO=1) ---
+    # El laser del gemelo se sintetiza de ESTE mapa, no de la escena USD (cazado 26-ago:
+    # el tablon del USD era invisible al scan y las piernas T10 cruzaban el vano "bloqueado").
+    # El tablon se inyecta aqui con la MISMA geometria declarada que el prim del USD:
+    # centro (-3.90, 1.25), largo 1.60 m a 45 grados (perpendicular al eje de cruce 135),
+    # grosor 0.18 m. El USD conserva su tablon para el caminante y el video.
+    if os.environ.get("G1_BLOQUEO", "") == "1":
+        _BA = math.radians(45.0)
+        _bu, _bv = math.cos(_BA), math.sin(_BA)
+        _bcel = set()
+        _s = -0.80
+        while _s <= 0.80:
+            _t = -0.09
+            while _t <= 0.09:
+                _bx = -3.90 + _s * _bu - _t * _bv
+                _by = 1.25 + _s * _bv + _t * _bu
+                _bcel.add((round(_bx / _OC), round(_by / _OC)))
+                _t += 0.05
+            _s += 0.05
+        _MAPA |= _bcel
+        print("[scan] BLOQUEO: tablon en el vano, +%d celdas (T10)" % len(_bcel), flush=True)
     print("[scan] mapa: %d celdas (%d de cristal, -%d limpiadas)" % (
         len(_MAPA), len(_CRISTAL), _quitadas), flush=True)
 except Exception as _e:
