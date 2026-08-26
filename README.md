@@ -2,10 +2,18 @@
 
 # Computational Cognitive Memory<br/>Robotic Evaluation
 
-**Experiment 2 of *A Computational Theory of Cognitive Memory* — a robotic
-development-to-deployment evaluation on a stock Unitree G1 humanoid
-and its calibrated Isaac Sim digital twin.**
+**Results and reproducibility package for Experiment 2 of<br/>
+*A Computational Theory of Cognitive Memory***
 
+Qiu · Pham · Lendinez Ibanez · Li — University of Bedfordshire · University of
+Birmingham · Telefónica S.A. (draft V5.8, 2026-08)
+
+A robotic development-to-deployment evaluation on a **stock Unitree G1 humanoid**
+and its calibrated **Isaac Sim digital twin**.<br/>
+<sub>(Experiment 1, the LLM evaluation, lives in
+[Computational-cognitive-memory-llm-evaluation](https://github.com/5G-ERA/Computational-cognitive-memory-llm-evaluation).)</sub>
+
+[![verify](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml/badge.svg)](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml)
 [![Paper](https://img.shields.io/badge/paper-V5.8_·_Supplementary_Note_8-2a5d8f?style=flat-square)](#citing)
 [![Reproducibility](https://img.shields.io/badge/reproducibility-213_checksums_·_frozen_env-0f6e77?style=flat-square)](REPRODUCIBILITY.md)
 [![Tier](https://img.shields.io/badge/tier-development-b58a00?style=flat-square)](#the-evaluation-lifecycle)
@@ -50,16 +58,20 @@ Four conditions cross **interface** (original I⁰ vs revised I¹) × **resoluti
 
 </div>
 
-Paired within-run contrasts over 30 campaign runs (paper §8.7 names):
+Conditions: **C1** = original interface + temporal incumbent · **C2** = original +
+distributed · **C3** = revised + temporal · **C4** = revised + distributed/DCC.
+Unit of analysis: the run; contrasts are paired within-run differences over the
+30 campaign runs. Paper §8.7 names:
 
 <div align="center">
 
-| Contrast | Effect of | Median [IQR] | Runs won |
-|:---|:---|:---:|:---:|
-| **C4 − C3** | resolution, under revised interface | **+53.1 pp** [+43, +60] | **30 / 30** |
-| **C4 − C2** | interface, under distributed resolution | **+61.1 pp** [+52, +71] | **30 / 30** |
-| C3 − C1 | interface, under temporal incumbent | −52.5 pp | 0 / 30 |
-| C2 − C1 | resolution, under original interface | −58.9 pp | 0 / 30 |
+| Contrast | Effect of | Median [IQR] | Runs won | Status |
+|:---|:---|:---:|:---:|:---|
+| **C4 − C3** | resolution, under revised interface | **+53.1 pp** [+43, +60] | **30 / 30** | ✅ UNANIMOUS — development tier |
+| **C4 − C2** | interface, under distributed resolution | **+61.1 pp** [+52, +71] | **30 / 30** | ✅ UNANIMOUS — development tier |
+| C3 − C1 | interface, under temporal incumbent | −52.5 pp [−74, −14] | 0 / 30 | ◼ NEGATIVE — one axis alone hurts |
+| C2 − C1 | resolution, under original interface | −58.9 pp [−86, −22] | 0 / 30 | ◼ NEGATIVE — one axis alone hurts |
+| C4 − C1 | full system vs plain baseline | +6.2 pp [−25, +39] | 15 / 30 | ⬜ FLAT on time average — decided at transitions |
 
 <img src="docs/img/contrasts_v2.png" alt="Paired per-run contrasts, one dot per run" width="820"/>
 
@@ -181,6 +193,19 @@ G1_DCC_MAN=$PWD/tasks/manifiestos/campana_dcc_v2.txt python3 analysis/nivel_run.
 G1_DCC_MAN=$PWD/tasks/manifiestos/campana_dcc_v2.txt python3 analysis/corre_secundarios.py
 python3 reproducibility/exporta_resultados.py   # machine-readable json + csv
 ```
+
+Expected output (abridged):
+
+```text
+PAQUETE INTEGRO: todas las sumas verifican.
+TODOS LOS CONTROLES PASAN
+  C4-C3  +53 pp  [+43, +60]   C4>C3 en 30/30 runs, C4<C3 en 0
+  C4-C2  +61 pp  [+52, +71]   C4>C2 en 30/30 runs, C4<C2 en 0
+escrito reproducibility/resultados_stage2_dev.json (30 runs) y resultados_stage2_dev.csv
+```
+
+The [`verify` workflow](.github/workflows/verify.yml) runs this same check on
+every push.
 
 <details>
 <summary><b>Re-running the campaigns</b> (needs the twin: lab GPU + Isaac bridge)</summary>

@@ -1,0 +1,19 @@
+name: verify
+on:
+  push:
+    branches: [main, ensayo/door-gate-isaac]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integrity manifest (213 checksums, relative paths)
+        run: sh reproducibility/verifica.sh
+      - name: Negative controls of the scoring machinery
+        run: python3 analysis/test_dcc_omega.py
+      - name: Rescore campaign v2 (primary outcomes, paired contrasts)
+        run: G1_DCC_MAN=$PWD/tasks/manifiestos/campana_dcc_v2.txt python3 analysis/nivel_run.py
+      - name: Machine-readable results regenerate
+        run: python3 reproducibility/exporta_resultados.py
