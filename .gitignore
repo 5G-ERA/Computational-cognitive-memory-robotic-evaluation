@@ -18,3 +18,4 @@ archive/goto_hasta_*.log.gz
 __pycache__/
 runs/
 "How to use Claude"/
+goto.log

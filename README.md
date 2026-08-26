@@ -1,160 +1,198 @@
-# Meta-Reasoning on a Stock Unitree G1
+# Computational Cognitive Memory — Robotic Evaluation
 
-> **Paper companion.** This repository is the Stage 2 (robotic coffee-delivery
-> benchmark) reproducibility package of *A Computational Theory of Cognitive Memory*
-> (Qiu, Pham, Lendinez Ibanez, Li). The item-by-item mapping to Supplementary Note 6
-> §8.4, the exact re-scoring commands and the integrity manifest live in
-> [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md). Current results:
-> [`tasks/RESULTADOS_ISAAC_V2.md`](tasks/RESULTADOS_ISAAC_V2.md).
+**The robotic development-to-deployment evaluation (Experiment 2) of
+[*A Computational Theory of Cognitive Memory*](#citing) — on a stock Unitree G1
+humanoid and its calibrated Isaac Sim digital twin.**
 
-> A consumer humanoid — no ROS on board, no SDK, and a LiDAR that goes blind below one metre —
-> carrying an open cup of water through a narrow door, while reasoning about **how much to trust
-> its own senses**.
+A consumer humanoid — no ROS on board, no SDK, a LiDAR that goes blind below one
+metre — carries an open cup through a narrow door while reasoning about **how much
+to trust its own senses**. Above navigation sits a cognitive-memory layer that
+resolves, at every decision boundary, *which role governs*: keep trusting the
+incumbent sense, switch to an alternative, escalate to review, or withhold.
 
 ![Real recorded trajectories: five clean crossings, and one run where the laser lied](docs/img/mission.png)
 
-<sub>Real recorded data, no retouching. **Left:** the golden window — five consecutive clean
-crossings. **Right:** the same robot, the same door, 512 s and 70 m walked, seven collisions
-against a frame its laser could not see. The gap between those two panels is what this research
-is about.</sub>
-
-PhD research (University of Bedfordshire) on **meta-reasoning by analogy** for autonomous robots.
-The robot is a stock Unitree G1 “Air”: the only way in is the vendor app, so the whole stack is
-built on top of that single channel. Above navigation sits a meta level that decides *which sense
-to believe*, recovers when it gets stuck, and asks a human for help when it cannot.
-
-> **Picking this up? Go to [`tasks/`](tasks/)** — it says what happens next and what to take to
-> the lab.
+<sub>Real recorded data, no retouching. **Left:** five consecutive clean crossings.
+**Right:** the same robot, the same door, 512 s and 70 m walked, seven collisions
+against a frame its laser could not see. The gap between these two panels is what
+this evaluation measures.</sub>
 
 ---
 
-## Why this is interesting
+## Results at a glance (development tier)
 
-The G1's laser is cut below ~1 m by design. Measured over 193 real collisions: **55 % happened
-while the laser was reporting clear ground**. A robot that trusts its sensors blindly walks into
-the same door frame forever — so the real problem is not navigation, it is **self-assessment**:
-knowing when your perception is lying, and what to do about it.
+Four conditions cross **interface** (original I⁰ vs revised I¹) × **resolution**
+(temporal incumbent vs distributed/DCC), per paper §8.6:
 
-| | Meta level ON | OFF |
+| | Original interface | Revised (DCA) interface |
 |---|---|---|
-| Runs reached (under calibrated sensor noise) | **6 / 6** | 3 / 6 |
-| Collisions in those runs | **0** | 27 |
-| False interventions on clean runs | 1.0 % | — |
-| Time cost | +8.6 % | — |
+| **Temporal incumbent** | C1 — A_meta 65% | C3 — A_meta 13% |
+| **Distributed / DCC** | C2 — A_meta 0% | **C4 — A_meta 63%** |
 
-Closed-loop A/B in the digital twin, interleaved arms. Full problem → solution → evidence map:
-[`docs/img/problem_solution_evidence.png`](docs/img/problem_solution_evidence.png).
+Paired within-run contrasts over 30 campaign runs (paper §8.7 names):
 
----
+| Contrast | Effect of | Median [IQR] | Runs won |
+|---|---|---|---|
+| **C4 − C3** | resolution, under revised interface | **+53.1 pp** [+43, +60] | **30/30** |
+| **C4 − C2** | interface, under distributed resolution | **+61.1 pp** [+52, +71] | **30/30** |
+| C3 − C1 | interface, under temporal incumbent | −52.5 pp | 0/30 |
+| C2 − C1 | resolution, under original interface | −58.9 pp | 0/30 |
 
-## How it works, in one minute
+![Paired per-run contrasts](docs/img/contrasts_v2.png)
 
-![System architecture](docs/img/architecture.png)
+**Each axis alone makes things worse; together they win unanimously** — the
+revised interface and distributed resolution are *complements, not substitutes*.
+Where the time-averaged C4−C1 diagonal is flat, the difference lives at
+transitions: C4 adopts **34/40** demanded switches at 0.6 s median delay; the
+temporal incumbent misses 68% of them. Full tables:
+[`tasks/RESULTADOS_ISAAC_V2.md`](tasks/RESULTADOS_ISAAC_V2.md) · machine-readable:
+[`reproducibility/resultados_stage2_dev.json`](reproducibility/resultados_stage2_dev.json).
 
-**Control path.** The robot exposes nothing but its own iOS app. A Python stack on the laptop
-attaches to the app's WebView over USB (Chrome DevTools Protocol), reads the live LiDAR cloud and
-camera frames, and drives the robot by injecting joystick commands ~10 times a second.
-
-**Navigation.** Global plan over a reference map → DWA local planner → a door-crossing state
-machine that steers on a *vision-measured* door bearing → an ordered guard chain that can only
-ever remove speed.
-
-**Meta level.** Renxi Qiu's Meta-Reasoner 2.0 selects navigation analogies with Dempster–Shafer
-trust; a four-layer bridge feeds it evidence and applies its verdict. Above that runs an explicit
-state machine — `NORMAL · DEGRADED · BLIND · RECOVERY · ASSIST` — driven by retrospective laser
-validity, door-centre contradictions and interface quality. Out of options, the robot stops and
-asks the operator for help, remembers the rescue, and recalls it when it passes there again.
-
-**Digital twin.** The same code, unmodified, runs against a Gazebo world built from a laser scan
-of the real flat, in the same map frame — so real waypoints, map and door are reused untranslated.
-Sensor noise is calibrated against real distributions, so the twin fails the way reality does.
+> **Tier disclaimer.** Everything here is the **development stage** of the paper's
+> Note 8 lifecycle: instruments built, diagnosed and exercised in the twin plus
+> logged real sessions. The frozen confirmatory C1–C4 deployment evaluation has
+> **not** been run.
 
 ---
 
-## Repository layout
+## The platform
 
-| Path | What lives there |
-|---|---|
-| `g1_goto.py` | The robot brain: navigation, door FSM, guard chain, meta level, run recording |
-| `g1_meta2_bridge.py`, `meta-reasoner-2.0/` | Meta-reasoning layer (the reasoner itself is **never modified**; its 11 tests must stay green) |
-| `g1_nav_v2.py`, `g1_metrics.py`, `g1_perception.py`, `g1_particle_filter.py` | Navigation primitives, sensing self-assessment, vision client, shadow estimator |
-| `g1_sim_adapter.py`, `sim/` | Digital twin: adapter, Docker recipe, worlds, launch files — see the [twin guide](sim/RUN_AND_REBUILD.md) |
-| `perception_server.py` | Off-board vision service (metric depth + object detection) |
-| `spill_mark.py` | Ground-truth marker the operator uses during real sessions |
-| `analysis/` | Per-run analysis, autopsy reports, and shadow replay of the meta level over past runs |
-| `campaigns/` | Automated experiment campaigns in the twin |
-| `dataset/`, `data/` | Every run ever recorded (samples, events, collision snapshots), and the maps and waypoints the robot navigates with |
-| `config/`, `state/`, `results/` | Reasoner configurations, per-experiment trust state, campaign results |
-| **`tasks/`** | **What to do next — start here if you are picking the project up** |
-| `docs/` | Protocols, plans and reports — start with the runbook below |
-| `logs/`, `tools/`, `attic/` | Historical campaign logs, utilities (plots, figures, calibration) and old probes kept for provenance |
-| `docs/notes/` | Dated engineering records from earlier phases, including how the robot's SLAM stream was reached at all — see its [index](docs/notes/README.md) |
+Two execution tiers drive the **same unmodified robot stack**:
 
----
+```mermaid
+flowchart LR
+    subgraph stack["Robot stack (unmodified across tiers)"]
+        NAV["g1_goto.py<br/>navigation + door engagement"]
+        ROLES["dcc_roles.py<br/>role resolver (pure function)"]
+        REC["per-tick recorder<br/>samples · snapshots · events"]
+        NAV --- ROLES --- REC
+    end
 
-## Getting started
+    subgraph real["Real tier"]
+        APP["Vendor app WebRTC channel<br/>(the only way in: no ROS, no SDK)"]
+        G1["Unitree G1 'Air'"]
+        APP <--> G1
+    end
 
-**If you are new, read in this order:**
+    subgraph twin["Twin tier (Isaac Sim 5.1)"]
+        BR["isaac_bridge.py<br/>calibrated motion · scan synthesis"]
+        AD["g1_sim_adapter.py<br/>same interface as the app"]
+        EMU["emulador_deteccion.py<br/>calibrated vision channel"]
+        AD <--> BR
+        AD --- EMU
+    end
 
-1. [`docs/G1_Test_Protocol_Operator_Runbook.pdf`](docs/G1_Test_Protocol_Operator_Runbook.pdf) —
-   the operating manual: every command, for the twin and for the real robot.
-2. [`sim/RUN_AND_REBUILD.md`](sim/RUN_AND_REBUILD.md) — launch, rebuild and back up the
-   digital twin. Everything here runs without touching the robot.
-3. [`docs/G1_Disciplined_Session_Protocol.pdf`](docs/G1_Disciplined_Session_Protocol.pdf) — the
-   method. Not optional: one undisciplined session once destroyed a week of results.
-4. [`docs/G1_Branch_Strategy_and_New_Stack_Case.pdf`](docs/G1_Branch_Strategy_and_New_Stack_Case.pdf) —
-   which code to run for which experiment, and what the newest work buys you.
+    stack <--> APP
+    stack <--> AD
 
-> Configurations and trust state live in `config/` and `state/`, but every documented command
-> still passes a bare filename — the loader resolves it. Nothing in the protocols had to change.
+    subgraph eval["Evaluation machinery"]
+        GUION["guion.py — stages light/glass/objects/battery<br/>writes the reference certificate in the same act"]
+        SCORE["dcc_omega.py + dcc_conditions.py<br/>A_meta / A_Ω per condition C1–C4"]
+        GUION --> SCORE
+    end
 
-**Fastest useful thing you can do** — replay the meta level over a recorded session, with no robot
-and no simulator:
-
-```bash
-python3 analysis/replay_msm.py dataset/<run>.json
+    REC --> SCORE
 ```
 
+The twin is calibrated channel by channel against **132 real runs** (motion
+VSCALE/TAU/latency/pace, the app's LiDAR filter, the WebRTC-throttled vision
+channel, per-label detection curves) — every constant with its derivation in
+[`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) §5.
+
+![The G1 walking the real route in the twin](docs/img/g1_isaac_walk.jpg)
+
+<sub>The twin also walks: our own locomotion policy (PPO, 3,000 iterations, one
+RTX 3090) drives all 37 joints under PhysX through the office reconstructed from
+the robot's own laser and photographs — 6/6 waypoints, zero falls.</sub>
+
+## The evaluation lifecycle (paper Note 8)
+
+```mermaid
+flowchart LR
+    DEV["DEVELOPMENT<br/>build + diagnose:<br/>interface · contracts · resolver<br/>instruments · controls · audit"]
+    FREEZE["CONFIGURATION FREEZE<br/>release tag + SHA256 manifest<br/>(not yet issued)"]
+    DEP["DEPLOYMENT<br/>frozen confirmatory C1–C4<br/>(not yet run)"]
+    DEV -->|"diagnostics decide fitness,<br/>never deployment effect"| FREEZE --> DEP
+
+    style DEV fill:#0F6E7722,stroke:#0F6E77
+    style FREEZE fill:#7A642022,stroke:#7A6420
+    style DEP fill:#9E4E2C22,stroke:#9E4E2C
+```
+
+Development diagnostics are kept strictly apart from deployment-effect evidence —
+the paper cites this repo's own example: a **solid-wall control invalidated the
+first glass witness** by localising an instrumentation failure (successful
+diagnostic, witness excluded, instrument redesigned and re-validated):
+
+![Glass witness validation: staged glass vs control](docs/img/glass_witness.png)
+
+<sub>The redesigned coverage instrument, live: with glass staged (blue) it sustains
+the resolver's ground through the doorway approach; the control leg (orange) never
+crosses it. Exclusions are logged, never silent:
+[`reproducibility/EXCLUSIONES.md`](reproducibility/EXCLUSIONES.md).</sub>
+
 ---
 
-## Branches
+## Reproduce the numbers (no robot needed)
 
-| Ref | Purpose |
+Scoring is offline and deterministic — recorded runs + their certificates:
+
+```bash
+git clone https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation.git
+cd Computational-cognitive-memory-robotic-evaluation
+git checkout ensayo/door-gate-isaac
+pip install -r requirements.txt          # frozen env: reproducibility/requirements-frozen.txt
+
+sh reproducibility/verifica.sh           # integrity: 213-entry SHA256 manifest, relative paths
+python3 analysis/test_dcc_omega.py       # 5 negative controls of the scoring machinery
+G1_DCC_MAN=$PWD/tasks/manifiestos/campana_dcc_v2.txt python3 analysis/nivel_run.py
+G1_DCC_MAN=$PWD/tasks/manifiestos/campana_dcc_v2.txt python3 analysis/corre_secundarios.py
+python3 reproducibility/exporta_resultados.py   # machine-readable json + csv
+```
+
+Re-running the **campaigns** needs the twin (lab GPU + Isaac bridge):
+`python3 campana_dcc_v2.py` (resumable). Staged single scenarios:
+`python3 guion.py T8 --destino B`. Real-robot sessions run from
+[`tasks/SESSION_PREP_GATE_AB.md`](tasks/SESSION_PREP_GATE_AB.md).
+
+## Repository map
+
+| Path | What |
 |---|---|
-| `golden-doorvis` *(tag)* | Frozen baseline: the session with five clean runs in a row. **Every re-baseline measurement uses this.** |
-| `main` | Mainline development |
-| `tutor-feedback-metareasoner-sim` | Newest work: meta state machine, human channel, calibrated twin noise, synthetic camera |
+| [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | **Start here** — paper §8.16 checklist mapped item by item |
+| `dcc_omega.py` · `dcc_conditions.py` · `dcc_roles.py` · `dcc_secundarios.py` | Certificates, C1–C4 conditions, role resolver, secondary outcomes |
+| `g1_goto.py` · `guion.py` · `g1_sim_adapter.py` | Navigation stack, staging channel, twin adapter |
+| `sim/` | Isaac bridge, scene generator, calibrated vision emulator |
+| `analysis/` | Scorers, negative controls, variance, realism battery |
+| `dataset/` | Every run: per-tick samples, snapshots, frames, certificates |
+| `tasks/` | Results, decision ledger (D1–D10), session runbooks, manifests |
+| `reproducibility/` | Frozen env, SHA256 manifest + verifier, exclusion log, machine-readable results |
+| `summit/` · `calib/` · `weights/` | Reference map, camera calibration, model weights |
+| `meta-reasoner-2.0/` | The configuration-first DCE runtime (governance layer) |
+| `archive/` · `attic/` · `logs/` | Historical material — kept, out of the way |
 
-Rule of thumb: **golden = measure · main = the plan · the `-sim` branch = the new work.** Nothing
-new goes on the robot before a fresh baseline exists to compare it against.
+**Branches:** `ensayo/door-gate-isaac` — the evaluation (this branch) ·
+`baseline` — frozen no-governance navigation for fair comparison · `main` —
+platform layer.
 
----
+## Decisions and honesty
 
-## Ground rules
+Ten decisions that belong to the supervising author are parked in
+[`tasks/DECISIONES_PENDIENTES_RENXI.md`](tasks/DECISIONES_PENDIENTES_RENXI.md),
+each with evidence and a reversible default — including **D10**, a safety finding:
+thin close obstacles evaporate from the robot's belief exactly where the door
+controller commits (shared pipeline with the real robot). Negative results and
+instrument failures are reported, not buried: the claim-boundary chain of paper
+§8.15 (behaviour ⇏ conformity ⇏ recovery ⇏ continuity ⇏ benefit) is kept
+throughout.
 
-Learned the expensive way, enforced every session:
+## Citing
 
-- **One change per batch**, validated in the twin with the new path actually exercised.
-- **No code edits during a real session.** None.
-- Defaults reproduce previous behaviour exactly — every new behaviour sits behind a flag.
-- Instrumentation down = run invalid, repeat it.
-- Noise-lane results are their own baseline; never compared against clean or real timings.
+> Qiu, R., Pham, D., Lendinez Ibanez, A., Li, D. *A Computational Theory of
+> Cognitive Memory.* (V5.8, under review). Experiment 2 — robotic
+> development-to-deployment evaluation: this repository,
+> Supplementary Note 8.
 
-**Safety when driving the real robot:** keep the physical remote in hand as a kill switch
-(L2 + B = damping/stop), clear 2–3 m around the robot, and start freshly charged and standing in
-walk mode.
-
----
-
-## Status
-
-The meta-reasoning stack is **validated in the digital twin**: closed-loop A/B under calibrated
-noise, plus a shadow replay over 309 recorded real runs. Its **real-robot trial follows the next
-re-baseline session and its decision gate.** Results, caveats and open items are tracked in the
-documents above.
-
-## Disclaimer
-
-Research and interoperability work on the author's own hardware. Not affiliated with Unitree.
-Moving a 35 kg humanoid programmatically carries real risk — reproduce at your own risk, with the
-kill switch in hand.
+The platform layer (driving a stock G1 through the vendor app's single WebRTC
+channel) is documented on `main` and in `docs/`. Reverse-engineered against the
+owner's own robot for interoperability; no proprietary assets are redistributed.
