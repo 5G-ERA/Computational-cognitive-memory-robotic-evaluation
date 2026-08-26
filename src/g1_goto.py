@@ -1929,14 +1929,6 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
     h_assist_seen = 0.0                               # ultima asistencia humana consumida
     cdp_lat = 0.05                                    # latencia del ultimo envio CDP (iface_q)
     dg_on = False                                     # DOORGUARD: ya avisado en esta pasada de zona
-    omni_log_t = 0.0                                  # OMNI-GUARD: throttle de log/evento
-    envch_gone_miss = {}                              # ENV-CHANGE: celda refmap -> barridos frescos sin verse
-    envch_new_n = 0; envch_gone_n = 0; envch_onpath_n = 0
-    envch_evt_t = 0.0                                 # throttle de eventos env_*
-    crumbs = []                                       # RETREAT: migas (x,y) cada 0.15m, ~4.5m de cola
-    retreat = None; retreat_cool = 0.0; rt_prev_ncol = 0
-    rt_col_ts = []; rt_count = 0                      # v2: colisiones recientes + retiradas por run
-    stk_hist = []                                     # (t,x,y) para detectar atasco (4s de ventana)
     vis_lost_t = 0.0; vis_lost = False                # watchdog de vision en caliente
     door_side = None; door_geom_t = 0.0               # detector GEOMETRICO de cruce (independiente del FSM)
     sei = g1_metrics.SEIMetrics()                            # clearance + progression por tick (las 2 metricas del tutor)
@@ -3244,49 +3236,6 @@ def navigate_to(cdp, lg, wx, wy, label, vshare=None, lock=None, stop_event=None)
                     _w = max(last_sent[2] - SLEW_ANG, min(last_sent[2] + SLEW_ANG, _w))
                 if (_f, _w) != (cmd[1], cmd[2]):
                     cmd = (cmd[0], _f, _w, 0); ph = ph.strip() + "~"
-            # --- OMNI-GUARD (ver cabecera): reflejo final, TODAS las fuentes, SIN exenciones ---
-            if OMNIGUARD and op:
-                _cy = math.cos(math.radians(yaw)); _sy = math.sin(math.radians(yaw))
-                _near = []                              # obstaculos a <1.0m en frame ROBOT (x=alante, y=izq)
-                for (_ox, _oy) in op:
-                    _dx = _ox - x; _dy = _oy - y
-                    if _dx * _dx + _dy * _dy > 1.0:
-                        continue
-                    _near.append((_dx * _cy + _dy * _sy, -_dx * _sy + _dy * _cy))
-                if _near:
-                    _hit = None
-                    _f, _l = cmd[1], cmd[0]             # avance, lateral (stick: lx + = derecha)
-                    if abs(_f) > 0.05 or abs(_l) > 0.05:
-                        # v2 (cazado por el GEMELO, runs 180802/181151: el sector angular +-45
-                        # bloqueaba la ENTRADA del vano — las jambas quedan delante-diagonal
-                        # dentro del sector aunque el hueco central este libre; con pellizco
-                        # 0.71 son 7cm/lado y ningun test angular pasa). Test de CORREDOR:
-                        # bloquear solo si el obstaculo esta en la FRANJA que el cuerpo va a
-                        # barrer (|lateral|<0.30 = semiancho 0.28 + margen) y a <OMNI_STOP por
-                        # delante. Jamba a 0.355 de lado: pasa. Pared de frente a 0.30: bloquea.
-                        _ma = math.atan2(-_l, _f) if (_f or _l) else 0.0
-                        _cma = math.cos(_ma); _sma = math.sin(_ma)
-                        _dmin = 9.9
-                        for (_rx, _ry) in _near:
-                            _along = _rx * _cma + _ry * _sma
-                            _lat = -_rx * _sma + _ry * _cma
-                            if 0.02 < _along < OMNI_STOP and abs(_lat) < 0.30:
-                                _dmin = min(_dmin, _along)
-                        if _dmin < OMNI_STOP:
-                            cmd = (0.0, 0.0, cmd[2], 0); _hit = ("trans", _dmin)
-                    if abs(cmd[2]) > 0.05:
-                        _dc = min(math.hypot(_rx, _ry) for (_rx, _ry) in _near)
-                        if _dc < OMNI_TOUCH:
-                            cmd = (cmd[0], cmd[1], 0.0, 0); _hit = _hit or ("rot0", _dc)
-                        elif _dc < OMNI_ROT and abs(cmd[2]) > 0.20:
-                            cmd = (cmd[0], cmd[1], math.copysign(0.20, cmd[2]), 0)
-                            _hit = _hit or ("rotslow", _dc)
-                    if _hit:
-                        ph = ph.strip() + "!O"
-                        if now - omni_log_t > 3.0:
-                            omni_log_t = now
-                            lg.write(f"OMNI-GUARD {_hit[0]} d={_hit[1]:.2f}m fase={ph} pos=({x:+.2f},{y:+.2f})\n")
-                            rd.event("omni_guard", now - t0, x, y, {"que": _hit[0], "d": round(_hit[1], 2)})
             prev_fwd = (cmd[1] > 0.1)
             _t_send = time.time()
             cdp.eval(g.set_cmd_js(*cmd))

@@ -184,15 +184,6 @@ def run_det(rgb, fx, cx):
 
 
 # ----------------------------------------------------------------------------- depth -> virtual scan
-def _vmax(H):
-    """SELF-MASK ('he is scared of himself', Renxi 24-jul): el delantal/vaso del propio robot
-    asoma por la franja INFERIOR del frame y se detectaba como obstaculo (depth fantasma
-    delante + clamps + detector de puerta contaminado). --self-mask 0.25 ignora el 25%
-    inferior en TODOS los canales (depth/color/clamps/puerta). Calibrar mirando /view."""
-    m = float(getattr(ARGS, "self_mask", 0.0) or 0.0)
-    return H if m <= 0 else max(8, int(H * (1.0 - m)))
-
-
 def depth_to_scan(depth, floor_mask, hband, max_range):
     """Project depth to a forward ground 'virtual LiDAR': per azimuth column, the nearest
     NON-floor obstacle whose height falls inside hband. Returns list of [bearing_deg, range_m]."""
@@ -212,8 +203,7 @@ def depth_to_scan(depth, floor_mask, hband, max_range):
 
     vs = np.arange(H)
     step = max(1, H // 240)                                # subsample rows for speed
-    _vm = _vmax(H)                                         # self-mask: franja inferior fuera
-    for v in range(0, _vm, step):
+    for v in range(0, H, step):
         Z = depth[v, :]
         valid = np.isfinite(Z) & (Z > 0.2) & (Z < max_range)
         if not valid.any():
@@ -290,12 +280,11 @@ def color_to_scan(rgb, max_range, ncols=48):
                                                     # que el laser veia pasable -> el robot giraba y huia, runs
                                                     # 143511/143646). Van aparte: el cliente solo los usa para
                                                     # MODERAR la velocidad (aviso), nunca para vetar el paso.
-    _vmc = _vmax(H)                                 # self-mask tambien en el canal de color
     GAP_ROWS = max(4, int(H * 0.12))                # banda no-moqueta mas FINA que esto, con moqueta
     for c in range(ncols):                          # reanudandose encima = marca PLANA del suelo
         x0, x1 = int(c * W / ncols), int((c + 1) * W / ncols)   # (umbral de madera de la puerta,
         col = (mask[:, x0:x1] > 128).mean(axis=1) > 0.5          # cinta amarilla): NO es obstaculo.
-        v = _vmc - 1
+        v = H - 1
         skips = 0
         while True:
             while v >= 0 and col[v]:                # sube por la moqueta continua
@@ -314,7 +303,7 @@ def color_to_scan(rgb, max_range, ncols=48):
             continue
         u = 0.5 * (x0 + x1)
         bearing = -math.degrees(math.atan2(u - cx, fx))
-        if v >= _vmc - 3:                           # obstaculo tocando el borde util inferior: encima del robot
+        if v >= H - 3:                              # obstaculo tocando el borde inferior: encima del robot
             # JAULA (run 130524): en salas abarrotadas, clampear TODO el FOV a 0.7m mientras el robot
             # pivota pinta un anillo de celdas alrededor -> A* sellado -> SEEK. El clamp es para "me lo
             # voy a comer ANDANDO": solo columnas CENTRALES y con obstruccion ALTA (cara frontal, no
@@ -511,7 +500,6 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/health":
             self._send(200, {"ok": True, "mode": "stub" if ARGS.stub else "gpu",
                              "models": {"depth": ARGS.depth, "seg": ARGS.seg, "det": ARGS.det},
-                             "self_mask": float(getattr(ARGS, "self_mask", 0.0) or 0.0),
                              "floorcolor": bool(ARGS.floorcolor),
                              "floorcolor_loaded": _FLOORCOLOR["model"] is not None,
                              "gpus": _gpu_info()})
@@ -629,8 +617,6 @@ def main():
     ap.add_argument("--cy", type=float, default=240.0)
     ap.add_argument("--cam-h", type=float, default=1.10, help="camera height above ground (m)")
     ap.add_argument("--cam-pitch", type=float, default=-10.0, help="camera pitch deg (neg=down)")
-    ap.add_argument("--self-mask", type=float, default=0.0, dest="self_mask",
-                    help="fraccion INFERIOR del frame a ignorar (el propio cuerpo/delantal; ej 0.25)")
     ap.add_argument("--scan-bins", type=int, default=72)
     ap.add_argument("--max-range", type=float, default=3.0)
     ap.add_argument("--floorcolor", type=int, default=int(os.environ.get("G1_FLOORCOLOR", "0")),
