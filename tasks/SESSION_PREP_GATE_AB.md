@@ -1,4 +1,4 @@
-# Robot session: gate A/B + lit reference + freeze K_online
+# Robot session 2026-08-27: gate A/B + lit reference + freeze K_online
 
 **Prepared 25 Aug 2026.** Development tier only — no reserved configuration is touched, and
 K_online is frozen BEFORE any A/B outcome is inspected (freeze-before-inspect, §12 spirit).
@@ -188,6 +188,62 @@ contract. Route-level parameters that legitimately do NOT: office geometry, the 
 coverage reference, door-specific guards. A transfer failure in the first group is a
 finding; in the second it is expected and declared.
 
+## EXTRA — only if time and battery allow (priority order; each independently skippable)
+
+**Gate:** start extras only with battery ≥ 60% after Block C (or D). **Hard stop at
+45%.** Each extra is self-contained: abort it without touching the others.
+
+### E1 · First REAL staged transition — the T3/T4 illumination pair (~2 pts, ~10 min)
+
+The twin has staged transitions with certificates; the real robot has none yet. Two
+legs make the first real Z_t-scored transition:
+
+```
+G1_ARM=T3R_LUZ G1_METASM=1 G1_COVREF=<ref.json> python3 src/g1_goto.py goto B
+G1_ARM=T4R_LUZ G1_METASM=1 G1_COVREF=<ref.json> python3 src/g1_goto.py goto A
+```
+
+- Leg 1 (T3R): start lights LOW → at ~t=20 s the operator switches ALL lights ON.
+- Leg 2 (T4R): start lights ON → at ~t=20 s switch lights LOW.
+- **The instant is read from the DRIVING MACHINE's clock** (`date +%H:%M:%S` in a
+  second terminal at the flip; the ±2 s scorer grace absorbs reaction time). A
+  phone clock does NOT count — `started` in the run comes from the machine.
+- Back at the desk, write the certificate next to each run and score it:
+
+```
+python3 tools/certifica_real.py --run dataset/<run>.json --config T3R     --seg "inicio|motion|{\"luz\": 85}"     --seg "HH:MM:SS|illumination|{\"luz\": 116}"
+```
+
+Mind the D2 ledger note when reading the result: in THIS system full light is the
+degraded condition for the doorway representative; the certificate above declares
+the illumination ROLE change, which is direction-agnostic.
+
+### E2 · Real glass witness with the FIXED instrument (~2 pts, ~10 min)
+
+The paper cites our solid-wall control invalidating the first glass witness. The
+instrument was redesigned (accumulated base) and twin-validated on 25-Aug; this
+re-runs the diagnostic on the REAL glass with the session reference live:
+
+```
+# stance 1: ~1.5-2 m in front of the Z2 GLASS, facing it
+python3 src/g1_goto.py noisecheck 40
+# stance 2 (control): same distance facing a SOLID WALL
+python3 src/g1_goto.py noisecheck 40
+```
+
+Requires Block A's reference committed (the facing pass makes the glass cells
+exist) and `G1_COVREF` exported in the shell. Read afterwards: `cov2_*` fields in
+the two `dataset/*_noise.json` — glass stance should show sustained deficit, the
+wall stance none. **This is a development diagnostic** (Note 8 §8.4): it validates
+the instrument, it is NOT deployment-effect evidence — record it as such.
+
+### E3 · Per-label near-field stances (~1 pt, ~5 min)
+
+Ground truth for the couch/box detection curves (today they ride on a geometric
+denominator): with perception ON, stand facing the COUCH at ~1.5 m for 30 s, then
+~2.5 m; same for the BOX. `python3 src/g1_goto.py noisecheck 30` per stance, note
+which stance is which. Four clean denominators for `analysis/curvas_etiqueta.py`.
+
 ## On-site verification before packing up (~5 min)
 
 ```
@@ -201,8 +257,11 @@ python3 analysis/resumen_sesion.py
 
 ## Budget
 
-~13 legs walking ≈ 13 pts + margin → start ≥ 85%, expect ≥ 68% at the end. ~2 h.
-If battery forces a cut, drop Block C's second repetition first (see above).
+Core (A–C): ~11 legs ≈ 11 pts + margin → start ≥ 85%, expect ≥ 72% after C.
+Optional D: ~3 pts. Extras E1–E3: ~5 pts total, gated at ≥ 60% and hard-stopped
+at 45%. Full day incl. everything: ~2.5–3 h. If battery forces a cut: drop the
+extras first (E3 → E2 → E1), then Block D, then Block C's second repetition —
+never a cell of the 2×2.
 
 ## Explicitly out of scope
 
