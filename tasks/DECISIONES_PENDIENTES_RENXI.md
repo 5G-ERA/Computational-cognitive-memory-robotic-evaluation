@@ -220,3 +220,50 @@ that are yours: (a) whether NEAR_BLIND semantics change (safety pipeline, both t
 (c) whether the real robot should ever be tested against a physical thin blockage in
 door mode without a spotter -- the twin predicts it would strike it. Until one of these,
 T10 stays declared not-stageable in the kinematic twin and out of campaign tables.
+
+## D11 · Camera pitch is an undeclared parameter of the sensing interface
+
+Measured in session on 27-Aug, by accident. With the robot's head raised so that
+the view at ~1 m sits at torso height (instead of the usual downward pitch), an
+A->B run **aborted after 50 cm**:
+
+```
+t=2.98  meta2_cap_on   cap=0.28  Cautious_Nav
+t=4.87  color_creep    near=10   c0=2.5        <- colour brake to a crawl
+t=7.84  meta2_cap_on   cap=0.00
+t=16.0  meta2_experience_abort  "HELP continuo 8s"  prog=0.48
+```
+
+**The mechanism is the system working as designed, not a defect.** The colour
+brake fires exactly on "the laser says clear but the camera sees something"
+(`c0=2.5` clear, `color_near=10`) -- it is the anti-table guard, because the G1's
+LiDAR does not see surfaces at that height. Raising the pitch brings the room's
+torso-height furniture into frame (a drawer unit and a desk are visible in the
+run's own photos), the brake crawls, progress stalls, META2 escalates to HELP and
+aborts on sustained help.
+
+Two things falsified along the way, both worth keeping: the floor-band detector
+was NOT the cause (run over the same photos it returns 0.78-0.98 centre floor
+against a 0.10 minimum, `near_run=0` throughout), and the photos are not
+degraded -- they are markedly *better* than the usual ones, showing the whole
+room instead of carpet.
+
+**Why it is a declarable parameter.** Camera pitch changes which part of the
+world lands in the sensing interface, and therefore changes governed behaviour
+(speed caps, help escalation, abort) with everything else held constant. The
+protocol holds "robotic hardware, sensors, candidate capabilities, low-level
+control" constant across conditions; pitch is currently none of those and is
+recorded nowhere -- not in `env_g1`, not in the calibration files. Every real
+run to date shares the habitual pitch by luck, not by declaration.
+
+Decisions that are yours: (a) whether camera pitch joins the declared sensor
+configuration (Note 8 §8.2 "sensor models, firmware and calibration files"), and
+how it is measured and recorded per session; (b) whether the colour-brake
+thresholds (`CB_*`) are pitch-dependent and need re-derivation if the pitch is
+ever changed; (c) whether a raised-pitch condition is worth a family of its own
+-- it demonstrably alters governance, which makes it a candidate meta-parameter
+rather than a nuisance.
+
+Until decided: **all scored runs keep the habitual pitch** (comparability with
+21-Aug and with the calibrated twin), and raised-pitch passes are limited to
+handset-driven reconstruction capture, where the stack does not navigate.
