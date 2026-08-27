@@ -60,17 +60,43 @@ the run reaches. If the branch misbehaves on the real robot, STOP and fall back 
 ## Block A — lit calibration laps (~15 min, ~2 battery pts)
 
 ```
-G1_ARM=CAL_LIT_1 G1_METASM=1 python3 src/g1_goto.py goto B
-G1_ARM=CAL_LIT_2 G1_METASM=1 python3 src/g1_goto.py goto A
+G1_LASER_SNAP=0.5 G1_ARM=CAL_LIT_1 G1_METASM=1 python3 src/g1_goto.py goto B
+G1_LASER_SNAP=0.5 G1_ARM=CAL_LIT_2 G1_METASM=1 python3 src/g1_goto.py goto A
+G1_LASER_SNAP=0.5 G1_ARM=CAL_LIT_3 G1_METASM=1 python3 src/g1_goto.py goto B
 ```
+
+**`G1_LASER_SNAP=0.5` is not optional** (measured 27-Aug): the default keeps one
+laser sweep every 2 s, so a lap contributes ~25 opportunities per cell and the
+reference comes out thin. At 0.5 s it is four times denser, which is what the
+`--min-opp 5` guard needs. That is exactly what the variable exists for.
+
+**Then the glass stance — with the HANDSET, not with a goto.** A `goto`
+navigates on its own, so there is no way to plant the robot facing the glass
+inside one (an earlier version of this runbook asked for that; it cannot be
+done). Drive it there by hand and record the stance:
+
+```
+# handset: put the robot ~1.5-2 m in front of the Z2 glass, FACING it, and hold still
+python3 src/g1_goto.py noisecheck 40
+```
+
+`noisecheck` records pose + seen cells at ~1 Hz, and since 27-Aug
+`tools/mapa_visibilidad.py` folds those stops into the reference exactly like a
+lap's sweeps. **Write down the pose the app shows** — the rect check below needs
+it. Repeat the stance facing a SOLID WALL if you also want the E2 control.
 
 Then build and **declare** the reference (amendment §10: declared before any scored run):
 
 ```
-python3 tools/mapa_visibilidad.py --reales --min-opp 5 --min-runs 2
+python3 tools/mapa_visibilidad.py --reales --desde <YYYYMMDD de hoy> \
+    --min-opp 5 --min-runs 2 --salida dataset/visibilidad_ses_<YYYYMMDD>.json
 ```
 
 - `--reales` is MANDATORY (21-Aug lesson: twin and real runs share the dataset).
+- **`--desde <today>` is also mandatory**: without it the builder folds in every
+  historical real run and you get a historical map, not the SESSION reference the
+  freeze rule and the glass witness are defined against.
+- The laps AND the handset stops both feed it (`--sin-paradas` excludes the stops).
 - **Expectation corrected by the 25-Aug twin rehearsal** (an earlier version of this runbook
   promised 80–120 cells on no evidence): two lit twin laps give **27 cells at `--min-runs 2`
   and 35 at `--min-runs 1`** — same order as the dark real reference (30). Lit real laps may
@@ -104,6 +130,9 @@ python3 tools/mapa_visibilidad.py --reales --min-opp 5 --min-runs 2
   the glass witness for the whole session. Twin lesson (25-Aug, second pass): cell COUNT
   is not enough if the wall is only intermittently seen -- the reference's ratio guard
   (>= 0.65) already enforces reliability, so any cell that shows up here is usable.
+- **Export it before anything scored**: `export G1_COVREF=$PWD/dataset/visibilidad_ses_<YYYYMMDD>.json`.
+  Checked live 27-Aug: the shell already carried the 21-Aug reference, so without
+  this every later run is scored against another day's map and another lighting.
 - Commit the reference file + its hash before Block C. That commit is the declaration.
 
 **Standing luma capture (2 min, new 25-Aug):** robot STANDING at A facing the room, once

@@ -69,14 +69,26 @@ def acumula(fs):
             d = json.load(open(f))
         except Exception:
             continue
-        snaps = d.get("laser_snapshots") or []
-        if not snaps:
-            continue
-        for s in snaps:
+        # Dos fuentes con la misma forma (pose + lo que se vio desde ella):
+        #  - runs de goto: `laser_snapshots`, puntos en METROS;
+        #  - paradas de noisecheck: filas con `celdas`, YA en enteros de rejilla.
+        # La segunda es la unica manera de meter en la referencia una postura
+        # elegida a mano (p.ej. encarando el cristal), porque el goto navega solo.
+        vistas = []
+        for s in (d.get("laser_snapshots") or []):
             if s.get("x") is None or s.get("yaw") is None:
                 continue
-            sector = celdas_sector(s["x"], s["y"], s["yaw"])
-            vivos = {(round(p[0] / OC), round(p[1] / OC)) for p in (s.get("pts") or [])}
+            vistas.append((s["x"], s["y"], s["yaw"],
+                           {(round(p[0] / OC), round(p[1] / OC)) for p in (s.get("pts") or [])}))
+        for r in (d.get("rows") or []):
+            if r.get("celdas") is None or r.get("x") is None or r.get("yaw") is None:
+                continue
+            vistas.append((r["x"], r["y"], r["yaw"],
+                           {(int(c[0]), int(c[1])) for c in r["celdas"]}))
+        if not vistas:
+            continue
+        for x_, y_, yaw_, vivos in vistas:
+            sector = celdas_sector(x_, y_, yaw_)
             for c in sector:
                 opp[c] += 1
             for c in sector & vivos:
@@ -111,6 +123,10 @@ def main():
     barrido = "--barrido" in sys.argv
 
     fs = sorted(glob.glob(os.path.join(RAIZ, "dataset", "2026*_ours_[AB].json")))
+    # paradas de noisecheck: siempre reales (necesitan robot), nunca del gemelo
+    paradas = sorted(glob.glob(os.path.join(RAIZ, "dataset", "2026*_noise.json")))
+    if "--sin-paradas" not in sys.argv:
+        fs += paradas
     fs = [f for f in fs if desde <= os.path.basename(f)[:8] <= hasta]
     if excluye:
         fs = [f for f in fs if not any(e in os.path.basename(f) for e in excluye)]
@@ -121,6 +137,11 @@ def main():
         quiere_sim = "--sim" in sys.argv
         filtrados = []
         for f in fs:
+            if f.endswith("_noise.json"):     # parada del robot real
+                if quiere_sim:
+                    continue
+                filtrados.append(f)
+                continue
             try:
                 es_sim = bool(json.load(open(f)).get("sim_id"))
             except Exception:
@@ -128,7 +149,9 @@ def main():
             if es_sim == quiere_sim:
                 filtrados.append(f)
         fs = filtrados
-    print("runs de entrada: %d  (%s .. %s)" % (len(fs), desde, hasta))
+    n_par = sum(1 for x in fs if x.endswith("_noise.json"))
+    print("entradas: %d  (%d runs + %d paradas)  (%s .. %s)"
+          % (len(fs), len(fs) - n_par, n_par, desde, hasta))
     opp, hit, runs_hit, usados = acumula(fs)
     print("runs con snapshots utilizables: %d" % usados)
 
