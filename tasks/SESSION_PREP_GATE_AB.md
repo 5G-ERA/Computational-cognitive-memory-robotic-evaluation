@@ -18,12 +18,35 @@ session produces the first REAL samples of all of them.
 
 ---
 
+## Step 0 — the physical chain (do this FIRST, ~5 min)
+
+Everything runs **on GPUEDGE**, with the iPhone plugged into GPUEDGE by USB and
+perception local (`G1_PERC=127.0.0.1:8008` — the same montage as the 21-Aug
+session; verified in those run records). Bring up the chain link by link and
+**check each one before moving to the next** — this is where sessions lose their
+first twenty minutes.
+
+| # | Do | Check it worked |
+|---|---|---|
+| 1 | Robot ON, app open on the iPhone, robot **relocalized** on the map | The app shows the map and the laser dots |
+| 2 | iPhone by USB to GPUEDGE, unlocked, "Trust this computer" | `idevice_id -l` prints a UDID (if not: `idevicepair pair`) |
+| 3 | iPhone: Settings → Safari → Advanced → **Web Inspector = ON** | (one-off, but re-check after an iOS update) |
+| 4 | Start the proxy **in its own terminal, leave it running**:<br/>`ios_webkit_debug_proxy -c null:9221,:9222-9322 -d` | `curl -s http://localhost:9221/json \| python3 -m json.tool \| head` shows the device **and** the app's WebView page |
+| 5 | Perception server | `curl -s http://127.0.0.1:8008/health` → `{"ok": true, ...}`; if not: `bash tools/arranca_percepcion.sh` |
+
+> **The single most common failure** is step 4 showing the device but **no WebView
+> pages** (an outdated proxy after an iOS update). Fix in `docs/SETUP_UBUNTU.md`
+> §2 (build from source); fallback in §8. `g1_goto.py` reads exactly that page —
+> if it is not listed, nothing downstream will work.
+
+Only when all five checks pass, continue:
+
 ## Pre-flight (before any run)
 
 | check | how |
 |---|---|
 | Branch | `git fetch && git checkout ensayo/door-gate-isaac && git pull` — the gate, role fields, stabiliser and visual contract all live here. **Smoke first** (below): this branch has been exercised against the twin for days, against the robot not since the merge. |
-| Perception | `bash tools/arranca_percepcion.sh` → health on **:8008** |
+| Perception | done in Step 0 — re-check with `curl -s http://127.0.0.1:8008/health` |
 | App mode | verify relocalization topic (the `slam_relocation/odom` rename bit us live on 21-Aug) |
 | Battery | start **≥ 85%**; walking blocks stop at **60%** (strafe halves below it) |
 | Lights | ALL ON for the whole session; **operator writes wall-clock time of every switch change** — the unlabelled L1–L5 sweep cost us the primary evidence once already |
