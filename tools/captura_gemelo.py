@@ -253,8 +253,17 @@ def main():
         if f_nube is not None and ahora - t_nube >= a.nube_cada:
             t_nube = ahora
             try:
+                # Dos buffers segun el modo de la app (comprobado en vivo 27-ago):
+                # operando sobre un mapa cargado la nube va en `__relocbuf`;
+                # MAPEANDO (pantalla newSlam) ese es null y la nube va en `__buf`.
+                # Se prueban los dos y se anota cual dio los puntos.
                 cru = cdp.eval("JSON.stringify(window.__relocbuf||[])")
                 buf = json.loads(cru) if cru else []
+                origen = "relocbuf"
+                if not buf:
+                    cru = cdp.eval("JSON.stringify(window.__buf||[])")
+                    buf = json.loads(cru) if cru else []
+                    origen = "buf" if buf else origen
                 pts = []
                 for i in range(0, len(buf) - 2, 3):
                     pts.append([round(float(buf[i]), 3), round(float(buf[i + 1]), 3),
@@ -263,7 +272,7 @@ def main():
                     paso = max(1, len(pts) // 3000)      # tope por muestra
                     f_nube.write(json.dumps({
                         "t": round(ahora, 3), "x": ult_pose[0], "y": ult_pose[1],
-                        "n": len(pts), "paso": paso,
+                        "n": len(pts), "paso": paso, "origen": origen,
                         "pts": pts[::paso]}) + "\n")
                     n_nube += 1
                 else:
