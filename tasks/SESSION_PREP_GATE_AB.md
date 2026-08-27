@@ -211,6 +211,46 @@ contract. Route-level parameters that legitimately do NOT: office geometry, the 
 coverage reference, door-specific guards. A transfer failure in the first group is a
 finding; in the second it is expected and declared.
 
+## Block R — capture for twin reconstruction (student drives with the handset)
+
+**Runs on its own**: the student walks the robot around the whole place with the
+**robot's own handset**, and this program only WATCHES — it never sends a command,
+so it cannot fight the handset or change what is being recorded. It is not scored
+and it takes no decision; it is raw material to rebuild the twin's geometry and
+textures.
+
+```
+python3 tools/captura_gemelo.py --hz 1 --nota "vuelta completa al laboratorio"
+```
+
+Options that matter: `--hz 2` if the student walks fast (1 Hz leaves gaps at
+handset speed), `--minutos 40` for a hard stop, `--sin-nube` if only photos and
+odometry are wanted. **Ctrl+C closes it** and prints the summary.
+
+**When.** Recommended **at the END of the session**, after the scored blocks: the
+reconstruction tolerates a short or interrupted capture, the measurements do not
+(they need the battery band and the declared conditions). If the student's time
+forces it earlier, do it before Block A and note the battery spent.
+
+**What to watch while it runs** — the program prints it:
+
+| Message | What to do |
+|---|---|
+| `*** RELOCALIZACION PERDIDA ***` | **Stop the student.** The pose is no longer anchored to the map: that stretch is useless for reconstruction. Re-relocalize in the app and continue |
+| `AVISO: sin pose` | The app closed or lost the map — reopen it |
+| `AVISO: no puedo leer la nube` | Photos and odometry keep recording; the geometry does not. Check the app is publishing the `location` cloud |
+| Summary says more repeated than new frames | The video channel was stalling: real visual coverage is lower than the frame count suggests |
+
+**Ask the student for coverage, not speed**: slow passes, facing the walls, and
+going *around* furniture rather than past it. What reconstructs badly today is
+what nobody looked at from two different angles.
+
+**Output** (`dataset/reconstruccion/<session>/`): `frames/` at the video's native
+resolution, `frames.jsonl` (each photo with the pose at its instant),
+`poses.jsonl` (odometry at 5 Hz — the trajectory that aligns the photos),
+`nube.jsonl` (raw laser points **with z**, the geometry) and `meta.json`.
+Roughly 250 MB/hour at 1 Hz; the machine has over 1 TB free.
+
 ## EXTRA — only if time and battery allow (priority order; each independently skippable)
 
 **Gate:** start extras only with battery ≥ 60% after Block C (or D). **Hard stop at
