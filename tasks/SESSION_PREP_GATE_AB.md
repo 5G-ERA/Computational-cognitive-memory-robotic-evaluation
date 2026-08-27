@@ -18,12 +18,35 @@ session produces the first REAL samples of all of them.
 
 ---
 
+## Step 0 — the physical chain (do this FIRST, ~5 min)
+
+Everything runs **on GPUEDGE**, with the iPhone plugged into GPUEDGE by USB and
+perception local (`G1_PERC=127.0.0.1:8008` — the same montage as the 21-Aug
+session; verified in those run records). Bring up the chain link by link and
+**check each one before moving to the next** — this is where sessions lose their
+first twenty minutes.
+
+| # | Do | Check it worked |
+|---|---|---|
+| 1 | Robot ON, app open on the iPhone, robot **relocalized** on the map | The app shows the map and the laser dots |
+| 2 | iPhone by USB to GPUEDGE, unlocked, "Trust this computer" | `idevice_id -l` prints a UDID (if not: `idevicepair pair`) |
+| 3 | iPhone: Settings → Safari → Advanced → **Web Inspector = ON** | (one-off, but re-check after an iOS update) |
+| 4 | Start the proxy **in its own terminal, leave it running**:<br/>`ios_webkit_debug_proxy -c null:9221,:9222-9322 -d` | `curl -s http://localhost:9221/json \| python3 -m json.tool \| head` shows the device **and** the app's WebView page |
+| 5 | Perception server | `curl -s http://127.0.0.1:8008/health` → `{"ok": true, ...}`; if not: `bash tools/arranca_percepcion.sh` |
+
+> **The single most common failure** is step 4 showing the device but **no WebView
+> pages** (an outdated proxy after an iOS update). Fix in `docs/SETUP_UBUNTU.md`
+> §2 (build from source); fallback in §8. `g1_goto.py` reads exactly that page —
+> if it is not listed, nothing downstream will work.
+
+Only when all five checks pass, continue:
+
 ## Pre-flight (before any run)
 
 | check | how |
 |---|---|
 | Branch | `git fetch && git checkout ensayo/door-gate-isaac && git pull` — the gate, role fields, stabiliser and visual contract all live here. **Smoke first** (below): this branch has been exercised against the twin for days, against the robot not since the merge. |
-| Perception | `bash tools/arranca_percepcion.sh` → health on **:8008** |
+| Perception | done in Step 0 — re-check with `curl -s http://127.0.0.1:8008/health` |
 | App mode | verify relocalization topic (the `slam_relocation/odom` rename bit us live on 21-Aug) |
 | Battery | start **≥ 85%**; walking blocks stop at **60%** (strafe halves below it) |
 | Lights | ALL ON for the whole session; **operator writes wall-clock time of every switch change** — the unlabelled L1–L5 sweep cost us the primary evidence once already |
@@ -187,6 +210,46 @@ SHOULD transfer: VSCALE, TAU, interface latency, sensor noise, detection curves,
 contract. Route-level parameters that legitimately do NOT: office geometry, the session
 coverage reference, door-specific guards. A transfer failure in the first group is a
 finding; in the second it is expected and declared.
+
+## Block R — capture for twin reconstruction (student drives with the handset)
+
+**Runs on its own**: the student walks the robot around the whole place with the
+**robot's own handset**, and this program only WATCHES — it never sends a command,
+so it cannot fight the handset or change what is being recorded. It is not scored
+and it takes no decision; it is raw material to rebuild the twin's geometry and
+textures.
+
+```
+python3 tools/captura_gemelo.py --hz 1 --nota "vuelta completa al laboratorio"
+```
+
+Options that matter: `--hz 2` if the student walks fast (1 Hz leaves gaps at
+handset speed), `--minutos 40` for a hard stop, `--sin-nube` if only photos and
+odometry are wanted. **Ctrl+C closes it** and prints the summary.
+
+**When.** Recommended **at the END of the session**, after the scored blocks: the
+reconstruction tolerates a short or interrupted capture, the measurements do not
+(they need the battery band and the declared conditions). If the student's time
+forces it earlier, do it before Block A and note the battery spent.
+
+**What to watch while it runs** — the program prints it:
+
+| Message | What to do |
+|---|---|
+| `*** RELOCALIZACION PERDIDA ***` | **Stop the student.** The pose is no longer anchored to the map: that stretch is useless for reconstruction. Re-relocalize in the app and continue |
+| `AVISO: sin pose` | The app closed or lost the map — reopen it |
+| `AVISO: no puedo leer la nube` | Photos and odometry keep recording; the geometry does not. Check the app is publishing the `location` cloud |
+| Summary says more repeated than new frames | The video channel was stalling: real visual coverage is lower than the frame count suggests |
+
+**Ask the student for coverage, not speed**: slow passes, facing the walls, and
+going *around* furniture rather than past it. What reconstructs badly today is
+what nobody looked at from two different angles.
+
+**Output** (`dataset/reconstruccion/<session>/`): `frames/` at the video's native
+resolution, `frames.jsonl` (each photo with the pose at its instant),
+`poses.jsonl` (odometry at 5 Hz — the trajectory that aligns the photos),
+`nube.jsonl` (raw laser points **with z**, the geometry) and `meta.json`.
+Roughly 250 MB/hour at 1 Hz; the machine has over 1 TB free.
 
 ## EXTRA — only if time and battery allow (priority order; each independently skippable)
 
