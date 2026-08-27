@@ -249,7 +249,7 @@ what nobody looked at from two different angles.
 resolution, `frames.jsonl` (each photo with the pose at its instant),
 `poses.jsonl` (odometry at 5 Hz — the trajectory that aligns the photos),
 `nube.jsonl` (raw laser points **with z**, the geometry) and `meta.json`.
-Roughly 250 MB/hour at 1 Hz; the machine has over 1 TB free.
+Measured on the lab iPad (27-Aug): the video is **1280x720 native**, ~240 KB per photo, so about **850 MB/hour at 1 Hz** (the earlier 250 MB/h estimate assumed a smaller frame). GPUEDGE has over 1 TB free, so even a long session fits; use  if a very long pass is planned.
 
 ## EXTRA — only if time and battery allow (priority order; each independently skippable)
 
