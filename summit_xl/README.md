@@ -2,9 +2,10 @@
 
 > **Tier: development, pre-protocol.** Nothing in this directory is a result of the paper.
 > There is no frozen configuration, no pre-registration and no confirmatory run. What is here
-> is the instrumentation, the controllers, a 2D bench and the raw material of three pilot
-> sessions (17–19 Sep 2026), kept in the open so that the experiment is built where it will
-> be audited. Every claim below carries the tier of the evidence behind it.
+> is the instrumentation, the controllers, a 2D bench, and the raw material of the 18 Sep 2026
+> robot session and the 19 Sep bench validation — kept in the open so that the experiment is
+> built where it will be audited. (The pilot work spans 17–19 Sep 2026; the 17 Sep session is
+> not included here.) Every claim below carries the tier of the evidence behind it.
 
 The G1 evaluation in this repository asks *which role governs* when a humanoid's senses
 disagree. This directory prepares the same question on a second, very different body: a

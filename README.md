@@ -10,16 +10,16 @@ Birmingham · Telefónica S.A. (draft V5.8, 2026-08)
 
 A robotic development-to-deployment evaluation on a **stock Unitree G1 humanoid**
 and its calibrated **Isaac Sim digital twin**.<br/>
-<sub>(Experiment 1, the LLM evaluation, lives in
-[Computational-cognitive-memory-llm-evaluation](https://github.com/5G-ERA/Computational-cognitive-memory-llm-evaluation).
-A second platform — a wheeled **Robotnik Summit XL** — is
-[**in preparation**](summit_xl/): instrumentation and pilot sessions, no results yet.)</sub>
+<sub>Experiment 1, the LLM evaluation, lives in
+[Computational-cognitive-memory-llm-evaluation](https://github.com/5G-ERA/Computational-cognitive-memory-llm-evaluation).<br/>
+A second platform — a wheeled **Robotnik Summit XL** — is [in preparation](summit_xl/): no results yet.</sub>
 
 [![verify](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml/badge.svg)](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml)
 [![Paper](https://img.shields.io/badge/paper-V5.8_·_Supplementary_Note_8-2a5d8f?style=flat-square)](#citing)
 [![Reproducibility](https://img.shields.io/badge/reproducibility-213_checksums_·_frozen_env-0f6e77?style=flat-square)](REPRODUCIBILITY.md)
 [![Tier](https://img.shields.io/badge/tier-development-b58a00?style=flat-square)](#the-evaluation-lifecycle)
 [![Python](https://img.shields.io/badge/python-3.10-3776AB?style=flat-square&logo=python&logoColor=white)](requirements.txt)
+[![Licence](https://img.shields.io/badge/licence-Apache--2.0_·_CC_BY_4.0-750014?style=flat-square)](LICENSE)
 [![Isaac Sim](https://img.shields.io/badge/Isaac_Sim-5.1.0-76B900?style=flat-square&logo=nvidia&logoColor=white)](sim/)
 [![Robot](https://img.shields.io/badge/robot-Unitree_G1_"Air"-444?style=flat-square)](#the-platform)
 
@@ -75,7 +75,12 @@ Unit of analysis: the run; contrasts are paired within-run differences over the
 | C2 − C1 | resolution, under original interface | −58.9 pp [−86, −22] | 0 / 30 | ◼ NEGATIVE — one axis alone hurts |
 | C4 − C1 | full system vs plain baseline | +6.2 pp [−25, +39] | 15 / 30 | ⬜ FLAT on time average — decided at transitions |
 
-<img src="docs/img/contrasts_v2.png" alt="Paired per-run contrasts, one dot per run" width="820"/>
+<img src="docs/img/contrasts_v2.png" alt="Paired per-run contrasts against C4, one dot per run" width="820"/>
+
+<sub>One dot per run, n=30, paired within-run. **This plots the three contrasts against C4**,
+not all five in the table: C3−C1 and C2−C1 are the single-axis contrasts, and both are
+**negative** — their numbers are in the table above and their full distributions in
+[`tasks/RESULTADOS_ISAAC_V2.md`](tasks/RESULTADOS_ISAAC_V2.md).</sub>
 
 </div>
 
@@ -206,7 +211,9 @@ crosses it. Exclusions are logged, never silent:
 ## Reproduce the numbers
 
 Scoring is **offline and deterministic** — recorded runs plus their certificates,
-no robot needed:
+no robot needed. <sub>(The tooling speaks Spanish: scripts, directory names and console
+output — `PAQUETE INTEGRO` is "package intact", `TODOS LOS CONTROLES PASAN` is "all controls
+pass". The prose and the data schema are English.)</sub>
 
 ```bash
 git clone https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation.git
@@ -283,6 +290,17 @@ sessions run from
 kept in sync with the evaluation branch.
 
 </details>
+
+## Licence
+
+**Code — Apache-2.0** ([`LICENSE`](LICENSE)): everything under `src/`, `analysis/`,
+`sim/`, `tools/`, `reproducibility/` and `summit_xl/`, including the evaluation
+runtime, the scorers and the instruments.<br/>
+**Data, figures and prose — CC BY 4.0** ([`LICENSE-DATA`](LICENSE-DATA)): the
+recorded runs and their certificates, the laser snapshots and camera frames, the
+figures and the documentation.
+
+Reuse either with attribution — cite the paper as below.
 
 ## Citing
 
