@@ -1,0 +1,19 @@
+=== prechequeo A→B · 2026-09-18 16:04:52 ===
+reloj:       OK (2026-09-18 16:04)
+maestro:     PID 5685 · hilos FIFO: 1 OK
+SYNC 5 s:    250 tramas (250 = 50 Hz) · dobles 0 OK
+drive n1 front_left   statusword 0x0637 Operation Enabled
+drive n2 back_left    statusword 0x0637 Operation Enabled
+drive n3 front_right  statusword 0x0637 Operation Enabled
+drive n4 back_right   statusword 0x0637 Operation Enabled
+batería:     voltage:0.0 current:0.0 is_charging:false 
+vigilante:   active
+activo (proceso) · prioridad: active
+contenedores: 14 arriba · todos healthy (unhealthy intermitente = healthcheck de 3 s, no es fallo)
+láser:       6.6 Hz
+odom:        49.7 Hz
+TF en vivo:  robot_back_left_wheel robot_back_right_wheel robot_base_footprint robot_front_left_wheel robot_front_right_wheel robot_odom 
+             map→odom SÍ: AMCL está localizando
+amcl_pose:   (0.02, 0.03) yaw -1°  σ x nan m  y nan m  yaw nan°
+nav2 vivos:  12 de 6 (amcl bt controller planner behavior map_server)
+mando:       joy average rate: 250.973

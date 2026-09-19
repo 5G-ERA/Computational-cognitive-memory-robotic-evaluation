@@ -1,0 +1,30 @@
+16:17:36 === CRUCE COMPLETO → B (0.362, -6.076, 148.5°) · eje -89.0° · desde 0.03 -0.04 yaw -0.4° ===
+16:17:40 salvaguardas: huella ±0.3610 m · padding local 0.02 · simulate_ahead 2.0 s
+16:17:40 latido: scan 0.6 · map_odom 0.6 · odom 0.2 · latido 0.2
+16:17:41 --- 1) Nav2 hasta vano_antes (vigilado)
+16:18:22     +44s status: SUCCEEDED · en 1.81 -3.24 yaw -87.6° · -4.0 cm lateral · -0.17 m a lo largo del eje · recuperaciones 0
+16:18:22 --- 2) alinear al eje por cmd_vel (tolerancia 1,0°)
+16:19:06     rumbo -87.6° · error -1.4° (se agotó el tiempo)
+16:19:06     AVISO: no alineado del todo; sigo
+16:19:09     +92s alineado a -87.6° · -4.0 cm lateral · -0.17 m a lo largo del eje
+16:19:09 --- 3) cruce recto 1.35 m a 5 cm/s, vigilado (relanza desde dentro si se para)
+16:19:28     +111s intento 1: 0.68 m · ABORTED · acumulado 0.68 m · +0.0 cm lateral · 0.43 m a lo largo del eje · rumbo -95.6°
+16:19:28     corrijo el rumbo dentro del marco antes de relanzar
+16:19:56     rumbo -90.0° · error 1.0° · alineado
+16:20:07     +151s intento 2: 0.28 m · ABORTED · acumulado 0.96 m · +4.8 cm lateral · 0.67 m a lo largo del eje · rumbo -87.6°
+16:20:07     corrijo el rumbo dentro del marco antes de relanzar
+16:20:51     rumbo -87.6° · error -1.4° (se agotó el tiempo)
+16:21:01     +203s intento 3: 0.17 m · ABORTED · acumulado 1.13 m · +4.1 cm lateral · 0.79 m a lo largo del eje · rumbo -93.3°
+16:21:01     ya pasó vano_despues (1.00 m): cruce hecho aunque el recto abortara
+16:21:02     cruce: SUCCEEDED · relances 2 · en 1.78 -4.21 
+16:21:06 --- 4) Nav2 hasta B (2.34 m), vigilado
+    16:21:16 +5s  estado=?  quedan=2.57 m  recuperaciones=6  pose=(1.79, -4.34)  quickstop=0
+    16:21:21 +10s  estado=?  quedan=2.72 m  recuperaciones=6  pose=(1.79, -4.34)  quickstop=0
+    16:21:26 +15s  estado=?  quedan=1.82 m  recuperaciones=6  pose=(1.58, -5.02)  quickstop=0
+    16:21:31 +20s  estado=?  quedan=0.94 m  recuperaciones=6  pose=(1.15, -5.74)  quickstop=0
+    16:21:36 +25s  estado=?  quedan=0.33 m  recuperaciones=6  pose=(0.76, -6.10)  quickstop=0
+    16:21:41 +30s  estado=?  quedan=0.09 m  recuperaciones=6  pose=(0.48, -6.12)  quickstop=0
+    16:21:46 +35s  estado=?  quedan=0.00 m  recuperaciones=6  pose=(0.37, -6.07)  quickstop=0
+    --- resultado: Goal accepted with ID: 4f4a1f9055b64579bcb03cd76f55e899 Goal finished with status: SUCCEEDED 
+16:21:55 === RESULTADO: status: SUCCEEDED · +258s total · llegada 0.37 -6.07 yaw 157.2° · a 0.01 m de B · relances del cruce 2 · SYNC dobles 0 · quickstop=0 ===
+16:21:55     ¿está físicamente sobre la marca B? (AMCL puede ir retrasado tras la puerta) · log /home/robot/ab/cruce_20260918_161734.txt

@@ -1,0 +1,20 @@
+16:31:11 === CRUCE COMPLETO → B (0.362, -6.076, 148.5°) · eje -89.0° · desde 0.01 0.06 yaw 0.1° ===
+16:31:15 salvaguardas: huella ±0.3610 m · padding local 0.02 · simulate_ahead 2.0 s
+16:31:15 latido: scan 0.2 · map_odom 0.2 · odom 0.1 · latido 0.1
+16:31:16 --- 1) Nav2 hasta vano_antes (vigilado)
+16:32:03     +51s status: SUCCEEDED · en 1.83 -3.23 yaw -85.6° · -2.2 cm lateral · -0.19 m a lo largo del eje · recuperaciones 0
+16:32:03 --- 2) alinear al eje por cmd_vel (tolerancia 1,0°)
+16:32:29     rumbo -88.30° · error -0.70° · alineado en 5 pasos, 26s
+16:32:32     +81s alineado a -85.6° · -2.2 cm lateral · -0.19 m a lo largo del eje
+16:32:32 --- 3) cruce recto 1.35 m a 5 cm/s, vigilado (relanza desde dentro si se para)
+16:32:49     +98s intento 1: 0.60 m · ABORTED · acumulado 0.60 m · +3.5 cm lateral · 0.39 m a lo largo del eje · rumbo -91.1°
+16:32:49     corrijo el rumbo dentro del marco antes de relanzar
+16:33:09     rumbo -89.97° · error 0.97° · alineado en 4 pasos, 20s
+16:33:14     +123s intento 2: 0.00 m · ABORTED · acumulado 0.60 m · +3.5 cm lateral · 0.39 m a lo largo del eje · rumbo -91.1°
+16:33:15     corrijo el rumbo dentro del marco antes de relanzar
+16:33:30     rumbo -89.68° · error 0.68° · alineado en 3 pasos, 15s
+16:33:35     +145s intento 3: 0.01 m · ABORTED · acumulado 0.61 m · +3.5 cm lateral · 0.39 m a lo largo del eje · rumbo -91.1°
+16:33:36     corrijo el rumbo dentro del marco antes de relanzar
+16:34:00     rumbo -89.90° · error 0.90° · alineado en 5 pasos, 24s
+16:34:02     cruce: ABORTED · relances 3 · en 1.83 -3.84 
+16:34:02 no cruzó del todo: Natan lo saca con el mando y se relanza el paso 4 a mano (bash ~/summit_ab.sh ir B)

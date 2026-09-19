@@ -1,0 +1,27 @@
+=== NAVEGAR a B (0.362, -6.076, 148.5°) · máx 120 s · 16:44:44 · /home/robot/ab/ir_B_20260918_164444 ===
+desde:       (1.76, -4.55) yaw -92°  σ x nan m  y nan m  yaw nan°
+batería:     voltage:0.0 is_charging:false 
+16:44:54 +5s  estado=?  quedan=2.05 m  recuperaciones=5  pose=(1.74, -4.79)  quickstop=0
+16:44:59 +10s  estado=?  quedan=1.97 m  recuperaciones=6  pose=(1.72, -4.87)  quickstop=0
+16:45:04 +15s  estado=?  quedan=1.97 m  recuperaciones=7  pose=(1.72, -4.86)  quickstop=0
+16:45:09 +20s  estado=?  quedan=2.17 m  recuperaciones=8  pose=(1.71, -4.82)  quickstop=0
+16:45:14 +25s  estado=?  quedan=1.79 m  recuperaciones=8  pose=(1.60, -5.11)  quickstop=0
+16:45:19 +30s  estado=?  quedan=1.49 m  recuperaciones=12  pose=(1.41, -5.39)  quickstop=0
+16:45:24 +35s  estado=?  quedan=0.81 m  recuperaciones=12  pose=(1.11, -5.94)  quickstop=0
+16:45:29 +40s  estado=?  quedan=0.65 m  recuperaciones=12  pose=(0.95, -6.15)  quickstop=0
+16:45:34 +45s  estado=?  quedan=0.35 m  recuperaciones=13  pose=(0.62, -6.26)  quickstop=0
+16:45:39 +50s  estado=?  quedan=0.32 m  recuperaciones=13  pose=(0.18, -6.45)  quickstop=0
+16:45:44 +55s  estado=?  quedan=0.00 m  recuperaciones=16  pose=(-0.12, -6.62)  quickstop=0
+16:45:49 +60s  estado=?  quedan=0.03 m  recuperaciones=16  pose=(-0.12, -6.62)  quickstop=0
+16:45:54 +65s  estado=?  quedan=0.00 m  recuperaciones=21  pose=(-0.09, -6.56)  quickstop=0
+16:45:59 +70s  estado=?  quedan=0.54 m  recuperaciones=23  pose=(-0.03, -6.44)  quickstop=0
+16:46:04 +75s  estado=?  quedan=0.54 m  recuperaciones=24  pose=(-0.03, -6.42)  quickstop=0
+16:46:09 +80s  estado=?  quedan=0.45 m  recuperaciones=25  pose=(0.03, -6.38)  quickstop=0
+16:46:14 +85s  estado=?  quedan=0.45 m  recuperaciones=25  pose=(0.03, -6.38)  quickstop=0
+--- resultado: Goal accepted with ID: 221dc097619b4ffd973cca1c031817ae Goal finished with status: ABORTED 
+--- transiciones: 
+--- llegada:     (0.03, -6.38) yaw -142°  σ x nan m  y nan m  yaw nan°   (goal: 0.362, -6.076, 148.5°)
+--- SYNC: 4478 tramas · dobles 0
+--- Quick Stop (0x0617) por nodo: 
+--- recuperaciones (log de navigation): 0
+--- esfuerzo por rueda (mediana |e| / máx): FL 56.9/136.0  BL 37.9/137.8  FR 63.1/135.5  BR 8.7/136.3

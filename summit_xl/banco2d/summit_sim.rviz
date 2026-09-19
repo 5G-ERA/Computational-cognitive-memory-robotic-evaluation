@@ -1,0 +1,105 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Cell Size: 1
+      Reference Frame: robot_map
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Mapa
+      Topic:
+        Value: /robot/map
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Alpha: 0.7
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Costmap global
+      Topic:
+        Value: /robot/global_costmap/costmap
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color Scheme: costmap
+      Alpha: 0.4
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Costmap local
+      Topic:
+        Value: /robot/local_costmap/costmap
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color Scheme: costmap
+      Alpha: 0.6
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: Scan
+      Topic:
+        Value: /robot/top_laser/scan
+        Reliability Policy: Best Effort
+      Size (m): 0.04
+      Style: Points
+      Color: 255; 0; 0
+      Color Transformer: FlatColor
+    - Class: rviz_default_plugins/Polygon
+      Enabled: true
+      Name: Huella
+      Topic:
+        Value: /robot/local_costmap/published_footprint
+      Color: 25; 255; 0
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: Plan
+      Topic:
+        Value: /robot/plan
+      Color: 0; 120; 255
+      Line Width: 0.03
+    - Class: rviz_default_plugins/PoseWithCovariance
+      Enabled: true
+      Name: AMCL
+      Topic:
+        Value: /robot/amcl_pose
+      Color: 255; 140; 0
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: Verdad
+      Topic:
+        Value: /sim/pose_verdad
+      Color: 0; 200; 0
+      Shape: Arrow
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+      Show Names: true
+      Marker Scale: 0.5
+  Global Options:
+    Fixed Frame: robot_map
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/SetInitialPose
+      Topic:
+        Value: /robot/initialpose
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /robot/goal_pose
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Scale: 80
+      X: 0.5
+      Y: -3
+    Saved: ~
+Window Geometry:
+  Height: 1000
+  Width: 1400
+  X: 60
+  Y: 40

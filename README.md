@@ -11,7 +11,9 @@ Birmingham · Telefónica S.A. (draft V5.8, 2026-08)
 A robotic development-to-deployment evaluation on a **stock Unitree G1 humanoid**
 and its calibrated **Isaac Sim digital twin**.<br/>
 <sub>(Experiment 1, the LLM evaluation, lives in
-[Computational-cognitive-memory-llm-evaluation](https://github.com/5G-ERA/Computational-cognitive-memory-llm-evaluation).)</sub>
+[Computational-cognitive-memory-llm-evaluation](https://github.com/5G-ERA/Computational-cognitive-memory-llm-evaluation).
+A second platform — a wheeled **Robotnik Summit XL** — is
+[**in preparation**](summit_xl/): instrumentation and pilot sessions, no results yet.)</sub>
 
 [![verify](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml/badge.svg)](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml)
 [![Paper](https://img.shields.io/badge/paper-V5.8_·_Supplementary_Note_8-2a5d8f?style=flat-square)](#citing)
@@ -147,6 +149,30 @@ the robot's own laser and photographs — 6/6 waypoints, 26.8 s, zero falls.</su
 
 </div>
 
+### A second platform, in preparation
+
+Everything above is the G1. A second body is being instrumented in
+[`summit_xl/`](summit_xl/): a wheeled, skid-steer **Robotnik Summit XL** running
+ROS 2 Humble and Nav2 in the vendor's containers, driving A → door → B through a
+742 mm doorway with a 613 mm-wide footprint. Its shared-experience interface is
+**clearance**, and the question is the same one this repository asks of the G1 —
+which sense governs, and what explains a traversal succeeding or failing.
+
+It is **pre-protocol, development tier**: no frozen configuration, no
+pre-registration, no confirmatory run, and **nothing in it is a result of the
+paper**. What is there is the instrumentation, the controllers, a 2D bench on the
+real map driving the robot's own Nav2 parameters, and three pilot sessions kept
+in the open — including [the diagnoses that were withdrawn](summit_xl/#withdrawn).
+
+It shares this repository because it shares the data schema, not merely the
+subject: the Summit's run logger imports [`src/g1_metrics.py`](src/g1_metrics.py)
+rather than reimplementing it, emits the same `g1_goto_run/v1` JSON and the same
+71 `runs_stats.csv` columns, and is tested against the source of
+[`src/g1_goto.py`](src/g1_goto.py) so the two robots cannot silently drift apart.
+Where a column *cannot* mean the same thing on both bodies — `collisions` is the
+case, because the Summit's odometry is open-loop — the difference is measured
+differently and declared in every run it writes.
+
 ## The evaluation lifecycle
 
 ```mermaid
@@ -237,6 +263,7 @@ sessions run from
 | [`tasks/`](tasks/) | Results, decision ledger, session runbooks, campaign manifests |
 | [`sim/`](sim/) | Isaac bridge, scene generator, calibrated vision emulator |
 | [`docs/`](docs/) | Protocols, figures, platform notes |
+| [`summit_xl/`](summit_xl/) | **Second platform, in preparation** — Summit XL instrumentation, controllers, 2D bench and pilot data. Development tier, no results |
 
 <details>
 <summary>All directories</summary>
@@ -246,7 +273,7 @@ sessions run from
 | Path | Contents |
 |:---|:---|
 | `meta-reasoner-2.0/` | The configuration-first DCE runtime (governance layer) |
-| `summit/` · `calib/` · `calib_luz/` · `weights/` | Reference map, camera calibration, staged light tandas, model weights |
+| `summit/` · `calib/` · `calib_luz/` · `weights/` | Reference map (the Summit's maps used as ground truth **for the G1** — not the Summit experiment, which is `summit_xl/`), camera calibration, staged light tandas, model weights |
 | `config/` · `state/` · `data/` | Runtime configuration and state |
 | `crashes/` · `logs/` | Collision evidence with pre-impact frames; session logs |
 | `archive/` · `attic/` | Historical material — kept for the audit trail, out of the way |

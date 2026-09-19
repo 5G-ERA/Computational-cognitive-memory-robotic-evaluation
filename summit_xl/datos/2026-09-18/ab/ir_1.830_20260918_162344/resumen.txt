@@ -1,0 +1,15 @@
+=== NAVEGAR a 1.830 (1.830, -3.418, -89.0°) · máx 120 s · 16:23:44 · /home/robot/ab/ir_1.830_20260918_162344 ===
+desde:       (0.05, 0.10) yaw -3°  σ x nan m  y nan m  yaw nan°
+batería:     voltage:0.0 is_charging:false 
+16:23:56 +5s  estado=?  quedan=4.10 m  recuperaciones=0  pose=(0.48, -0.03)  quickstop=0
+16:24:01 +10s  estado=?  quedan=3.02 m  recuperaciones=0  pose=(1.17, -0.68)  quickstop=0
+16:24:06 +15s  estado=?  quedan=1.87 m  recuperaciones=0  pose=(1.65, -1.64)  quickstop=0
+16:24:11 +20s  estado=?  quedan=0.77 m  recuperaciones=0  pose=(1.78, -2.63)  quickstop=0
+16:24:16 +25s  estado=?  quedan=0.25 m  recuperaciones=0  pose=(1.81, -3.24)  quickstop=0
+--- resultado: Goal accepted with ID: 22eb24bc1ce848beb5cf5fa94fdbb9d5 Goal finished with status: SUCCEEDED 
+--- transiciones: 
+--- llegada:     (1.81, -3.24) yaw -89°  σ x nan m  y nan m  yaw nan°   (goal: 1.830, -3.418, -89.0°)
+--- SYNC: 1442 tramas · dobles 0
+--- Quick Stop (0x0617) por nodo: 
+--- recuperaciones (log de navigation): 0
+--- esfuerzo por rueda (mediana |e| / máx): FL 21.9/59.1  BL 58.1/138.3  FR 33.3/121.3  BR 14.2/61.5

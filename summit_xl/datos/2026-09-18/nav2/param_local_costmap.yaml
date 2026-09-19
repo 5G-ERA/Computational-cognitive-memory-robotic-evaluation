@@ -1,0 +1,53 @@
+/robot/local_costmap/local_costmap:
+  ros__parameters:
+    /bond_disable_heartbeat_timeout: true
+    always_send_full_costmap: true
+    filters: []
+    footprint: '[[0.361,-0.3065],[0.361,0.3065],[-0.361,0.3065],[-0.361,-0.3065]]'
+    footprint_padding: 0.02
+    global_frame: robot_map
+    height: 8
+    lethal_cost_threshold: 100
+    map_topic: /robot/map
+    observation_sources: ''
+    origin_x: 0.0
+    origin_y: 0.0
+    plugins:
+    - top_laser_obstacle_layer
+    publish_frequency: 5.0
+    resolution: 0.02
+    robot_base_frame: robot_base_footprint
+    robot_radius: 0.1
+    rolling_window: true
+    top_laser_obstacle_layer:
+      combination_method: 1
+      enabled: true
+      footprint_clearing_enabled: true
+      front_right_scan:
+        clearing: true
+        data_type: LaserScan
+        expected_update_rate: 10.0
+        inf_is_valid: true
+        marking: true
+        max_obstacle_height: 1.0
+        min_obstacle_height: 0.0
+        observation_persistence: 1.0
+        obstacle_max_range: 10.5
+        obstacle_min_range: 0.0
+        raytrace_max_range: 11.0
+        raytrace_min_range: 0.0
+        sensor_frame: ''
+        topic: /robot/top_laser/scan
+      max_obstacle_height: 2.0
+      min_obstacle_height: 0.0
+      observation_sources: front_right_scan
+      plugin: nav2_costmap_2d::ObstacleLayer
+    track_unknown_space: false
+    transform_tolerance: 0.5
+    trinary_costmap: true
+    unknown_cost_value: 255
+    update_frequency: 10.0
+    use_maximum: false
+    use_sim_time: false
+    width: 8
+

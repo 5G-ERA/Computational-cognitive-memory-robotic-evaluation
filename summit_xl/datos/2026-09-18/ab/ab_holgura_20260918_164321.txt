@@ -1,0 +1,28 @@
+16:43:24 === A → PUERTA → B · cruce por holgura · desde -0.01 0.03 yaw -0.5° ===
+16:43:26 salvaguardas: padding 0.02 · simulate_ahead 2.0 s
+16:43:26 --- 1) Nav2 hasta vano_antes
+16:44:04     +40s status: SUCCEEDED · en 1.85 -3.38 yaw -84.4°
+16:44:04 --- 2) cruce por holgura (láser, sin AMCL ni costmap) · CSV /home/robot/ab/holgura_20260918_164321.csv
+cruce: LLEGÓ · 1.35 m de 1.35 · holgura MEDIDA mín izq 39 mm / der 49 mm · ciclos 242 (viendo el vano 113, de memoria 129)
+16:44:43     +80s en 1.76 -4.55 yaw -92.4°
+16:44:43 --- 3) Nav2 hasta B
+    16:44:54 +5s  estado=?  quedan=2.05 m  recuperaciones=5  pose=(1.74, -4.79)  quickstop=0
+    16:44:59 +10s  estado=?  quedan=1.97 m  recuperaciones=6  pose=(1.72, -4.87)  quickstop=0
+    16:45:04 +15s  estado=?  quedan=1.97 m  recuperaciones=7  pose=(1.72, -4.86)  quickstop=0
+    16:45:09 +20s  estado=?  quedan=2.17 m  recuperaciones=8  pose=(1.71, -4.82)  quickstop=0
+    16:45:14 +25s  estado=?  quedan=1.79 m  recuperaciones=8  pose=(1.60, -5.11)  quickstop=0
+    16:45:19 +30s  estado=?  quedan=1.49 m  recuperaciones=12  pose=(1.41, -5.39)  quickstop=0
+    16:45:24 +35s  estado=?  quedan=0.81 m  recuperaciones=12  pose=(1.11, -5.94)  quickstop=0
+    16:45:29 +40s  estado=?  quedan=0.65 m  recuperaciones=12  pose=(0.95, -6.15)  quickstop=0
+    16:45:34 +45s  estado=?  quedan=0.35 m  recuperaciones=13  pose=(0.62, -6.26)  quickstop=0
+    16:45:39 +50s  estado=?  quedan=0.32 m  recuperaciones=13  pose=(0.18, -6.45)  quickstop=0
+    16:45:44 +55s  estado=?  quedan=0.00 m  recuperaciones=16  pose=(-0.12, -6.62)  quickstop=0
+    16:45:49 +60s  estado=?  quedan=0.03 m  recuperaciones=16  pose=(-0.12, -6.62)  quickstop=0
+    16:45:54 +65s  estado=?  quedan=0.00 m  recuperaciones=21  pose=(-0.09, -6.56)  quickstop=0
+    16:45:59 +70s  estado=?  quedan=0.54 m  recuperaciones=23  pose=(-0.03, -6.44)  quickstop=0
+    16:46:04 +75s  estado=?  quedan=0.54 m  recuperaciones=24  pose=(-0.03, -6.42)  quickstop=0
+    16:46:09 +80s  estado=?  quedan=0.45 m  recuperaciones=25  pose=(0.03, -6.38)  quickstop=0
+    16:46:14 +85s  estado=?  quedan=0.45 m  recuperaciones=25  pose=(0.03, -6.38)  quickstop=0
+    --- resultado: Goal accepted with ID: 221dc097619b4ffd973cca1c031817ae Goal finished with status: ABORTED 
+16:46:58 === RESULTADO: status: ABORTED · +215s total · llegada (0.03, -6.38) yaw -141.5° · a 0.45 m de B ===
+16:46:58     holgura mínima del cruce: izq 39 mm · der 49 mm · 242 ciclos

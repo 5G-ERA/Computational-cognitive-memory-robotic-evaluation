@@ -1,0 +1,15 @@
+=== NAVEGAR a vano_antes (1.830, -3.418, -88.9°) · máx 120 s · 16:36:31 · /home/robot/ab/ir_vano_antes_20260918_163631 ===
+desde:       (-0.01, 0.01) yaw 0°  σ x nan m  y nan m  yaw nan°
+batería:     voltage:0.0 is_charging:false 
+16:36:41 +5s  estado=?  quedan=4.00 m  recuperaciones=0  pose=(0.50, -0.09)  quickstop=0
+16:36:46 +10s  estado=?  quedan=2.95 m  recuperaciones=0  pose=(1.24, -0.80)  quickstop=0
+16:36:51 +15s  estado=?  quedan=1.80 m  recuperaciones=0  pose=(1.69, -1.70)  quickstop=0
+16:36:56 +20s  estado=?  quedan=0.70 m  recuperaciones=0  pose=(1.78, -2.71)  quickstop=0
+16:37:01 +25s  estado=?  quedan=0.27 m  recuperaciones=0  pose=(1.81, -3.19)  quickstop=0
+--- resultado: Goal accepted with ID: 88fcdbc7f3f942d9a5668d90dde55add Goal finished with status: SUCCEEDED 
+--- transiciones: 
+--- llegada:     (1.81, -3.19) yaw -85°  σ x nan m  y nan m  yaw nan°   (goal: 1.830, -3.418, -88.9°)
+--- SYNC: 1431 tramas · dobles 0
+--- Quick Stop (0x0617) por nodo: 
+--- recuperaciones (log de navigation): 0
+--- esfuerzo por rueda (mediana |e| / máx): FL 27.4/56.9  BL 71.3/136.7  FR 43.3/125.7  BR 15.1/62.2
