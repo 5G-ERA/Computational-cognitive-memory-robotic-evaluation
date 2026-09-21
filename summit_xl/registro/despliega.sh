@@ -5,7 +5,8 @@
 set -e
 H=${1:-summit-wifi}; AQUI=$(cd "$(dirname "$0")" && pwd); REPO=$(cd "$AQUI/../.." && pwd)
 python3 "$AQUI/prueba_core.py" | tail -1 | grep -q "TODO OK" || { echo "la prueba en frío NO pasa: no despliego"; exit 1; }
-ssh "$H" 'mkdir -p ~/registro ~/dataset'
-scp -q "$AQUI"/summit_run_logger.py "$AQUI"/summit_run_core.py "$AQUI"/summit_con_registro.sh "$REPO"/src/g1_metrics.py "$H":~/registro/
-ssh "$H" 'cd ~/registro && sha256sum g1_metrics.py summit_run_*.py | cut -c1-16,65-'
-echo "desplegado en $H:~/registro · las runs irán a ~/dataset"
+ssh "$H" 'mkdir -p ~/registro ~/dataset ~/bolsas'
+scp -q "$AQUI"/summit_run_logger.py "$AQUI"/summit_run_core.py "$AQUI"/summit_con_registro.sh \
+       "$AQUI"/graba_bolsa.sh "$REPO"/src/g1_metrics.py "$H":~/registro/
+ssh "$H" 'cd ~/registro && sha256sum g1_metrics.py summit_run_*.py graba_bolsa.sh | cut -c1-16,65-'
+echo "desplegado en $H:~/registro · las runs irán a ~/dataset y las bolsas a ~/bolsas"

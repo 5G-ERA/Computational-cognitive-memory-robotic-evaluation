@@ -26,7 +26,7 @@ the G1*. This directory is the Summit as a subject.
 
 | Path | Contents |
 |:---|:---|
-| [`registro/`](registro/) | **Run logger with the G1's schema.** Passive ROS 2 node → one `g1_goto_run/v1` JSON per run and one row in `runs_stats.csv` with the G1's 71 columns, in order. Offline test suite, traversal wrapper, G1-vs-Summit table merger |
+| [`registro/`](registro/) | **Run logger with the G1's schema.** Passive ROS 2 node → one `g1_goto_run/v1` JSON per run and one row in `runs_stats.csv` with the G1's 71 columns, in order. Offline test suite, traversal wrapper, G1-vs-Summit table merger, and the bag capture for the offline reconstruction of a collision-checker rejection |
 | [`controlador/`](controlador/) | What ran on the robot on 18 Sep: the clearance-guided doorway controller (`cruza_vano.py`), the Nav2 crossing manoeuvre, the A→B orchestration, the laser heartbeat, the one-command session start |
 | [`banco2d/`](banco2d/) | A kinematic 2D simulator on the real map, driving the **real robot's Nav2 parameters**, with ground-truth pose, clearance and collision. Reproduces the doorway problem without the robot |
 | [`analisis/`](analisis/) | Offline analyses: the footprint-vs-doorway sweep (`ensayo_vano.py`), AMCL error against ground truth |
