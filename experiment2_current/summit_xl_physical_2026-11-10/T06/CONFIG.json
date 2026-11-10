@@ -1,0 +1,49 @@
+{
+  "banco": "amcl",
+  "canal_privado": {
+    "base": [
+      "sombra-sin-base",
+      "--ros-args",
+      "-r",
+      "/robot/cmd_vel:=/seguridad/salida_sombra/cmd_vel",
+      "-p",
+      "use_sim_time:=false"
+    ],
+    "remapeo_nav2": "/robot/cmd_vel:=/seguridad/entrada/nav2",
+    "salida_privada": "/seguridad/salida_sombra/cmd_vel",
+    "seguridad": [
+      "/usr/bin/python3",
+      "/home/robot/exp2_sombra/R/seguridad/seguridad_nodo_ros.py",
+      "--ph13",
+      "/home/robot/exp2_sombra/R/seguridad/ph13_PH13_transcrito.json",
+      "--salida",
+      "/seguridad/salida_sombra/cmd_vel",
+      "--entrada",
+      "nav2=/seguridad/entrada/nav2",
+      "--entrada",
+      "habilidad=/seguridad/entrada/habilidad",
+      "--registro",
+      "/home/robot/exp2_sombra/R/F5b_exploracion/corridas/sombra/sombra_20261110/T06/seguridad.jsonl"
+    ]
+  },
+  "capacidades": "F7_paquete/capacidades_summit_v0.3.json",
+  "capacidades_sha256": "d63ae0a9607bc8f5e0051ade5a4c26405c78ddd838e6386933047856fafece4f",
+  "decisor_llm": {
+    "memoria": "memoria_1.json",
+    "modo": "prueba",
+    "registro": "/home/robot/exp2_sombra/R/F5b_exploracion/corridas/sombra/sombra_20261110/T06/decisor_llm.jsonl",
+    "respuesta_prueba": "/home/robot/exp2_sombra/R/M3_lazo/adelante_fijo/respuesta_adelante_fijo.txt",
+    "transporte": "/home/robot/exp2_sombra/R/F5b_exploracion/corridas/sombra/sombra_20261110/T06/transporte_llm.jsonl"
+  },
+  "edad_pose_max_s": 8.0,
+  "modo": "prueba",
+  "modo_validador": "replay",
+  "sombra": true,
+  "sombra_disparo": {
+    "corte": "alineado",
+    "espera_max_s": 900,
+    "marca": "/home/robot/ab/CORTE_ALINEADO.json",
+    "modo": "movimiento"
+  },
+  "sombra_traza": true
+}

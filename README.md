@@ -12,7 +12,7 @@ A robotic development-to-deployment evaluation on a **stock Unitree G1 humanoid*
 and its calibrated **Isaac Sim digital twin**.<br/>
 <sub>Experiment 1, the LLM evaluation, lives in
 [Computational-cognitive-memory-llm-evaluation](https://github.com/5G-ERA/Computational-cognitive-memory-llm-evaluation).<br/>
-A second platform — a wheeled **Robotnik Summit XL** — is [in preparation](summit_xl/): no results yet.</sub>
+The **current design of Experiment 2** (10 Nov 2026) and its status are in [`experiment2_current/`](experiment2_current/).</sub>
 
 [![verify](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml/badge.svg)](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml)
 [![Paper](https://img.shields.io/badge/paper-V5.8_·_Supplementary_Note_8-2a5d8f?style=flat-square)](#citing)
@@ -39,6 +39,21 @@ this evaluation measures.</sub>
 </div>
 
 ---
+
+> [!IMPORTANT]
+> **Status, 10 November 2026.** The design of Experiment 2 has changed since the
+> material below was written. The experiment now asks whether a participation
+> concept, *directional pre-entry compatibility*, can be reconstructed across a
+> simulation-to-physical change (Summit XL) and across embodiments (G1), under
+> three conditions: C2, C2.5 and C3. It is described in
+> [`experiment2_current/`](experiment2_current/), with what has been collected so
+> far: three frozen records from the physical Summit XL that pass the valid-cut
+> manifest. **They are development data; nothing has been classified or
+> independently annotated, and no comparative result exists.**
+>
+> Everything below this note documents the earlier C1–C4 design on the G1 and its
+> digital twin. It is kept unchanged for the audit trail and is not evidence for
+> the current design.
 
 A consumer humanoid — no ROS on board, no SDK, a LiDAR that goes blind below one
 metre — carries an open cup through a narrow door while reasoning about **how much
@@ -156,6 +171,10 @@ the robot's own laser and photographs — 6/6 waypoints, 26.8 s, zero falls.</su
 
 ### A second platform, in preparation
 
+> For the Summit XL under the current design, including the first frozen records
+> from the physical robot, see [`experiment2_current/`](experiment2_current/).
+> The paragraphs below describe the earlier instrumentation work.
+
 Everything above is the G1. A second body is being instrumented in
 [`summit_xl/`](summit_xl/): a wheeled, skid-steer **Robotnik Summit XL** running
 ROS 2 Humble and Nav2 in the vendor's containers, driving A → door → B through a
@@ -270,6 +289,7 @@ sessions run from
 | [`tasks/`](tasks/) | Results, decision ledger, session runbooks, campaign manifests |
 | [`sim/`](sim/) | Isaac bridge, scene generator, calibrated vision emulator |
 | [`docs/`](docs/) | Protocols, figures, platform notes |
+| [`experiment2_current/`](experiment2_current/) | **Current design of Experiment 2 (10 Nov 2026)** — concept, conditions C2 / C2.5 / C3, the two tracks, staged sequence, and the physical Summit XL frozen records with their manifests. Development data, no comparative result |
 | [`summit_xl/`](summit_xl/) | **Second platform, in preparation** — Summit XL instrumentation, controllers, 2D bench and pilot data. Development tier, no results |
 
 <details>
