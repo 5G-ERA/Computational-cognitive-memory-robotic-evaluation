@@ -2,32 +2,189 @@
 
 # Computational Cognitive Memory<br/>Robotic Evaluation
 
-**Results and reproducibility package for Experiment 2 of<br/>
+**Data and reproducibility package for Experiment 2 of<br/>
 *A Computational Theory of Cognitive Memory***
 
 Qiu · Pham · Lendinez Ibanez · Li — University of Bedfordshire · University of
-Birmingham · Telefónica S.A. (draft V5.8, 2026-08)
+Birmingham · Telefónica S.A.
 
-A robotic development-to-deployment evaluation on a **stock Unitree G1 humanoid**
-and its calibrated **Isaac Sim digital twin**.<br/>
+Reconstructing a participation concept across a **simulation-to-physical** change
+on a **Robotnik Summit XL** and across **embodiments** on a **Unitree G1**.<br/>
 <sub>Experiment 1, the LLM evaluation, lives in
-[Computational-cognitive-memory-llm-evaluation](https://github.com/5G-ERA/Computational-cognitive-memory-llm-evaluation).<br/>
-The **current design of Experiment 2** (10 Nov 2026) and its status are in [`experiment2_current/`](experiment2_current/).</sub>
+[Computational-cognitive-memory-llm-evaluation](https://github.com/5G-ERA/Computational-cognitive-memory-llm-evaluation).</sub>
 
 [![verify](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml/badge.svg)](https://github.com/5G-ERA/Computational-cognitive-memory-robotic-evaluation/actions/workflows/verify.yml)
-[![Paper](https://img.shields.io/badge/paper-V5.8_·_Supplementary_Note_8-2a5d8f?style=flat-square)](#citing)
-[![Reproducibility](https://img.shields.io/badge/reproducibility-213_checksums_·_frozen_env-0f6e77?style=flat-square)](REPRODUCIBILITY.md)
-[![Tier](https://img.shields.io/badge/tier-development-b58a00?style=flat-square)](#the-evaluation-lifecycle)
+[![Status](https://img.shields.io/badge/status-development_data_·_no_comparative_result-b58a00?style=flat-square)](#status)
+[![Robots](https://img.shields.io/badge/robots-Summit_XL_·_Unitree_G1-444?style=flat-square)](#two-parallel-tracks)
 [![Python](https://img.shields.io/badge/python-3.10-3776AB?style=flat-square&logo=python&logoColor=white)](requirements.txt)
 [![Licence](https://img.shields.io/badge/licence-Apache--2.0_·_CC_BY_4.0-750014?style=flat-square)](LICENSE)
-[![Isaac Sim](https://img.shields.io/badge/Isaac_Sim-5.1.0-76B900?style=flat-square&logo=nvidia&logoColor=white)](sim/)
-[![Robot](https://img.shields.io/badge/robot-Unitree_G1_"Air"-444?style=flat-square)](#the-platform)
 
-[**Results**](#results-at-a-glance) · [**Reproduce**](#reproduce-the-numbers) ·
-[**Platform**](#the-platform) · [**Lifecycle**](#the-evaluation-lifecycle) ·
-[**Repository map**](#repository-map) · [**REPRODUCIBILITY.md**](REPRODUCIBILITY.md)
+[**The question**](#what-the-experiment-asks) · [**Conditions**](#the-three-conditions) ·
+[**Status**](#status) · [**Records**](experiment2_current/summit_xl_physical_2026-11-10/) ·
+[**Repository map**](#repository-map) · [**Earlier design**](#earlier-design-c1c4-on-the-g1-and-its-twin)
+
+</div>
+
+---
+
+> [!IMPORTANT]
+> **Everything in this repository is development data.** Under the current design
+> no record has been classified, nothing has been independently annotated, and
+> **no comparative result exists**. The numbers further down this page belong to
+> an [earlier design](#earlier-design-c1c4-on-the-g1-and-its-twin) and are not
+> evidence for the current one.
+
+## What the experiment asks
+
+Whether a participation concept grounded in one deployment context can be
+reconstructed, recalibrated and reused after a change of physical context and of
+robot embodiment.
+
+```mermaid
+flowchart LR
+    SIM["Simulation<br/>Summit XL"]
+    PHY["Physical<br/>Summit XL"]
+    G1["Physical<br/>Unitree G1"]
+    SIM -->|"context change,<br/>same embodiment"| PHY
+    PHY -.->|"abstract concept,<br/>different embodiment"| G1
+
+    style SIM fill:#0F6E7722,stroke:#0F6E77
+    style PHY fill:#7A642022,stroke:#7A6420
+    style G1 fill:#9E4E2C22,stroke:#9E4E2C
+```
+
+The concept under investigation is **directional pre-entry compatibility**: the
+functional relationship among doorway geometry, robot passage envelope and
+posture, stop distance, lateral offset, heading, proposed motion and sensing
+validity that determines whether the crossing capability is sufficiently
+supported for participation.
+
+Each robot reaches a doorway, aligns with it and stops. **The experiment begins
+at that aligned point.** There a record is frozen — scan, pose, transforms and
+the projection of the deployment knowledge package — and the three conditions
+are applied offline to that same record. The crossing routine is only the means
+of getting there: crossing success is not the endpoint, and motion-routine
+performance is not concept-reconstruction performance.
+
+## The three conditions
+
+| Condition | What it does | Returns |
+|:---|:---|:---|
+| **C2** | Direct LLM judgement from the available record | a supported or unsupported direct answer |
+| **C2.5** | Classifies whether the record lies within the applicable contextual span. Read from the C3 processing record before the additional layers: a dependent intermediate output, not an independent run | within span · boundary · outside span · indeterminate |
+| **C3** | Reconstructs the concept in the changed context, with local meaning, unresolved conditions, capability participation and authority | participate · review · defer · no-use · renew |
+
+Action authority is recorded separately from the C3 outcome: *participate* does
+not by itself authorise an action. *Renew* is a candidate specification renewal
+that must still be grounded, validated and released.
+
+The expected contribution of C3 is not a better classification. It is
+reconstructible local meaning, unresolved conditions, governed participation and
+authority separation beyond C2's direct judgement and C2.5's contextual-span
+classification.
+
+## Two parallel tracks
+
+| Track | Tests |
+|:---|:---|
+| **Summit XL** | the concept under a simulation-to-physical context change within one embodiment, on matched simulated and physical records |
+| **G1** | whether the abstract concept can organise and explain observations under a different embodiment. It imports no Summit-specific thresholds, classifications, clearances, sensing assumptions or authority rules |
+
+The tracks are complementary and not sequentially dependent.
+
+## Status
+
+<sub>As of 10 November 2026.</sub>
+
+| Stage | Summit XL | G1 |
+|:---|:---|:---|
+| 1. Development characterisation | done | not done: no crossing completed |
+| 2. Frozen-record validation | three records pass the manifest | frozen record not built |
+| 3. Controlled pre-test on selected concept-boundary cases | not started | not started |
+| 4. Concept release / lock | not started | not started |
+| 5. Locked evaluation on new records | not started | not started |
+
+**Physical Summit XL.** Across six physical Summit XL attempts, three
+manifest-valid frozen records were acquired at the aligned pre-entry point. The
+three valid records demonstrate repeatable, non-interfering acquisition for one
+nominal scenario and establish the evidence base for a within-record C2/C2.5/C3
+comparison. No claim about relative reconstruction performance can yet be made
+because the records have not been independently annotated or classified.
+
+<div align="center">
+
+| Attempted | Aligned | Frozen | Pass the manifest | Classified | Annotated |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| 6 | 3 | 3 | 3 | 0 | 0 |
+
+</div>
+
+The records, their manifests and the script that wrote them are in
+[`experiment2_current/summit_xl_physical_2026-11-10/`](experiment2_current/summit_xl_physical_2026-11-10/).
+Their known limits — one nominal scenario, a declared rather than measured
+«stationary» check, no lighting or blind-spot field — are listed in
+[`experiment2_current/`](experiment2_current/#known-limits-of-these-records).
+
+**Unitree G1.** No crossing was completed under the current design, and the G1
+does not yet freeze a record at its aligned point, so no G1 data can enter a
+C2/C2.5/C3 comparison. The plan is
+[`G1_Experiment2_test_plan_v0.3`](experiment2_current/G1_Experiment2_test_plan_v0.3_2026-11-10.pdf).
+
+**Not yet existing:** matched simulated records · C2 and C3 processing of the
+physical records · independent annotation · any case other than the nominal one ·
+the G1 frozen record.
+
+## Repository map
+
+| Path | Contents |
+|:---|:---|
+| [`experiment2_current/`](experiment2_current/) | **Start here** — the current design, the status of both robots, the physical Summit XL frozen records with their manifests, and the G1 plan |
+| [`summit_xl/`](summit_xl/) | Summit XL instrumentation, controllers, 2D bench and pilot sessions from the earlier design |
+| [`src/`](src/) | The G1 stack and the earlier evaluation runtime — navigation, staging, certificates, C1–C4 conditions, role resolver |
+| [`analysis/`](analysis/) | Scorers, negative controls, variance and realism batteries of the earlier design |
+| [`dataset/`](dataset/) | G1 runs: per-tick samples, laser snapshots, camera frames, reference certificates |
+| [`reproducibility/`](reproducibility/) · [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | Frozen environment, SHA256 manifest and verifier, exclusion log and machine-readable results of the earlier design |
+| [`tasks/`](tasks/) | Results, decision ledger, session runbooks and campaign manifests of the earlier design |
+| [`sim/`](sim/) | Isaac bridge, scene generator, calibrated vision emulator for the G1 twin |
+| [`docs/`](docs/) | Protocols, figures, platform notes |
+
+<details>
+<summary>All directories and branches</summary>
 
 <br/>
+
+| Path | Contents |
+|:---|:---|
+| `meta-reasoner-2.0/` | The configuration-first DCE runtime (governance layer) |
+| `summit/` · `calib/` · `calib_luz/` · `weights/` | Reference map (the Summit's maps used as ground truth **for the G1** — not the Summit experiment), camera calibration, staged light tandas, model weights |
+| `config/` · `state/` · `data/` | Runtime configuration and state |
+| `crashes/` · `logs/` | Collision evidence with pre-impact frames; session logs |
+| `archive/` · `attic/` | Historical material — kept for the audit trail, out of the way |
+
+**Branches:** `main` — this page and the packaged material ·
+`ensayo/door-gate-isaac` — G1 working branch ·
+`baseline` — frozen no-governance navigation for fair comparison.
+
+</details>
+
+---
+
+## Earlier design: C1–C4 on the G1 and its twin
+
+> [!NOTE]
+> This section documents the design under which this repository was first
+> published (paper draft V5.8, August–September 2026): four conditions crossing
+> interface and resolution on a Unitree G1 and its Isaac Sim digital twin. It is
+> kept as written, for the audit trail. Its numbers are development-tier results
+> of that design; **they are not results of the current Experiment 2**, and the
+> frozen confirmatory C1–C4 evaluation it describes was never run.
+
+<div align="center">
+
+[![Paper](https://img.shields.io/badge/paper-V5.8_·_Supplementary_Note_8-2a5d8f?style=flat-square)](#citing)
+[![Reproducibility](https://img.shields.io/badge/reproducibility-213_checksums_·_frozen_env-0f6e77?style=flat-square)](REPRODUCIBILITY.md)
+[![Isaac Sim](https://img.shields.io/badge/Isaac_Sim-5.1.0-76B900?style=flat-square&logo=nvidia&logoColor=white)](sim/)
+[![Robot](https://img.shields.io/badge/robot-Unitree_G1_"Air"-444?style=flat-square)](#the-platform)
 
 <img src="docs/img/mission.png" alt="Real recorded trajectories: five clean crossings, and one run where the laser lied" width="880"/>
 
@@ -38,30 +195,13 @@ this evaluation measures.</sub>
 
 </div>
 
----
-
-> [!IMPORTANT]
-> **Status, 10 November 2026.** The design of Experiment 2 has changed since the
-> material below was written. The experiment now asks whether a participation
-> concept, *directional pre-entry compatibility*, can be reconstructed across a
-> simulation-to-physical change (Summit XL) and across embodiments (G1), under
-> three conditions: C2, C2.5 and C3. It is described in
-> [`experiment2_current/`](experiment2_current/), with what has been collected so
-> far: three frozen records from the physical Summit XL that pass the valid-cut
-> manifest. **They are development data; nothing has been classified or
-> independently annotated, and no comparative result exists.**
->
-> Everything below this note documents the earlier C1–C4 design on the G1 and its
-> digital twin. It is kept unchanged for the audit trail and is not evidence for
-> the current design.
-
 A consumer humanoid — no ROS on board, no SDK, a LiDAR that goes blind below one
 metre — carries an open cup through a narrow door while reasoning about **how much
 to trust its own senses**. Above navigation sits a cognitive-memory layer that
 resolves, at every decision boundary, *which role governs*: keep trusting the
 incumbent sense, switch to an alternative, escalate to review, or withhold.
 
-## Results at a glance
+### Results at a glance
 
 Four conditions cross **interface** (original I⁰ vs revised I¹) × **resolution**
 (temporal incumbent vs distributed/DCC), per paper §8.6:
@@ -115,7 +255,7 @@ machine-readable:
 > logged real sessions. The frozen confirmatory C1–C4 deployment evaluation has
 > **not** been run.
 
-## The platform
+### The platform
 
 Two execution tiers drive the **same unmodified robot stack**:
 
@@ -169,13 +309,9 @@ the robot's own laser and photographs — 6/6 waypoints, 26.8 s, zero falls.</su
 
 </div>
 
-### A second platform, in preparation
+#### The Summit XL in the earlier design
 
-> For the Summit XL under the current design, including the first frozen records
-> from the physical robot, see [`experiment2_current/`](experiment2_current/).
-> The paragraphs below describe the earlier instrumentation work.
-
-Everything above is the G1. A second body is being instrumented in
+A second body was instrumented in
 [`summit_xl/`](summit_xl/): a wheeled, skid-steer **Robotnik Summit XL** running
 ROS 2 Humble and Nav2 in the vendor's containers, driving A → door → B through a
 742 mm doorway with a 613 mm-wide footprint. Its shared-experience interface is
@@ -197,7 +333,7 @@ Where a column *cannot* mean the same thing on both bodies — `collisions` is t
 case, because the Summit's odometry is open-loop — the difference is measured
 differently and declared in every run it writes.
 
-## The evaluation lifecycle
+### The evaluation lifecycle
 
 ```mermaid
 flowchart LR
@@ -227,7 +363,7 @@ crosses it. Exclusions are logged, never silent:
 
 </div>
 
-## Reproduce the numbers
+### Reproduce the numbers
 
 Scoring is **offline and deterministic** — recorded runs plus their certificates,
 no robot needed. <sub>(The tooling speaks Spanish: scripts, directory names and console
@@ -277,39 +413,7 @@ sessions run from
 
 </details>
 
-## Repository map
-
-| Path | Contents |
-|:---|:---|
-| [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | **Start here** — the paper's §8.16 package checklist, mapped item by item |
-| [`src/`](src/) | The robot stack and evaluation runtime — navigation, staging, certificates, C1–C4 conditions, role resolver |
-| [`analysis/`](analysis/) | Scorers, negative controls, variance and realism batteries |
-| [`dataset/`](dataset/) | Every run: per-tick samples, laser snapshots, camera frames, reference certificates |
-| [`reproducibility/`](reproducibility/) | Frozen environment, SHA256 manifest + verifier, exclusion log, machine-readable results |
-| [`tasks/`](tasks/) | Results, decision ledger, session runbooks, campaign manifests |
-| [`sim/`](sim/) | Isaac bridge, scene generator, calibrated vision emulator |
-| [`docs/`](docs/) | Protocols, figures, platform notes |
-| [`experiment2_current/`](experiment2_current/) | **Current design of Experiment 2 (10 Nov 2026)** — concept, conditions C2 / C2.5 / C3, the two tracks, staged sequence, and the physical Summit XL frozen records with their manifests. Development data, no comparative result |
-| [`summit_xl/`](summit_xl/) | **Second platform, in preparation** — Summit XL instrumentation, controllers, 2D bench and pilot data. Development tier, no results |
-
-<details>
-<summary>All directories</summary>
-
-<br/>
-
-| Path | Contents |
-|:---|:---|
-| `meta-reasoner-2.0/` | The configuration-first DCE runtime (governance layer) |
-| `summit/` · `calib/` · `calib_luz/` · `weights/` | Reference map (the Summit's maps used as ground truth **for the G1** — not the Summit experiment, which is `summit_xl/`), camera calibration, staged light tandas, model weights |
-| `config/` · `state/` · `data/` | Runtime configuration and state |
-| `crashes/` · `logs/` | Collision evidence with pre-impact frames; session logs |
-| `archive/` · `attic/` | Historical material — kept for the audit trail, out of the way |
-
-**Branches:** `ensayo/door-gate-isaac` — the evaluation (active) ·
-`baseline` — frozen no-governance navigation for fair comparison · `main` —
-kept in sync with the evaluation branch.
-
-</details>
+---
 
 ## Licence
 
@@ -325,9 +429,11 @@ Reuse either with attribution — cite the paper as below.
 ## Citing
 
 > Qiu, R., Pham, D., Lendinez Ibanez, A., Li, D.
-> *A Computational Theory of Cognitive Memory.* V5.8, under review.
-> Experiment 2 — robotic development-to-deployment evaluation:
-> this repository, Supplementary Note 8.
+> *A Computational Theory of Cognitive Memory.* Under review.
+> Experiment 2 — robotic evaluation: this repository.
+
+<sub>The paper is in revision. The earlier design on this page was written against
+draft V5.8 and its Supplementary Note 8.</sub>
 
 <div align="center">
 
