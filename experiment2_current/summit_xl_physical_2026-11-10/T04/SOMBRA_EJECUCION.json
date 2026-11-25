@@ -1,0 +1,70 @@
+{
+  "carpeta": "/home/robot/exp2_sombra/R/F5b_exploracion/corridas/sombra/sombra_20261110/T04",
+  "condicion": "C3",
+  "ejecutor_argv": [
+    "/usr/bin/python3",
+    "-B",
+    "/home/robot/exp2_sombra/R/M3_lazo/lazo_sombra_ros.py",
+    "--episodio",
+    "/home/robot/exp2_sombra/R/F5b_exploracion/corridas/sombra/sombra_20261110/T04/EPISODIO.json",
+    "--config",
+    "/home/robot/exp2_sombra/R/F5b_exploracion/corridas/sombra/sombra_20261110/T04/CONFIG.json"
+  ],
+  "entorno": {
+    "dominio": "39",
+    "uri": "la del contenedor nav-loc-navigation-1",
+    "uri_sha256": "d89eedfda4dbf67e6e1cabaa512d9b3b2502492193936339acfd4cfe91822370",
+    "uso": "robot real (host del Summit XL)"
+  },
+  "estado": "finalizada",
+  "etiqueta": "SOMBRA · descriptivo (no es evidencia del Experimento 2 salvo que Renxi lo decida)",
+  "fin": "2026-11-10T17:43:54+01:00",
+  "fronteras": [
+    {
+      "accion": "ejecuta",
+      "boundary_id": "T04/0",
+      "condicion": "C3",
+      "ejecucion": "NO_EJECUTADO",
+      "fase": "aproximacion",
+      "habilidad": "constrained_traversal",
+      "k": 0,
+      "parametros": {
+        "max_speed_mps": 0.2
+      },
+      "terminal": "VALID_DECISION",
+      "tipo": "continuacion:alineado"
+    }
+  ],
+  "huellas": {
+    "CONFIG.json": "6ecf9d78b6ec514daadd47b8639b47048e314658115d50e22cb88dc4b4828f91",
+    "EPISODIO.json": "158332983c319445cf9f1316b1edd9a30644445db03dbff261a68a7f228d62db",
+    "corre_sombra_robot.py": "1ac0649565cb6c4b3f8d50dbd934571379892221d93ec3d27c7e25393eda9a92",
+    "lazo_sombra_ros.py": "758047cb175c474221e18bd121c12f98893984c637b0f2e64eadcf664aa87168"
+  },
+  "id": "T04",
+  "inicio": "2026-11-10T17:41:39+01:00",
+  "lote": "sombra_20261110",
+  "modo": "prueba",
+  "nice": 19,
+  "rc": 0,
+  "resumen": {
+    "causa_fin": "PARADA_SEGURIDAD",
+    "codigo_salida": 0,
+    "decidiendo_s": 0.122,
+    "duracion_s": 65.5424847459999,
+    "estado_sombra": "SOMBRA_NO_EJECUTADO",
+    "fases_vistas": [
+      "aproximacion"
+    ],
+    "n_fronteras": 1,
+    "resultado_finalizacion": {
+      "estado": null,
+      "estado_sombra": "SOMBRA_NO_EJECUTADO",
+      "motivo": "SOMBRA: sin ProtectiveStop (mandaría CancelGoal de todos los objetivos a las acciones de Nav2)"
+    },
+    "sombra": true
+  },
+  "seguridad_lista": "2026-11-10T17:41:39+01:00",
+  "seguridad_parada": "2026-11-10T17:43:54+01:00",
+  "version": "corre_sombra_robot 0.1 (4-nov-2026)"
+}

@@ -1,0 +1,163 @@
+{
+  "atravesadas_sin_dato": [],
+  "causa_fin": "PARADA_SEGURIDAD",
+  "codigo_salida": 0,
+  "condicion": "C3",
+  "decidiendo_s": 0.112,
+  "disparo": {
+    "armada_pared_s": 1794330182.0704968,
+    "disparo": "MOVIMIENTO",
+    "disparo_pared_s": 1794330347.1836452,
+    "espera_max_s": 900,
+    "modo": "movimiento",
+    "muestras": [
+      [
+        1794330347.1681292,
+        0.05166447494171641,
+        -0.022760504155900214
+      ],
+      [
+        1794330347.1786685,
+        0.05731396768084263,
+        -0.03415061048478373
+      ],
+      [
+        1794330347.180162,
+        0.05731396768084263,
+        -0.03415061048478373
+      ]
+    ]
+  },
+  "duracion_s": 69.98285087299973,
+  "episode_id": "T06",
+  "estado_sombra": "SOMBRA_NO_EJECUTADO",
+  "fases_vistas": [
+    "aproximacion"
+  ],
+  "fronteras_pendientes": 0,
+  "fronteras_sha256": "aa17fc57738389dcbf6b9152b6ddebeddadf0b76066838ef72ae8a6ae5533ac8",
+  "inflacion": {
+    "cost_scaling_factor": 4.0,
+    "inflation_radius": 1.5
+  },
+  "intervenciones": {
+    "bloqueadas": 0,
+    "parada_protectora": 0,
+    "reintentos": 0,
+    "sin_vincular": 0
+  },
+  "modo_recogida": "lazo",
+  "n_fronteras": 1,
+  "pendientes_sin_terminal": [],
+  "registro_ultimo_hash": "d7395da4f1011a2b2f23a9bd447000fd2d63c1e0b4c7924d6b8dee2fa577bf93",
+  "resultado_finalizacion": {
+    "estado": null,
+    "estado_sombra": "SOMBRA_NO_EJECUTADO",
+    "guarda": {
+      "denegados": [],
+      "sustituidos": [
+        {
+          "cliente": "/robot/request_nomotion_update",
+          "tipo": "std_srvs/srv/Empty"
+        }
+      ]
+    },
+    "inventario_final": {
+      "clientes": [],
+      "clientes_accion": [],
+      "grafo": {
+        "clientes": [],
+        "publicadores": [
+          [
+            "/parameter_events",
+            [
+              "rcl_interfaces/msg/ParameterEvent"
+            ]
+          ],
+          [
+            "/rosout",
+            [
+              "rcl_interfaces/msg/Log"
+            ]
+          ],
+          [
+            "/seguridad/asigna",
+            [
+              "std_msgs/msg/String"
+            ]
+          ],
+          [
+            "/seguridad/cancela",
+            [
+              "std_msgs/msg/String"
+            ]
+          ],
+          [
+            "/seguridad/latido",
+            [
+              "std_msgs/msg/String"
+            ]
+          ],
+          [
+            "/seguridad/libera",
+            [
+              "std_msgs/msg/String"
+            ]
+          ],
+          [
+            "/seguridad/libera_retencion",
+            [
+              "std_msgs/msg/String"
+            ]
+          ],
+          [
+            "/seguridad/retiene",
+            [
+              "std_msgs/msg/String"
+            ]
+          ]
+        ]
+      },
+      "prohibidos": [],
+      "publicadores": [
+        {
+          "tema": "/parameter_events",
+          "tipo": "rcl_interfaces/msg/ParameterEvent"
+        },
+        {
+          "tema": "/seguridad/asigna",
+          "tipo": "std_msgs/msg/String"
+        },
+        {
+          "tema": "/seguridad/libera",
+          "tipo": "std_msgs/msg/String"
+        },
+        {
+          "tema": "/seguridad/cancela",
+          "tipo": "std_msgs/msg/String"
+        },
+        {
+          "tema": "/seguridad/latido",
+          "tipo": "std_msgs/msg/String"
+        },
+        {
+          "tema": "/seguridad/retiene",
+          "tipo": "std_msgs/msg/String"
+        },
+        {
+          "tema": "/seguridad/libera_retencion",
+          "tipo": "std_msgs/msg/String"
+        }
+      ]
+    },
+    "limpieza_pendiente": false,
+    "motivo": "SOMBRA: sin ProtectiveStop (mandaría CancelGoal de todos los objetivos a las acciones de Nav2)",
+    "realizador": "protective_stop_final"
+  },
+  "sombra": true,
+  "tope_descuenta_decision": true,
+  "version": "ejecutor_exploracion 0.2 (8-oct-2026; primera fase sólo con Nav2 navegando)",
+  "version_lazo": "lazo M3 0.2 (11-oct-2026; plan C1–C3 sim; tras la revisión de Astra)",
+  "version_lazo_llm": "lazo_llm_ros M3 0.1 (2-nov-2026; lote en vivo)",
+  "version_sombra": "lazo_sombra_ros 0.3 (10-nov-2026; el enclavamiento propio no cierra la sombra antes del corte alineado; sombra en el Summit XL real; corte «alineado» por marca)"
+}

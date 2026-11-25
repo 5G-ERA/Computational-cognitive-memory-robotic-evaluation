@@ -1,0 +1,16 @@
+{
+ "modo": "movimiento",
+ "espera_max_s": 900,
+ "armada_pared_s": 1794330182.0704968,
+ "version": "lazo_sombra_ros 0.3 (10-nov-2026; el enclavamiento propio no cierra la sombra antes del corte alineado; sombra en el Summit XL real; corte «alineado» por marca)",
+ "umbral": {
+  "modo": "movimiento",
+  "espera_max_s": 900,
+  "v_min_mps": 0.05,
+  "w_min_rps": 0.1,
+  "muestras": 3,
+  "frescura_s": 2.0,
+  "corte": "alineado",
+  "marca": "/home/robot/ab/CORTE_ALINEADO.json"
+ }
+}

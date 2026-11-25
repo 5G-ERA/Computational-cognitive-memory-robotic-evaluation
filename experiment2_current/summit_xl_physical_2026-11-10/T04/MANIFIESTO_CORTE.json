@@ -1,0 +1,113 @@
+{
+ "manifiesto": "manifiesto_corte 0.3 (10-nov-2026; marca del robot real e indicadores de validez; ContextID, PairID, CutID del documento de contexto de Renxi)",
+ "context_id": "summit_physical",
+ "pair_id": "A_a_B_nominal",
+ "cut_id": "T04/0",
+ "traversal_id": "T04",
+ "t_aligned": 1794329028.7893476,
+ "t_freeze": 1794329029.666582,
+ "lote": "sombra_20261110",
+ "modo_decisor_en_linea": "prueba",
+ "estado": {
+  "alineado": true,
+  "congelado": true,
+  "valido": true,
+  "clasificado_fuera_de_linea": false
+ },
+ "tiempos": {
+  "armada_pared_s": 1794328903.4287994,
+  "alineado_marca_pared_s": 1794329028.7893476,
+  "marca_leida_pared_s": 1794329028.796271,
+  "congelado_captura_pared_s": 1794329029.666582,
+  "corte_sensor_s": 1794329029.6536624,
+  "acuse_pared_s": 1794329033.2606425,
+  "componentes": {
+   "scan_stamp_s": 1794329029.6536624,
+   "pose_stamp_s": 1794329029.6536624,
+   "plan_sello_s": 1794328988.0593574
+  },
+  "derivados_s": {
+   "marca_a_captura": 0.8772,
+   "edad_pose_en_captura": 0.0129,
+   "edad_scan_en_captura": 0.0129,
+   "scan_menos_pose": 0.0,
+   "marca_a_acuse": 4.4713
+  }
+ },
+ "comprobaciones": {
+  "tiempos": {
+   "una_sola_frontera_alineada": true,
+   "captura_posterior_a_la_marca": true,
+   "marca_posterior_al_armado": true,
+   "robot_parado_declarado": true,
+   "ids_de_travesia_y_corte_casan": true
+  },
+  "frescura": {
+   "umbral_declarado_s": 2.0,
+   "pose_fresca": true,
+   "scan_fresco": true,
+   "pose_posterior_a_la_marca": true,
+   "fuente_pose": "AMCL"
+  },
+  "sincronia": {
+   "scan_menos_pose_s": 0.0,
+   "scan_y_pose_dentro_del_umbral": true
+  },
+  "integridad": {
+   "scan_presente": true,
+   "pose_presente": true,
+   "tf_laser_presente": true,
+   "proyeccion_dkp_presente": true,
+   "huellas_declaradas_coinciden": true,
+   "cadena_del_registro_enlazada": true,
+   "ordenes_de_la_sombra": "CERO_ORDENES_DE_LA_SOMBRA",
+   "acuse": "PARADA_DE_FRONTERA_HECHA",
+   "rc": 0
+  }
+ },
+ "versiones": {
+  "lazo": "lazo_sombra_ros 0.3 (10-nov-2026; el enclavamiento propio no cierra la sombra antes del corte alineado; sombra en el Summit XL real; corte «alineado» por marca)",
+  "orquestador": "corre_sombra_robot 0.1 (4-nov-2026)",
+  "ejecutor": "ejecutor_exploracion 0.2 (8-oct-2026; primera fase sólo con Nav2 navegando)",
+  "ejecutor_sha256": "ec49b138348f6bfc5822c44c2bf76c24fc424539144754fa931f96c2383f4a8d",
+  "proyeccion_dkp": "derivaciones_v3 0.2 (12-oct-2026; v3.1: Apéndice A de la v6.3.1; BORRADOR)",
+  "huellas_declaradas": {
+   "CONFIG.json": "6ecf9d78b6ec514daadd47b8639b47048e314658115d50e22cb88dc4b4828f91",
+   "EPISODIO.json": "158332983c319445cf9f1316b1edd9a30644445db03dbff261a68a7f228d62db",
+   "corre_sombra_robot.py": "1ac0649565cb6c4b3f8d50dbd934571379892221d93ec3d27c7e25393eda9a92",
+   "lazo_sombra_ros.py": "758047cb175c474221e18bd121c12f98893984c637b0f2e64eadcf664aa87168"
+  }
+ },
+ "validez_percepcion": {
+  "enclavamiento_del_vigilante_de_la_sombra": "SCAN_CADUCADO",
+  "observado_antes_del_corte": [
+   "SCAN_CADUCADO"
+  ],
+  "sigma_xy_m": 0.09095029151997414,
+  "sigma_yaw_rad": 0.06698718542198887,
+  "nota": "indicadores, no umbrales: aquí no se decide si la percepción vale"
+ },
+ "limites_conocidos": [
+  "robot_parado_declarado sale de lo que declara el guion de la travesía (para la base y pide pose antes de escribir la marca), no de una medida de velocidad",
+  "el sello de la pose es el del escaneo del corte: scan_menos_pose es 0 por construcción"
+ ],
+ "evidencia_sha256": "c578d56b32308fee98273d0263f6ce022a1cfacbc82ddcebacc43b26695e7be0",
+ "ficheros_sha256": {
+  "CONFIG.json": "6ecf9d78b6ec514daadd47b8639b47048e314658115d50e22cb88dc4b4828f91",
+  "EPISODIO.json": "158332983c319445cf9f1316b1edd9a30644445db03dbff261a68a7f228d62db",
+  "SOMBRA_ARMADA.json": "80ca30f2be24b266a00f5a7c58ed56809b60ad9583a3808b6fdf72dfcb3e7e17",
+  "SOMBRA_EJECUCION.json": "c81bd34e033bd4fe8faefe46774666401ee961852a70b789a7435eec4481a784",
+  "TRAZA_ORQUESTADOR.json": "64565d598c1dcc9c3bd976c900ee1261b19ae378aedd99edab33a08e5ec97604",
+  "TRAZA_SOMBRA.json": "1794cb1524d359f320a0aabf4262918fd93505770e6b2ed929cbcd905d618482",
+  "decisor_llm.jsonl": "cf9c2b69b01d1a9e69a425dc8941f725bf46b8e73c7403b181f3beb120fd893e",
+  "ejecutor.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "salidas/actuaciones.jsonl": "77e5d59f771a5fd33c498ee46b81cdabd7e61c58bf1dc56027968d3e064884cc",
+  "salidas/fronteras.jsonl": "ec2a05361da5800790eb52ee4d8657693be240f975e8af72e2fc9ce8859551a7",
+  "salidas/inicio_ejecutor.json": "20391d3f02b329eed32b337e2f54099ccfba5e19b3338e61160320d7136aa95a",
+  "salidas/registro.jsonl": "7eace71fe74dacd0dbe4a3c5f89ab7f0ac766e18fee0b10afd0e7c47472b082f",
+  "salidas/resumen.json": "18c425b727004c18ec39ca36672f2c1757c73486c55fa5056c9d5ba33fe6e9a2",
+  "seguridad.jsonl": "20b02b933f32a50c5867ae8d0ec829849d0e44ebe8be1dedac1b4f32ba5a5208",
+  "seguridad.log": "a41a498ac09d7fceb976a6f9ccf5f65774e13145fdfc516234559253074c3433"
+ },
+ "nota": "Datos de desarrollo. La decisión en línea es de respuesta fija y no cuenta como clasificación; clasificado_fuera_de_linea lo pone a True el paso de C2/C3 fuera de línea."
+}

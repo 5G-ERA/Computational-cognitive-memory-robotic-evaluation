@@ -1,0 +1,159 @@
+{
+ "inicio_pared_s": 1794328899.5416226,
+ "fin_pared_s": 1794329035.448472,
+ "temas": {
+  "/robot/cmd_vel": {
+   "tipo": null,
+   "mensajes": 0,
+   "no_nulos": 0,
+   "primero_s": null,
+   "ultimo_s": null,
+   "publicadores": []
+  },
+  "/robot/cmd_vel_nav": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 421,
+   "no_nulos": 420,
+   "primero_s": 67.993,
+   "ultimo_s": 88.924,
+   "publicadores": [
+    "_NODE_NAMESPACE_UNKNOWN_/_NODE_NAME_UNKNOWN_",
+    "/robot/behavior_server",
+    "/robot/controller_server"
+   ]
+  },
+  "/robot/move_base/cmd_vel": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 454,
+   "no_nulos": 450,
+   "primero_s": 68.0,
+   "ultimo_s": 122.861,
+   "publicadores": [
+    "_NODE_NAMESPACE_UNKNOWN_/_NODE_NAME_UNKNOWN_",
+    "/robot/velocity_smoother",
+    "/_ros2cli_2140411",
+    "/_ros2cli_2143748",
+    "/_ros2cli_2147284"
+   ]
+  },
+  "/robot/robotnik_base_control/cmd_vel_limited": {
+   "tipo": "geometry_msgs/msg/TwistStamped",
+   "mensajes": 11889,
+   "no_nulos": 2381,
+   "primero_s": 0.154,
+   "ultimo_s": 135.907,
+   "publicadores": [
+    "/robot/robotnik_base_control"
+   ]
+  },
+  "/robot/speed_limit": {
+   "tipo": "nav2_msgs/msg/SpeedLimit",
+   "mensajes": 0,
+   "no_nulos": 0,
+   "primero_s": null,
+   "ultimo_s": null,
+   "publicadores": []
+  },
+  "/seguridad/salida_sombra/cmd_vel": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 6599,
+   "no_nulos": 0,
+   "primero_s": 0.675,
+   "ultimo_s": 134.496,
+   "publicadores": [
+    "/seguridad_nodo_89e0510612ab49b6bd66de0aa5e187ac"
+   ]
+  },
+  "/seguridad/entrada/nav2": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 0,
+   "no_nulos": 0,
+   "primero_s": null,
+   "ultimo_s": null,
+   "publicadores": []
+  },
+  "/seguridad/entrada/habilidad": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 0,
+   "no_nulos": 0,
+   "primero_s": null,
+   "ultimo_s": null,
+   "publicadores": []
+  }
+ },
+ "objetivos_navigate_to_pose": {
+  "8349cf5a9b95445580729043e9737b85": {
+   "visto_s": 67.947,
+   "estados": [
+    [
+     67.947,
+     "EXECUTING"
+    ],
+    [
+     88.976,
+     "SUCCEEDED"
+    ]
+   ]
+  }
+ },
+ "nodos_sombra": {
+  "/seguridad_nodo_89e0510612ab49b6bd66de0aa5e187ac": {
+   "papel": "seguridad_sombra",
+   "publicadores": {
+    "/parameter_events": [
+     "rcl_interfaces/msg/ParameterEvent"
+    ],
+    "/rosout": [
+     "rcl_interfaces/msg/Log"
+    ],
+    "/seguridad/eventos": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/salida_sombra/cmd_vel": [
+     "geometry_msgs/msg/Twist"
+    ]
+   },
+   "clientes": {}
+  },
+  "/ejecutor_f5b_exploracion": {
+   "papel": "ejecutor",
+   "publicadores": {
+    "/parameter_events": [
+     "rcl_interfaces/msg/ParameterEvent"
+    ],
+    "/rosout": [
+     "rcl_interfaces/msg/Log"
+    ],
+    "/seguridad/asigna": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/cancela": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/latido": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/libera": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/libera_retencion": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/retiene": [
+     "std_msgs/msg/String"
+    ]
+   },
+   "clientes": {}
+  }
+ },
+ "violaciones": [],
+ "errores_sondeo": [],
+ "sombra_en_temas_prohibidos": {
+  "/robot/cmd_vel": [],
+  "/robot/cmd_vel_nav": [],
+  "/robot/move_base/cmd_vel": [],
+  "/robot/robotnik_base_control/cmd_vel_limited": [],
+  "/robot/speed_limit": []
+ },
+ "veredicto": "CERO_ORDENES_DE_LA_SOMBRA"
+}

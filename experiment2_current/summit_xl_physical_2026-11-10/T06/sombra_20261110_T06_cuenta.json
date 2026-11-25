@@ -1,0 +1,196 @@
+{
+ "inicio_pared_s": 1794330178.2978368,
+ "fin_pared_s": 1794330420.1515894,
+ "temas": {
+  "/robot/cmd_vel": {
+   "tipo": null,
+   "mensajes": 0,
+   "no_nulos": 0,
+   "primero_s": null,
+   "ultimo_s": null,
+   "publicadores": []
+  },
+  "/robot/cmd_vel_nav": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 448,
+   "no_nulos": 447,
+   "primero_s": 168.564,
+   "ultimo_s": 190.942,
+   "publicadores": [
+    "_NODE_NAMESPACE_UNKNOWN_/_NODE_NAME_UNKNOWN_",
+    "/robot/controller_server",
+    "/robot/behavior_server"
+   ]
+  },
+  "/robot/move_base/cmd_vel": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 492,
+   "no_nulos": 487,
+   "primero_s": 168.592,
+   "ultimo_s": 241.839,
+   "publicadores": [
+    "/robot/velocity_smoother",
+    "/_ros2cli_3194107",
+    "/_ros2cli_3197548",
+    "/_ros2cli_3198843",
+    "/_ros2cli_3201092",
+    "_NODE_NAMESPACE_UNKNOWN_/_NODE_NAME_UNKNOWN_"
+   ]
+  },
+  "/robot/robotnik_base_control/cmd_vel_limited": {
+   "tipo": "geometry_msgs/msg/TwistStamped",
+   "mensajes": 21478,
+   "no_nulos": 2581,
+   "primero_s": 0.088,
+   "ultimo_s": 241.854,
+   "publicadores": [
+    "/robot/robotnik_base_control"
+   ]
+  },
+  "/robot/speed_limit": {
+   "tipo": "nav2_msgs/msg/SpeedLimit",
+   "mensajes": 0,
+   "no_nulos": 0,
+   "primero_s": null,
+   "ultimo_s": null,
+   "publicadores": []
+  },
+  "/seguridad/salida_sombra/cmd_vel": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 11865,
+   "no_nulos": 0,
+   "primero_s": 0.596,
+   "ultimo_s": 239.637,
+   "publicadores": [
+    "/seguridad_nodo_b74b4b6fab364e57866a2c7bf7de2c34"
+   ]
+  },
+  "/seguridad/entrada/nav2": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 0,
+   "no_nulos": 0,
+   "primero_s": null,
+   "ultimo_s": null,
+   "publicadores": []
+  },
+  "/seguridad/entrada/habilidad": {
+   "tipo": "geometry_msgs/msg/Twist",
+   "mensajes": 0,
+   "no_nulos": 0,
+   "primero_s": null,
+   "ultimo_s": null,
+   "publicadores": []
+  }
+ },
+ "objetivos_navigate_to_pose": {
+  "8349cf5a9b95445580729043e9737b85": {
+   "visto_s": 0.012,
+   "estados": [
+    [
+     0.012,
+     "SUCCEEDED"
+    ]
+   ]
+  },
+  "b2360125efef4caa959c744ceaa52055": {
+   "visto_s": 0.012,
+   "estados": [
+    [
+     0.012,
+     "SUCCEEDED"
+    ]
+   ]
+  },
+  "f8b76cd328e24da58a15d9f870b116f2": {
+   "visto_s": 0.012,
+   "estados": [
+    [
+     0.012,
+     "SUCCEEDED"
+    ]
+   ]
+  },
+  "a5158d4e53d44d2ea9e9b6c478e428fd": {
+   "visto_s": 0.012,
+   "estados": [
+    [
+     0.012,
+     "SUCCEEDED"
+    ]
+   ]
+  },
+  "c789fd28d7ff4c8ebc5c45a428e3ccfb": {
+   "visto_s": 168.507,
+   "estados": [
+    [
+     168.507,
+     "EXECUTING"
+    ],
+    [
+     190.982,
+     "SUCCEEDED"
+    ]
+   ]
+  }
+ },
+ "nodos_sombra": {
+  "/seguridad_nodo_b74b4b6fab364e57866a2c7bf7de2c34": {
+   "papel": "seguridad_sombra",
+   "publicadores": {
+    "/parameter_events": [
+     "rcl_interfaces/msg/ParameterEvent"
+    ],
+    "/rosout": [
+     "rcl_interfaces/msg/Log"
+    ],
+    "/seguridad/eventos": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/salida_sombra/cmd_vel": [
+     "geometry_msgs/msg/Twist"
+    ]
+   },
+   "clientes": {}
+  },
+  "/ejecutor_f5b_exploracion": {
+   "papel": "ejecutor",
+   "publicadores": {
+    "/parameter_events": [
+     "rcl_interfaces/msg/ParameterEvent"
+    ],
+    "/rosout": [
+     "rcl_interfaces/msg/Log"
+    ],
+    "/seguridad/asigna": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/cancela": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/latido": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/libera": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/libera_retencion": [
+     "std_msgs/msg/String"
+    ],
+    "/seguridad/retiene": [
+     "std_msgs/msg/String"
+    ]
+   },
+   "clientes": {}
+  }
+ },
+ "violaciones": [],
+ "errores_sondeo": [],
+ "sombra_en_temas_prohibidos": {
+  "/robot/cmd_vel": [],
+  "/robot/cmd_vel_nav": [],
+  "/robot/move_base/cmd_vel": [],
+  "/robot/robotnik_base_control/cmd_vel_limited": [],
+  "/robot/speed_limit": []
+ },
+ "veredicto": "CERO_ORDENES_DE_LA_SOMBRA"
+}
