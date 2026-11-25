@@ -1,7 +1,8 @@
 # Summit XL — second robotic experiment (in preparation)
 
 > **Tier: development, pre-protocol.** Nothing in this directory is a result of the paper.
-> There is no frozen configuration, no pre-registration and no confirmatory run. What is here
+> The only frozen piece is the baseline navigation configuration **B1** ([`b1/`](b1/), 25 Nov
+> 2026, simulation only); there is no pre-registration and no confirmatory run. What is here
 > is the instrumentation, the controllers, a 2D bench, and the raw material of the 18 Sep 2026
 > robot session and the 19 Sep bench validation — kept in the open so that the experiment is
 > built where it will be audited. (The pilot work spans 17–19 Sep 2026; the 17 Sep session is
@@ -26,6 +27,7 @@ the G1*. This directory is the Summit as a subject.
 
 | Path | Contents |
 |:---|:---|
+| [`b1/`](b1/) | **B1, the frozen baseline navigation configuration** (25 Nov 2026): Nav2 + DWB with reduced global inflation, the single controller for all Summit data collection; its sha256, the simulation evidence and its known limits |
 | [`registro/`](registro/) | **Run logger with the G1's schema.** Passive ROS 2 node → one `g1_goto_run/v1` JSON per run and one row in `runs_stats.csv` with the G1's 71 columns, in order. Offline test suite, traversal wrapper, G1-vs-Summit table merger, and the bag capture for the offline reconstruction of a collision-checker rejection |
 | [`controlador/`](controlador/) | What ran on the robot on 18 Sep: the clearance-guided doorway controller (`cruza_vano.py`), the Nav2 crossing manoeuvre, the A→B orchestration, the laser heartbeat, the one-command session start |
 | [`banco2d/`](banco2d/) | A kinematic 2D simulator on the real map, driving the **real robot's Nav2 parameters**, with ground-truth pose, clearance and collision. Reproduces the doorway problem without the robot |
